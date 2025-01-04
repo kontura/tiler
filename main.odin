@@ -81,7 +81,7 @@ main :: proc() {
 
     for !rl.WindowShouldClose() {
         rl.BeginDrawing()
-        rl.ClearBackground(rl.GRAY)
+        rl.ClearBackground(rl.RED)
 
         if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
             state.camera_pos.rel_tile.x -= 1* rl.GetFrameTime() * 60
@@ -105,8 +105,6 @@ main :: proc() {
         tile_map.tile_side_in_pixels += i32(2000 * rl.GetFrameTime() * rl.GetMouseWheelMove())
         tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
         tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
-
-        rl.DrawRectangleV({0, 0}, {f32(state.screen_width), f32(state.screen_height)}, rl.RED)
 
         screen_center : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
