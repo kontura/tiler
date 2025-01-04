@@ -56,6 +56,9 @@ main :: proc() {
     for y : u32 = 0; y < tile_map.tile_chunk_count.y; y += 1 {
         for x : u32 = 0; x < tile_map.tile_chunk_count.x; x += 1 {
             tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles = make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)
+            for i: u32 = 0; i < tile_map.chunk_dim * tile_map.chunk_dim; i += 1 {
+                tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles[i] = { 77, 77, 77, 255 }
+            }
         }
     }
     tile_map.tile_side_in_feet = 5
@@ -65,19 +68,6 @@ main :: proc() {
 
     tiles_per_width : u32 = 17
     tiles_per_height : u32 = 9
-
-    for screen_y : u32 = 0; screen_y < 32; screen_y += 1 {
-        for screen_x : u32 = 0; screen_x < 32; screen_x += 1 {
-            for tile_y : u32 = 0; tile_y < 32; tile_y += 1 {
-                for tile_x : u32 = 0; tile_x < 32; tile_x += 1 {
-                    abs_tile_x : u32 = screen_x * tiles_per_width + tile_x
-                    abs_tile_y : u32 = screen_y * tiles_per_height + tile_y
-
-                    set_tile_value(&tile_map, {abs_tile_x, abs_tile_y}, ((tile_x == tile_y) && (tile_y % 2) == 0) ? {0,55,0,255}:{0,0,55,255})
-                }
-            }
-        }
-    }
 
     for !rl.WindowShouldClose() {
         rl.BeginDrawing()
