@@ -84,14 +84,14 @@ main :: proc() {
         rl.BeginDrawing()
         rl.ClearBackground(rl.GRAY)
 
-        if rl.IsKeyDown(.LEFT) {
-            state.camera_pos.rel_tile_x -= 1* rl.GetFrameTime() * 40
-        } else if rl.IsKeyDown(.RIGHT) {
-            state.camera_pos.rel_tile_x += 1* rl.GetFrameTime() * 40
-        } else if rl.IsKeyDown(.DOWN) {
-            state.camera_pos.rel_tile_y += 1* rl.GetFrameTime() * 40
-        } else if rl.IsKeyDown(.UP) {
-            state.camera_pos.rel_tile_y -= 1* rl.GetFrameTime() * 40
+        if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
+            state.camera_pos.rel_tile_x -= 1* rl.GetFrameTime() * 60
+        } else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.L) {
+            state.camera_pos.rel_tile_x += 1* rl.GetFrameTime() * 60
+        } else if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.J) {
+            state.camera_pos.rel_tile_y += 1* rl.GetFrameTime() * 60
+        } else if rl.IsKeyDown(.UP) || rl.IsKeyDown(.K) {
+            state.camera_pos.rel_tile_y -= 1* rl.GetFrameTime() * 60
         } else if rl.IsKeyDown(.Q) {
             break
         } else if rl.IsMouseButtonDown(.LEFT) {
