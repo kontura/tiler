@@ -66,20 +66,20 @@ main :: proc() {
         rl.ClearBackground(rl.GRAY)
 
         if rl.IsKeyDown(.LEFT) {
-            state.camera_pos.abs_tile_x -= 1
+            state.camera_pos.rel_tile_x -= 1* rl.GetFrameTime() * 40
         } else if rl.IsKeyDown(.RIGHT) {
-            state.camera_pos.abs_tile_x += 1
+            state.camera_pos.rel_tile_x += 1* rl.GetFrameTime() * 40
         } else if rl.IsKeyDown(.DOWN) {
-            state.camera_pos.abs_tile_y += 1
+            state.camera_pos.rel_tile_y += 1* rl.GetFrameTime() * 40
         } else if rl.IsKeyDown(.UP) {
-            state.camera_pos.abs_tile_y -= 1
+            state.camera_pos.rel_tile_y -= 1* rl.GetFrameTime() * 40
         } else if rl.IsKeyDown(.J) {
-            tile_map.tile_side_in_pixels -= 1
+            tile_map.tile_side_in_pixels -= i32(1000 * rl.GetFrameTime())
             tile_map.tile_side_in_pixels = math.max(2, tile_map.tile_side_in_pixels)
             fmt.println(tile_map.tile_side_in_pixels)
             tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
         } else if rl.IsKeyDown(.K) {
-            tile_map.tile_side_in_pixels += 1
+            tile_map.tile_side_in_pixels += i32(1000 * rl.GetFrameTime())
             fmt.println(tile_map.tile_side_in_pixels)
             tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
         } else if rl.IsKeyDown(.Q) {
