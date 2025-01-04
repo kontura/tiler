@@ -14,6 +14,25 @@ GameState :: struct {
     camera_pos: TileMapPosition
 }
 
+screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
+    res: TileMapPosition = state.camera_pos
+
+    delta: rl.Vector2 = pos
+
+    screen_center : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
+    delta -= screen_center
+
+    res.rel_tile_x += delta.x * f32(tile_map.pixels_to_feet)
+    res.rel_tile_y += delta.y * f32(tile_map.pixels_to_feet)
+
+    res = recanonicalize_position(tile_map, res)
+
+    //TODO(amatej): Maybe we also want to know where in the tile the mouse is,
+    //              we would need to set rel_tile_x/y.
+
+    return res
+}
+
 main :: proc() {
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "GridImpro")
     player_run_texture := rl.LoadTexture("wolf-token.png")
@@ -43,6 +62,7 @@ main :: proc() {
     tile_map.tile_side_in_feet = 5
     tile_map.tile_side_in_pixels = 30
     tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
+    tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
 
     tiles_per_width : u32 = 17
     tiles_per_height : u32 = 9
@@ -59,7 +79,6 @@ main :: proc() {
             }
         }
     }
-
 
     for !rl.WindowShouldClose() {
         rl.BeginDrawing()
@@ -78,10 +97,12 @@ main :: proc() {
             tile_map.tile_side_in_pixels = math.max(2, tile_map.tile_side_in_pixels)
             fmt.println(tile_map.tile_side_in_pixels)
             tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
+            tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
         } else if rl.IsKeyDown(.K) {
             tile_map.tile_side_in_pixels += i32(1000 * rl.GetFrameTime())
             fmt.println(tile_map.tile_side_in_pixels)
             tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
+            tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
         } else if rl.IsKeyDown(.Q) {
             break
         } else {

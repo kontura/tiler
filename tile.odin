@@ -38,6 +38,7 @@ TileMap :: struct {
     tile_side_in_feet: f32,
     tile_side_in_pixels: i32,
     feet_to_pixels: f32,
+    pixels_to_feet: f32,
 
     tile_chunk_count_x: u32,
     tile_chunk_count_y: u32,
