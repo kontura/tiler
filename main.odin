@@ -92,17 +92,6 @@ main :: proc() {
             state.camera_pos.rel_tile_y += 1* rl.GetFrameTime() * 40
         } else if rl.IsKeyDown(.UP) {
             state.camera_pos.rel_tile_y -= 1* rl.GetFrameTime() * 40
-        } else if rl.IsKeyDown(.J) {
-            tile_map.tile_side_in_pixels -= i32(1000 * rl.GetFrameTime())
-            tile_map.tile_side_in_pixels = math.max(2, tile_map.tile_side_in_pixels)
-            fmt.println(tile_map.tile_side_in_pixels)
-            tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
-            tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
-        } else if rl.IsKeyDown(.K) {
-            tile_map.tile_side_in_pixels += i32(1000 * rl.GetFrameTime())
-            fmt.println(tile_map.tile_side_in_pixels)
-            tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
-            tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
         } else if rl.IsKeyDown(.Q) {
             break
         } else if rl.IsMouseButtonDown(.LEFT) {
@@ -111,6 +100,10 @@ main :: proc() {
         } else {
         }
         state.camera_pos = recanonicalize_position(&tile_map, state.camera_pos)
+
+        tile_map.tile_side_in_pixels += i32(2000 * rl.GetFrameTime() * rl.GetMouseWheelMove())
+        tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
+        tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
 
         rl.DrawRectangleV({0, 0}, {f32(state.screen_width), f32(state.screen_height)}, rl.RED)
 
