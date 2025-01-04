@@ -121,10 +121,14 @@ main :: proc() {
 
                 current_tile_value : Tile = get_tile_value(&tile_map, current_tile.x, current_tile.y)
 
-                //current_tile_value.r = current_tile_value.r + u8(f32(column_offset + 20)) * 4;
-                //current_tile_value.b = current_tile_value.b + u8(f32(row_offset + 20)) * 4;
+                mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
+
                 if (row_offset == 0) && column_offset == 0 {
                     current_tile_value = {0,0,0,255}
+                }
+
+                if (current_tile.y == mouse_tile.abs_tile_y) && (current_tile.x == mouse_tile.abs_tile_x) {
+                    current_tile_value = {0,0,255,255}
                 }
 
                 // Calculate tile position on screen
@@ -134,13 +138,11 @@ main :: proc() {
                 min_y : f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
                 min_x = math.max(0, min_x)
                 min_y = math.max(0, min_y)
-                rl.DrawRectangleV({min_x, min_y}, {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)}, {current_tile_value.r, current_tile_value.g, current_tile_value.b, current_tile_value.a})
+                rl.DrawRectangleV({min_x, min_y},
+                                 {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
+                                 {current_tile_value.r, current_tile_value.g, current_tile_value.b, current_tile_value.a})
             }
         }
-
-
-        //m_pos := rl.GetMousePosition()
-        //fmt.println(m_pos)
 
         //rl.DrawTextureV(player_run_texture, {64, 64}, rl.WHITE)
 
