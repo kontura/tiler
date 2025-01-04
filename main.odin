@@ -105,6 +105,9 @@ main :: proc() {
             tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
         } else if rl.IsKeyDown(.Q) {
             break
+        } else if rl.IsMouseButtonDown(.LEFT) {
+            mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
+            set_tile_value(&tile_map, mouse_tile.abs_tile_x, mouse_tile.abs_tile_y, {255,255,255,255})
         } else {
         }
         state.camera_pos = recanonicalize_position(&tile_map, state.camera_pos)
