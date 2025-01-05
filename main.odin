@@ -73,6 +73,9 @@ main :: proc() {
         rl.BeginDrawing()
         rl.ClearBackground(rl.BLACK)
 
+        state.screen_height = rl.GetScreenHeight()
+        state.screen_width = rl.GetScreenWidth()
+
         if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
             state.camera_pos.rel_tile.x -= 1* rl.GetFrameTime() * 60
         } else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.L) {
