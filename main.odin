@@ -71,7 +71,7 @@ main :: proc() {
 
     for !rl.WindowShouldClose() {
         rl.BeginDrawing()
-        rl.ClearBackground(rl.RED)
+        rl.ClearBackground(rl.BLACK)
 
         if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
             state.camera_pos.rel_tile.x -= 1* rl.GetFrameTime() * 60
