@@ -101,8 +101,9 @@ main :: proc() {
 
         screen_center : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
-        for row_offset : i32 = -20; row_offset < 20; row_offset += 1 {
-            for column_offset : i32 = -30; column_offset < 30; column_offset += 1 {
+        tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
+        for row_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y)); row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y)); row_offset += 1 {
+            for column_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x)); column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x)); column_offset += 1 {
                 current_tile: [2]u32
                 current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset);
                 current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
