@@ -46,11 +46,8 @@ get_tile_chunk :: proc(tile_map: ^TileMap, tile_chunk: [2]u32) -> ^TileChunk {
         (tile_chunk.y >= 0) && (tile_chunk.y < tile_map.tile_chunk_count.y)) {
 
         res = &tile_map.tile_chunks[tile_chunk.y * tile_map.tile_chunk_count.x + tile_chunk.x]
-    } else {
-        fmt.println(tile_chunk.x)
-        fmt.println(tile_chunk.y)
-        assert(false)
     }
+    //TODO(amatej): We could possibly automatically create a new chunk when needed.
 
     return res
 }
@@ -74,6 +71,10 @@ get_tile_value :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> Tile {
     assert(chunk_pos.rel_tile.x < tile_map.chunk_dim)
     assert(chunk_pos.rel_tile.y < tile_map.chunk_dim)
 
+    if (tile_chunk == nil) {
+        return {0, 0, 0, 255}
+    }
+
     return tile_chunk.tiles[chunk_pos.rel_tile.y * tile_map.chunk_dim + chunk_pos.rel_tile.x]
 }
 
@@ -84,7 +85,9 @@ set_tile_value :: proc(tile_map: ^TileMap, abs_tile: [2]u32, val : Tile) {
     assert(chunk_pos.rel_tile.x < tile_map.chunk_dim)
     assert(chunk_pos.rel_tile.y < tile_map.chunk_dim)
 
-    tile_chunk.tiles[chunk_pos.rel_tile.y * tile_map.chunk_dim + chunk_pos.rel_tile.x] = val
+    if (tile_chunk != nil) {
+        tile_chunk.tiles[chunk_pos.rel_tile.y * tile_map.chunk_dim + chunk_pos.rel_tile.x] = val
+    }
 }
 
 recanonicalize_coord :: proc(tile_map: ^TileMap, abs_tile: ^u32, rel_tile: ^f32) {
