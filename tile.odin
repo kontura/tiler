@@ -13,10 +13,7 @@ TileChunkPosition :: struct {
 }
 
 Tile :: struct {
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8,
+    color: [4]u8,
 }
 
 TileChunk :: struct {
@@ -72,7 +69,7 @@ get_tile_value :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> Tile {
     assert(chunk_pos.rel_tile.y < tile_map.chunk_dim)
 
     if (tile_chunk == nil) {
-        return {0, 0, 0, 255}
+        return {{0, 0, 0, 255}}
     }
 
     return tile_chunk.tiles[chunk_pos.rel_tile.y * tile_map.chunk_dim + chunk_pos.rel_tile.x]

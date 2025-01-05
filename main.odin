@@ -11,7 +11,9 @@ INIT_SCREEN_HEIGHT: i32 : 720
 GameState :: struct {
     screen_width: i32,
     screen_height: i32,
-    camera_pos: TileMapPosition
+    camera_pos: TileMapPosition,
+    selected_color: rl.Color,
+    gui_rectangles: map[string]rl.Rectangle,
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -44,6 +46,9 @@ main :: proc() {
     state.camera_pos.rel_tile.y = 0.0
     state.screen_height = rl.GetScreenHeight()
     state.screen_width = rl.GetScreenWidth()
+    state.gui_rectangles = make(map[string]rl.Rectangle)
+    state.gui_rectangles["colorpicker"] = {f32(state.screen_width - 230), 0, 200, 200}
+    defer delete(state.gui_rectangles)
 
     tile_map: TileMap
     tile_map.chunk_shift = 8
@@ -57,7 +62,7 @@ main :: proc() {
         for x : u32 = 0; x < tile_map.tile_chunk_count.x; x += 1 {
             tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles = make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)
             for i: u32 = 0; i < tile_map.chunk_dim * tile_map.chunk_dim; i += 1 {
-                tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles[i] = { 77, 77, 77, 255 }
+                tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles[i] = { {77, 77, 77, 255} }
             }
         }
     }
@@ -65,6 +70,8 @@ main :: proc() {
     tile_map.tile_side_in_pixels = 30
     tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
+
+    state.selected_color.a = 255
 
     tiles_per_width : u32 = 17
     tiles_per_height : u32 = 9
@@ -88,7 +95,7 @@ main :: proc() {
             break
         } else if rl.IsMouseButtonDown(.LEFT) {
             mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
-            set_tile_value(&tile_map, mouse_tile.abs_tile, {255,255,255,255})
+            set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color.xyzw})
         } else if rl.IsMouseButtonDown(.RIGHT) {
             state.camera_pos.rel_tile -= 500 * rl.GetFrameTime() * rl.GetMouseDelta()
         } else {
@@ -114,11 +121,11 @@ main :: proc() {
                 mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
 
                 if (row_offset == 0) && column_offset == 0 {
-                    current_tile_value = {0,0,0,255}
+                    current_tile_value = {{0,0,0,255}}
                 }
 
                 if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) {
-                    current_tile_value = {0,0,255,255}
+                    current_tile_value = {state.selected_color.xyzw}
                 }
 
                 // Calculate tile position on screen
@@ -130,11 +137,12 @@ main :: proc() {
                 min_y = math.max(0, min_y)
                 rl.DrawRectangleV({min_x, min_y},
                                  {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
-                                 {current_tile_value.r, current_tile_value.g, current_tile_value.b, current_tile_value.a})
+                                 current_tile_value.color.xyzw)
             }
         }
 
         rl.DrawTextureV(player_run_texture, {64, 64}, rl.WHITE)
+        ret := rl.GuiColorPanel(state.gui_rectangles["colorpicker"], "test", &state.selected_color)
 
         rl.EndDrawing()
     }
