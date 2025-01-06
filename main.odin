@@ -120,10 +120,6 @@ main :: proc() {
 
                 mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
 
-                if (row_offset == 0) && column_offset == 0 {
-                    current_tile_value = {{0,0,0,255}}
-                }
-
                 if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) {
                     current_tile_value = {state.selected_color.xyzw}
                 }
