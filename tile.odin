@@ -60,7 +60,7 @@ get_chunk_position_for :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> TileChun
     return res
 }
 
-get_tile_value :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> Tile {
+get_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> Tile {
     // allow overflow to cast to u32 to wrap arround the world
     chunk_pos : TileChunkPosition = get_chunk_position_for(tile_map, abs_tile)
     tile_chunk : ^TileChunk = get_tile_chunk(tile_map, chunk_pos.tile_chunk)

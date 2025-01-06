@@ -158,7 +158,7 @@ main :: proc() {
                 current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset);
                 current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
 
-                current_tile_value : Tile = get_tile_value(&tile_map, current_tile)
+                current_tile_value : Tile = get_tile(&tile_map, current_tile)
 
                 mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
 
