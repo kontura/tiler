@@ -39,6 +39,9 @@ main :: proc() {
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "GridImpro")
     player_run_texture := rl.LoadTexture("wolf-token.png")
 
+    // Since we don't run any simulation we don't have to run when there is not user input
+    rl.EnableEventWaiting()
+
     state : GameState
     state.camera_pos.abs_tile.x = 100
     state.camera_pos.abs_tile.y = 100
@@ -84,26 +87,26 @@ main :: proc() {
         state.screen_width = rl.GetScreenWidth()
 
         if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
-            state.camera_pos.rel_tile.x -= 1* rl.GetFrameTime() * 60
+            state.camera_pos.rel_tile.x -= 10
         } else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.L) {
-            state.camera_pos.rel_tile.x += 1* rl.GetFrameTime() * 60
+            state.camera_pos.rel_tile.x += 10
         } else if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.J) {
-            state.camera_pos.rel_tile.y += 1* rl.GetFrameTime() * 60
+            state.camera_pos.rel_tile.y += 10
         } else if rl.IsKeyDown(.UP) || rl.IsKeyDown(.K) {
-            state.camera_pos.rel_tile.y -= 1* rl.GetFrameTime() * 60
+            state.camera_pos.rel_tile.y -= 10
         } else if rl.IsKeyDown(.Q) {
             break
         } else if rl.IsMouseButtonDown(.LEFT) {
             mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
             set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color.xyzw})
         } else if rl.IsMouseButtonDown(.RIGHT) {
-            state.camera_pos.rel_tile -= 500 * rl.GetFrameTime() * rl.GetMouseDelta()
+            state.camera_pos.rel_tile -= rl.GetMouseDelta()
         } else {
         }
         state.camera_pos = recanonicalize_position(&tile_map, state.camera_pos)
 
-        tile_map.tile_side_in_pixels += i32(2000 * rl.GetFrameTime() * rl.GetMouseWheelMove())
         tile_map.tile_side_in_pixels = math.max(10, tile_map.tile_side_in_pixels)
+        tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMove())
         tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
         tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
 
