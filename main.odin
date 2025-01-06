@@ -14,6 +14,7 @@ GameState :: struct {
     camera_pos: TileMapPosition,
     selected_color: rl.Color,
     gui_rectangles: map[string]rl.Rectangle,
+    draw_grid: bool,
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -49,6 +50,7 @@ main :: proc() {
     state.camera_pos.rel_tile.y = 0.0
     state.screen_height = rl.GetScreenHeight()
     state.screen_width = rl.GetScreenWidth()
+    state.draw_grid = true
     state.gui_rectangles = make(map[string]rl.Rectangle)
     state.gui_rectangles["colorpicker"] = {f32(state.screen_width - 230), 0, 200, 200}
     defer delete(state.gui_rectangles)
@@ -138,6 +140,19 @@ main :: proc() {
                 rl.DrawRectangleV({min_x, min_y},
                                  {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
                                  current_tile_value.color.xyzw)
+            }
+
+            if (state.draw_grid) {
+                rl.DrawLineV({0, min_y}, {f32(state.screen_width), min_y}, {0,0,0,20})
+            }
+        }
+
+        if (state.draw_grid) {
+            for column_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x)); column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x)); column_offset += 1 {
+                cen_x : f32 = screen_center.x - tile_map.feet_to_pixels * state.camera_pos.rel_tile.x + f32(column_offset * tile_map.tile_side_in_pixels)
+                min_x : f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
+                min_x = math.max(0, min_x)
+                rl.DrawLineV({min_x, 0}, {min_x, f32(state.screen_height)}, {0,0,0,20})
             }
         }
 
