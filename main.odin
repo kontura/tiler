@@ -103,6 +103,12 @@ main :: proc() {
             state.camera_pos.rel_tile.y -= 10
         } else if rl.IsKeyDown(.Q) {
             break
+        } else if rl.IsKeyDown(.O) {
+            state.active_tool = .COLOR_PICKER
+        } else if rl.IsKeyDown(.P) {
+            state.active_tool = .BRUSH
+        } else if rl.IsKeyDown(.R) {
+            state.active_tool = .RECTANGLE
         } else if rl.IsMouseButtonDown(.LEFT) {
             ui_active : bool = false
             for _, &rec in state.gui_rectangles {
@@ -167,7 +173,7 @@ main :: proc() {
 
                 mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
 
-                if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) {
+                if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) && state.active_tool != .COLOR_PICKER {
                     current_tile_value = {state.selected_color.xyzw}
                 }
 
@@ -196,6 +202,18 @@ main :: proc() {
 
         rl.DrawTextureV(player_run_texture, {64, 64}, rl.WHITE)
         ret := rl.GuiColorPanel(state.gui_rectangles["colorpicker"], "test", &state.selected_color)
+        mouse_pos: [2]f32 = rl.GetMousePosition()
+        switch state.active_tool {
+            case .BRUSH: {
+                rl.GuiDrawIcon(.ICON_PENCIL, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
+            }
+            case .RECTANGLE: {
+                rl.GuiDrawIcon(.ICON_BOX, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
+            }
+            case .COLOR_PICKER: {
+                rl.GuiDrawIcon(.ICON_COLOR_PICKER, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
+            }
+        }
 
         // Before ending the loop revert temp tile changes
         for abs_tile, &color in state.revert_temp_tile_color {
