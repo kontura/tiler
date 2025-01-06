@@ -105,8 +105,8 @@ main :: proc() {
         }
         state.camera_pos = recanonicalize_position(&tile_map, state.camera_pos)
 
-        tile_map.tile_side_in_pixels = math.max(10, tile_map.tile_side_in_pixels)
         tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMove())
+        tile_map.tile_side_in_pixels = math.max(5, tile_map.tile_side_in_pixels)
         tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
         tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
 
