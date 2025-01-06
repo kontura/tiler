@@ -15,6 +15,8 @@ GameState :: struct {
     selected_color: rl.Color,
     gui_rectangles: map[string]rl.Rectangle,
     draw_grid: bool,
+    active_tool: Tool,
+    tool_start_position: Maybe([2]f32),
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -51,6 +53,7 @@ main :: proc() {
     state.screen_height = rl.GetScreenHeight()
     state.screen_width = rl.GetScreenWidth()
     state.draw_grid = true
+    state.active_tool = Tool.RECTANGLE
     state.gui_rectangles = make(map[string]rl.Rectangle)
     state.gui_rectangles["colorpicker"] = {f32(state.screen_width - 230), 0, 200, 200}
     defer delete(state.gui_rectangles)
@@ -99,8 +102,36 @@ main :: proc() {
         } else if rl.IsKeyDown(.Q) {
             break
         } else if rl.IsMouseButtonDown(.LEFT) {
-            mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
-            set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color.xyzw})
+            ui_active : bool = false
+            for _, &rec in state.gui_rectangles {
+                if (rl.CheckCollisionPointRec(rl.GetMousePosition(), rec)) {
+                    ui_active = true
+                }
+            }
+
+            if (!ui_active) {
+                switch state.active_tool {
+                    case .BRUSH: {
+                        mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
+                        set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color.xyzw})
+                    }
+                    case .RECTANGLE: {
+                        if (state.tool_start_position == nil) {
+                            state.tool_start_position = rl.GetMousePosition()
+                        }
+                        rectangle_tool(&state, &tile_map, rl.GetMousePosition(), true)
+                    }
+                }
+            }
+        } else if rl.IsMouseButtonReleased(.LEFT) {
+            if (state.tool_start_position != nil) {
+                #partial switch state.active_tool {
+                    case .RECTANGLE: {
+                        rectangle_tool(&state, &tile_map, rl.GetMousePosition(), false)
+                        state.tool_start_position = nil
+                    }
+                }
+            }
         } else if rl.IsMouseButtonDown(.RIGHT) {
             state.camera_pos.rel_tile -= rl.GetMouseDelta()
         } else {
