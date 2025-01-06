@@ -17,6 +17,8 @@ GameState :: struct {
     draw_grid: bool,
     active_tool: Tool,
     tool_start_position: Maybe([2]f32),
+    //TODO(amatej): Perhaps this could be integrated into undo?
+    revert_temp_tile_color: map[[2]u32][4]u8,
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -189,6 +191,12 @@ main :: proc() {
 
         rl.DrawTextureV(player_run_texture, {64, 64}, rl.WHITE)
         ret := rl.GuiColorPanel(state.gui_rectangles["colorpicker"], "test", &state.selected_color)
+
+        // Before ending the loop revert temp tile changes
+        for abs_tile, &color in state.revert_temp_tile_color {
+            set_tile_value(&tile_map, abs_tile, {color})
+        }
+        clear(&state.revert_temp_tile_color)
 
         rl.EndDrawing()
     }
