@@ -123,6 +123,11 @@ main :: proc() {
                         }
                         rectangle_tool(&state, &tile_map, rl.GetMousePosition(), true)
                     }
+                    case .COLOR_PICKER: {
+                        mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
+                        mouse_tile : Tile = get_tile(&tile_map, mouse_tile_pos.abs_tile)
+                        state.selected_color = mouse_tile.color.xyzw
+                    }
                 }
             }
         } else if rl.IsMouseButtonReleased(.LEFT) {
