@@ -19,6 +19,7 @@ GameState :: struct {
     tool_start_position: Maybe([2]f32),
     //TODO(amatej): Perhaps this could be integrated into undo?
     revert_temp_tile_color: map[[2]u32][4]u8,
+    tile_history: [dynamic]map[[2]u32][4]u8,
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -118,15 +119,20 @@ main :: proc() {
             }
 
             if (!ui_active) {
+                if (state.tool_start_position == nil) {
+                    state.tool_start_position = rl.GetMousePosition()
+                    action : map[[2]u32][4]u8
+                    append(&state.tile_history, action)
+                }
                 switch state.active_tool {
                     case .BRUSH: {
                         mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
+                        if (!(mouse_tile.abs_tile in state.tile_history[len(state.tile_history)-1])) {
+                            state.tile_history[len(state.tile_history)-1][mouse_tile.abs_tile] = get_tile(&tile_map, mouse_tile.abs_tile).color
+                        }
                         set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color.xyzw})
                     }
                     case .RECTANGLE: {
-                        if (state.tool_start_position == nil) {
-                            state.tool_start_position = rl.GetMousePosition()
-                        }
                         rectangle_tool(&state, &tile_map, rl.GetMousePosition(), true)
                     }
                     case .COLOR_PICKER: {
@@ -141,12 +147,18 @@ main :: proc() {
                 #partial switch state.active_tool {
                     case .RECTANGLE: {
                         rectangle_tool(&state, &tile_map, rl.GetMousePosition(), false)
-                        state.tool_start_position = nil
                     }
                 }
+                state.tool_start_position = nil
             }
         } else if rl.IsMouseButtonDown(.RIGHT) {
             state.camera_pos.rel_tile -= rl.GetMouseDelta()
+        } else if rl.IsKeyDown(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
+            if (len(&state.tile_history) > 0) {
+                for abs_tile, &color in pop(&state.tile_history) {
+                    set_tile_value(&tile_map, abs_tile, {color})
+                }
+            }
         } else {
         }
         state.camera_pos = recanonicalize_position(&tile_map, state.camera_pos)

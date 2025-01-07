@@ -20,6 +20,8 @@ rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, 
         for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
             if revert {
                 state.revert_temp_tile_color[{x,y}] = get_tile(tile_map, {x, y}).color
+            } else {
+                state.tile_history[len(state.tile_history)-1][{x,y}] = get_tile(tile_map, {x, y}).color
             }
             set_tile_value(tile_map, {x, y}, {state.selected_color.xyzw})
         }
