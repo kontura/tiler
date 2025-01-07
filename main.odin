@@ -1,4 +1,4 @@
-package gridimpro
+package tiler
 
 import "core:math"
 import "core:fmt"
