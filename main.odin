@@ -155,7 +155,7 @@ main :: proc() {
             }
         } else if rl.IsMouseButtonDown(.RIGHT) {
             state.camera_pos.rel_tile -= rl.GetMouseDelta()
-        } else if rl.IsKeyDown(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
+        } else if rl.IsKeyReleased(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
             if (len(&state.tile_history) > 0) {
                 for abs_tile, &color in pop(&state.tile_history) {
                     set_tile_value(&tile_map, abs_tile, {color})
