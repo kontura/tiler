@@ -17,8 +17,9 @@ GameState :: struct {
     draw_grid: bool,
     active_tool: Tool,
     tool_start_position: Maybe([2]f32),
-    //TODO(amatej): Perhaps this could be integrated into undo?
-    revert_temp_tile_color: map[[2]u32][4]u8,
+    clear_last_action: bool,
+    //TODO(amatej): check if the tool actually does any color change before recoding
+    //              undoing non-color changes does nothing
     tile_history: [dynamic]map[[2]u32][4]u8,
 }
 
@@ -133,7 +134,8 @@ main :: proc() {
                         set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color.xyzw})
                     }
                     case .RECTANGLE: {
-                        rectangle_tool(&state, &tile_map, rl.GetMousePosition(), true)
+                        rectangle_tool(&state, &tile_map, rl.GetMousePosition())
+                        state.clear_last_action = true
                     }
                     case .COLOR_PICKER: {
                         mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
@@ -146,7 +148,7 @@ main :: proc() {
             if (state.tool_start_position != nil) {
                 #partial switch state.active_tool {
                     case .RECTANGLE: {
-                        rectangle_tool(&state, &tile_map, rl.GetMousePosition(), false)
+                        rectangle_tool(&state, &tile_map, rl.GetMousePosition())
                     }
                 }
                 state.tool_start_position = nil
@@ -227,11 +229,16 @@ main :: proc() {
             }
         }
 
-        // Before ending the loop revert temp tile changes
-        for abs_tile, &color in state.revert_temp_tile_color {
-            set_tile_value(&tile_map, abs_tile, {color})
+        // Before ending the loop revert the last action from history if it is temp
+        if (state.clear_last_action) {
+            if (len(&state.tile_history) > 0) {
+                for abs_tile, &color in state.tile_history[len(state.tile_history)-1] {
+                    set_tile_value(&tile_map, abs_tile, {color})
+                }
+            }
+            clear(&state.tile_history[len(state.tile_history)-1])
+            state.clear_last_action = false
         }
-        clear(&state.revert_temp_tile_color)
 
         rl.EndDrawing()
     }
