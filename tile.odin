@@ -4,7 +4,10 @@ import "core:math"
 import "core:fmt"
 
 TileMapPosition :: struct {
+    // fixed point number, high bits determine chunk, low bits determine
+    // position in chunk
     abs_tile : [2]u32,
+    // position in feet
     rel_tile : [2]f32,
 }
 
