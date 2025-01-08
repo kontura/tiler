@@ -7,6 +7,8 @@ Tool :: enum {
     RECTANGLE,
     COLOR_PICKER,
     //CIRCLE,
+    SPAWN_TOKEN,
+    MOVE_TOKEN,
 }
 
 rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32) {

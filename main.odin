@@ -23,6 +23,7 @@ GameState :: struct {
     //              undoing non-color changes does nothing
     tile_history: [dynamic]map[[2]u32][4]u8,
     tokens: [dynamic]Token,
+    selected_tokens: map[[2]u32]^Token,
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -127,6 +128,10 @@ main :: proc() {
             state.active_tool = .BRUSH
         } else if rl.IsKeyDown(.R) {
             state.active_tool = .RECTANGLE
+        } else if rl.IsKeyDown(.S) {
+            state.active_tool = .SPAWN_TOKEN
+        } else if rl.IsKeyDown(.M) {
+            state.active_tool = .MOVE_TOKEN
         } else if rl.IsMouseButtonDown(.LEFT) {
             ui_active : bool = false
             for _, &rec in state.gui_rectangles {
@@ -158,6 +163,15 @@ main :: proc() {
                         mouse_tile : Tile = get_tile(&tile_map, mouse_tile_pos.abs_tile)
                         state.selected_color = mouse_tile.color
                     }
+                    case .SPAWN_TOKEN: {
+                    }
+                    case .MOVE_TOKEN: {
+                        mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
+                        token := find_token_at_tile_map(mouse_tile_pos, &state)
+                        if (token != nil) {
+                            state.selected_tokens[mouse_tile_pos.abs_tile] = token
+                        }
+                    }
                 }
             }
         } else if rl.IsMouseButtonReleased(.LEFT) {
@@ -165,6 +179,18 @@ main :: proc() {
                 #partial switch state.active_tool {
                     case .RECTANGLE: {
                         rectangle_tool(&state, &tile_map, rl.GetMousePosition())
+                    }
+                    case .SPAWN_TOKEN: {
+                        mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
+                        append(&state.tokens, Token{mouse_tile_pos, state.selected_color, "Actor"})
+                    }
+                    case .MOVE_TOKEN: {
+                        mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
+                        for _, &token in state.selected_tokens {
+                            fmt.println(token)
+                            token.position = mouse_tile_pos
+                        }
+                        clear(&state.selected_tokens)
                     }
                 }
                 state.tool_start_position = nil
@@ -249,6 +275,12 @@ main :: proc() {
             }
             case .COLOR_PICKER: {
                 icon = .ICON_COLOR_PICKER
+            }
+            case .SPAWN_TOKEN: {
+                icon = .ICON_PLAYER
+            }
+            case .MOVE_TOKEN: {
+                icon = .ICON_TARGET_MOVE
             }
         }
         rl.GuiDrawIcon(icon, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
