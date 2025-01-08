@@ -239,17 +239,19 @@ main :: proc() {
         rl.DrawTextureV(player_run_texture, {64, 64}, rl.WHITE)
         ret := rl.GuiColorPanel(state.gui_rectangles["colorpicker"], "test", (^rl.Color)(&state.selected_color))
         mouse_pos: [2]f32 = rl.GetMousePosition()
+        icon : rl.GuiIconName
         switch state.active_tool {
             case .BRUSH: {
-                rl.GuiDrawIcon(.ICON_PENCIL, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
+                icon = .ICON_PENCIL
             }
             case .RECTANGLE: {
-                rl.GuiDrawIcon(.ICON_BOX, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
+                icon = .ICON_BOX
             }
             case .COLOR_PICKER: {
-                rl.GuiDrawIcon(.ICON_COLOR_PICKER, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
+                icon = .ICON_COLOR_PICKER
             }
         }
+        rl.GuiDrawIcon(icon, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
 
         // Before ending the loop revert the last action from history if it is temp
         if (state.clear_last_action) {
