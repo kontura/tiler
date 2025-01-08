@@ -218,7 +218,6 @@ main :: proc() {
         for row_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y)); row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y)); row_offset += 1 {
             cen_y : f32 = screen_center.y - tile_map.feet_to_pixels * state.camera_pos.rel_tile.y + f32(row_offset * tile_map.tile_side_in_pixels)
             min_y : f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
-            min_y = math.max(0, min_y)
 
             for column_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x)); column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x)); column_offset += 1 {
                 current_tile: [2]u32
@@ -236,7 +235,6 @@ main :: proc() {
                 // Calculate tile position on screen
                 cen_x : f32 = screen_center.x - tile_map.feet_to_pixels * state.camera_pos.rel_tile.x + f32(column_offset * tile_map.tile_side_in_pixels)
                 min_x : f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-                min_x = math.max(0, min_x)
                 rl.DrawRectangleV({min_x, min_y},
                                  {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
                                  current_tile_value.color.xyzw)
