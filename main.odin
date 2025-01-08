@@ -12,7 +12,7 @@ GameState :: struct {
     screen_width: i32,
     screen_height: i32,
     camera_pos: TileMapPosition,
-    selected_color: rl.Color,
+    selected_color: [4]u8,
     gui_rectangles: map[string]rl.Rectangle,
     draw_grid: bool,
     active_tool: Tool,
@@ -131,7 +131,7 @@ main :: proc() {
                         if (!(mouse_tile.abs_tile in state.tile_history[len(state.tile_history)-1])) {
                             state.tile_history[len(state.tile_history)-1][mouse_tile.abs_tile] = get_tile(&tile_map, mouse_tile.abs_tile).color
                         }
-                        set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color.xyzw})
+                        set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color})
                     }
                     case .RECTANGLE: {
                         rectangle_tool(&state, &tile_map, rl.GetMousePosition())
@@ -140,7 +140,7 @@ main :: proc() {
                     case .COLOR_PICKER: {
                         mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
                         mouse_tile : Tile = get_tile(&tile_map, mouse_tile_pos.abs_tile)
-                        state.selected_color = mouse_tile.color.xyzw
+                        state.selected_color = mouse_tile.color
                     }
                 }
             }
@@ -188,7 +188,7 @@ main :: proc() {
                 mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
 
                 if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) && state.active_tool != .COLOR_PICKER {
-                    current_tile_value = {state.selected_color.xyzw}
+                    current_tile_value = {state.selected_color}
                 }
 
                 // Calculate tile position on screen
@@ -215,7 +215,7 @@ main :: proc() {
         }
 
         rl.DrawTextureV(player_run_texture, {64, 64}, rl.WHITE)
-        ret := rl.GuiColorPanel(state.gui_rectangles["colorpicker"], "test", &state.selected_color)
+        ret := rl.GuiColorPanel(state.gui_rectangles["colorpicker"], "test", (^rl.Color)(&state.selected_color))
         mouse_pos: [2]f32 = rl.GetMousePosition()
         switch state.active_tool {
             case .BRUSH: {
