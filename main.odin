@@ -2,6 +2,7 @@ package tiler
 
 import "core:math"
 import "core:fmt"
+import "core:strings"
 
 import rl "vendor:raylib"
 
@@ -21,6 +22,7 @@ GameState :: struct {
     //TODO(amatej): check if the tool actually does any color change before recoding
     //              undoing non-color changes does nothing
     tile_history: [dynamic]map[[2]u32][4]u8,
+    tokens: [dynamic]Token,
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -38,6 +40,20 @@ screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^
 
     //TODO(amatej): Maybe we also want to know where in the tile the mouse is,
     //              we would need to set rel_tile.
+
+    return res
+}
+
+tile_map_to_screen_coord :: proc(pos: TileMapPosition, state: ^GameState, tile_map: ^TileMap) -> rl.Vector2 {
+    res : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
+
+    delta: [2]i32 = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
+    delta -= {i32(state.camera_pos.abs_tile.x), i32(state.camera_pos.abs_tile.y)}
+
+    res.x += f32(delta.x * tile_map.tile_side_in_pixels)
+    res.y += f32(delta.y * tile_map.tile_side_in_pixels)
+
+    res -= state.camera_pos.rel_tile * tile_map.feet_to_pixels
 
     return res
 }
@@ -203,6 +219,12 @@ main :: proc() {
             if (state.draw_grid) {
                 rl.DrawLineV({0, min_y}, {f32(state.screen_width), min_y}, {0,0,0,20})
             }
+        }
+
+        for token in state.tokens {
+            pos: rl.Vector2 = tile_map_to_screen_coord(token.position, &state, &tile_map);
+            rl.DrawCircleV(pos, f32(tile_map.tile_side_in_pixels/2), token.color.xyzw)
+            rl.DrawText(strings.unsafe_string_to_cstring(token.name), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 20, rl.WHITE)
         }
 
         if (state.draw_grid) {
