@@ -78,6 +78,7 @@ main :: proc() {
     state.gui_rectangles = make(map[string]rl.Rectangle)
     state.gui_rectangles["colorpicker"] = {f32(state.screen_width - 230), 0, 200, 200}
     defer delete(state.gui_rectangles)
+    state.selected_color.a = 255
 
     tile_map: TileMap
     tile_map.chunk_shift = 8
@@ -99,8 +100,6 @@ main :: proc() {
     tile_map.tile_side_in_pixels = 30
     tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
-
-    state.selected_color.a = 255
 
     tiles_per_width : u32 = 17
     tiles_per_height : u32 = 9
