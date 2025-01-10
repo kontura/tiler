@@ -19,11 +19,11 @@ GameState :: struct {
     active_tool: Tool,
     tool_start_position: Maybe([2]f32),
     clear_last_action: bool,
+    max_entity_id: u64,
     //TODO(amatej): check if the tool actually does any color change before recoding
     //              undoing non-color changes does nothing
-    tile_history: [dynamic]map[[2]u32][4]u8,
+    undo_history: [dynamic]Action,
     tokens: [dynamic]Token,
-    selected_tokens: map[[2]u32]^Token,
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -80,12 +80,11 @@ main :: proc() {
     state.selected_color.a = 255
     defer delete(state.tokens)
     defer {
-        for _, index in state.tile_history {
-            delete(state.tile_history[index])
+        for _, index in state.undo_history {
+            delete_action(&state.undo_history[index])
         }
-        delete(state.tile_history)
+        delete(state.undo_history)
     }
-    defer delete(state.selected_tokens)
 
     tile_map: TileMap
     tile_map.chunk_shift = 8
@@ -157,14 +156,14 @@ main :: proc() {
             if (!ui_active) {
                 if (state.tool_start_position == nil) {
                     state.tool_start_position = rl.GetMousePosition()
-                    action : map[[2]u32][4]u8
-                    append(&state.tile_history, action)
+                    append(&state.undo_history, Action{})
                 }
+                action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 switch state.active_tool {
                     case .BRUSH: {
                         mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
-                        if (!(mouse_tile.abs_tile in state.tile_history[len(state.tile_history)-1])) {
-                            state.tile_history[len(state.tile_history)-1][mouse_tile.abs_tile] = get_tile(&tile_map, mouse_tile.abs_tile).color
+                        if (!(mouse_tile.abs_tile in action.tile_history)) {
+                            action.tile_history[mouse_tile.abs_tile] = {get_tile(&tile_map, mouse_tile.abs_tile).color}
                         }
                         set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color})
                     }
@@ -180,11 +179,8 @@ main :: proc() {
                     case .SPAWN_TOKEN: {
                     }
                     case .MOVE_TOKEN: {
-                        mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
-                        token := find_token_at_tile_map(mouse_tile_pos, &state)
-                        if (token != nil) {
-                            state.selected_tokens[mouse_tile_pos.abs_tile] = token
-                        }
+                        move_token_tool(&state, &tile_map, rl.GetMousePosition())
+                        state.clear_last_action = true
                     }
                 }
             }
@@ -196,15 +192,11 @@ main :: proc() {
                     }
                     case .SPAWN_TOKEN: {
                         mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
-                        append(&state.tokens, Token{mouse_tile_pos, state.selected_color, "Actor"})
+                        append(&state.tokens, Token{state.max_entity_id, mouse_tile_pos, state.selected_color, "Actor"})
+                        state.max_entity_id += 1
                     }
                     case .MOVE_TOKEN: {
-                        mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
-                        for _, &token in state.selected_tokens {
-                            fmt.println(token)
-                            token.position = mouse_tile_pos
-                        }
-                        clear(&state.selected_tokens)
+                        move_token_tool(&state, &tile_map, rl.GetMousePosition())
                     }
                 }
                 state.tool_start_position = nil
@@ -212,13 +204,8 @@ main :: proc() {
         } else if rl.IsMouseButtonDown(.RIGHT) {
             state.camera_pos.rel_tile -= rl.GetMouseDelta()
         } else if rl.IsKeyReleased(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
-            if (len(&state.tile_history) > 0) {
-                action := pop(&state.tile_history)
-                for abs_tile, &color in action {
-                    set_tile_value(&tile_map, abs_tile, {color})
-                }
-                delete(action)
-            }
+            undo_last_action(&state, &tile_map)
+            pop_last_action(&state, &tile_map)
         } else {
         }
         state.camera_pos = recanonicalize_position(&tile_map, state.camera_pos)
@@ -301,13 +288,8 @@ main :: proc() {
 
         // Before ending the loop revert the last action from history if it is temp
         if (state.clear_last_action) {
-            if (len(&state.tile_history) > 0) {
-                for abs_tile, &color in state.tile_history[len(state.tile_history)-1] {
-                    set_tile_value(&tile_map, abs_tile, {color})
-                }
-            }
-            clear(&state.tile_history[len(state.tile_history)-1])
-            state.clear_last_action = false
+            undo_last_action(&state, &tile_map)
+            clear_last_action(&state, &tile_map)
         }
 
         rl.EndDrawing()

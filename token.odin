@@ -1,6 +1,7 @@
 package tiler
 
 Token :: struct {
+    id: u64,
     position: TileMapPosition,
     color: [4]u8,
     name: string,
