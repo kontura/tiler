@@ -75,10 +75,17 @@ main :: proc() {
     state.screen_width = rl.GetScreenWidth()
     state.draw_grid = true
     state.active_tool = Tool.RECTANGLE
-    state.gui_rectangles = make(map[string]rl.Rectangle)
     state.gui_rectangles["colorpicker"] = {f32(state.screen_width - 230), 0, 200, 200}
     defer delete(state.gui_rectangles)
     state.selected_color.a = 255
+    defer delete(state.tokens)
+    defer {
+        for _, index in state.tile_history {
+            delete(state.tile_history[index])
+        }
+        delete(state.tile_history)
+    }
+    defer delete(state.selected_tokens)
 
     tile_map: TileMap
     tile_map.chunk_shift = 8
@@ -87,6 +94,14 @@ main :: proc() {
     tile_map.tile_chunk_count = {4, 4}
 
     tile_map.tile_chunks = make([dynamic]TileChunk, tile_map.tile_chunk_count.x * tile_map.tile_chunk_count.y)
+    defer {
+        for y : u32 = 0; y < tile_map.tile_chunk_count.y; y += 1 {
+            for x : u32 = 0; x < tile_map.tile_chunk_count.x; x += 1 {
+                delete(tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles)
+            }
+        }
+        delete(tile_map.tile_chunks)
+    }
 
     for y : u32 = 0; y < tile_map.tile_chunk_count.y; y += 1 {
         for x : u32 = 0; x < tile_map.tile_chunk_count.x; x += 1 {
@@ -198,9 +213,11 @@ main :: proc() {
             state.camera_pos.rel_tile -= rl.GetMouseDelta()
         } else if rl.IsKeyReleased(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
             if (len(&state.tile_history) > 0) {
-                for abs_tile, &color in pop(&state.tile_history) {
+                action := pop(&state.tile_history)
+                for abs_tile, &color in action {
                     set_tile_value(&tile_map, abs_tile, {color})
                 }
+                delete(action)
             }
         } else {
         }
