@@ -17,6 +17,7 @@ GameState :: struct {
     gui_rectangles: map[string]rl.Rectangle,
     draw_grid: bool,
     active_tool: Tool,
+    previous_tool: Maybe(Tool),
     tool_start_position: Maybe([2]f32),
     clear_last_action: bool,
     max_entity_id: u64,
@@ -135,8 +136,6 @@ main :: proc() {
             state.camera_pos.rel_tile.y -= 10
         } else if rl.IsKeyDown(.Q) {
             break
-        } else if rl.IsKeyDown(.O) {
-            state.active_tool = .COLOR_PICKER
         } else if rl.IsKeyDown(.P) {
             state.active_tool = .BRUSH
         } else if rl.IsKeyDown(.R) {
@@ -206,6 +205,14 @@ main :: proc() {
         } else if rl.IsKeyReleased(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
             undo_last_action(&state, &tile_map)
             pop_last_action(&state, &tile_map)
+        } else if rl.IsKeyPressed(.LEFT_CONTROL) {
+            if state.previous_tool == nil{
+                state.previous_tool = state.active_tool
+                state.active_tool = .COLOR_PICKER
+            }
+        } else if rl.IsKeyReleased(.LEFT_CONTROL) {
+            state.active_tool = state.previous_tool.?
+            state.previous_tool = nil
         } else {
         }
         state.camera_pos = recanonicalize_position(&tile_map, state.camera_pos)
