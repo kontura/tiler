@@ -5,6 +5,7 @@ Token :: struct {
     position: TileMapPosition,
     color: [4]u8,
     name: string,
+    moved: u32
     //TODO(amatej): image
 }
 
@@ -16,4 +17,8 @@ find_token_at_tile_map :: proc(pos: TileMapPosition, state: ^GameState) -> ^Toke
     }
 
     return nil
+}
+
+delete_token :: proc(token: ^Token) {
+    delete(token.name)
 }

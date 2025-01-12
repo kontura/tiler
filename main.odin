@@ -2,6 +2,7 @@ package tiler
 
 import "core:math"
 import "core:fmt"
+import "core:mem"
 import "core:strings"
 
 import rl "vendor:raylib"
@@ -19,12 +20,19 @@ GameState :: struct {
     active_tool: Tool,
     previous_tool: Maybe(Tool),
     tool_start_position: Maybe([2]f32),
-    clear_last_action: bool,
     max_entity_id: u64,
     //TODO(amatej): check if the tool actually does any color change before recoding
     //              undoing non-color changes does nothing
     undo_history: [dynamic]Action,
+    // Valid only for one loop
+    temp_actions: [dynamic]Action,
     tokens: [dynamic]Token,
+}
+
+u64_to_cstring :: proc(num: u64) -> cstring{
+    builder := strings.builder_make(context.temp_allocator)
+    strings.write_u64(&builder, num)
+    return strings.to_cstring(&builder)
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -61,6 +69,28 @@ tile_map_to_screen_coord :: proc(pos: TileMapPosition, state: ^GameState, tile_m
 }
 
 main :: proc() {
+    when ODIN_DEBUG {
+        track: mem.Tracking_Allocator
+        mem.tracking_allocator_init(&track, context.allocator)
+        context.allocator = mem.tracking_allocator(&track)
+
+        defer {
+            if len(track.allocation_map) > 0 {
+                fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
+                for _, entry in track.allocation_map {
+                    fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+                }
+            }
+            if len(track.bad_free_array) > 0 {
+                fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
+                for entry in track.bad_free_array {
+                    fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
+                }
+            }
+            mem.tracking_allocator_destroy(&track)
+        }
+    }
+
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "GridImpro")
     player_run_texture := rl.LoadTexture("wolf-token.png")
 
@@ -79,7 +109,12 @@ main :: proc() {
     state.gui_rectangles["colorpicker"] = {f32(state.screen_width - 230), 0, 200, 200}
     defer delete(state.gui_rectangles)
     state.selected_color.a = 255
-    defer delete(state.tokens)
+    defer {
+        for _, index in state.tokens {
+            delete_token(&state.tokens[index])
+        }
+        delete(state.tokens)
+    }
     defer {
         for _, index in state.undo_history {
             delete_action(&state.undo_history[index])
@@ -126,7 +161,26 @@ main :: proc() {
         state.screen_height = rl.GetScreenHeight()
         state.screen_width = rl.GetScreenWidth()
 
-        if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
+        state.temp_actions = make([dynamic]Action, context.temp_allocator)
+
+        mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
+        token := find_token_at_tile_map(mouse_tile_pos, &state)
+
+        if state.active_tool == .SPAWN_TOKEN && token != nil {
+            key := rl.GetKeyPressed()
+            byte : u8 = u8(key)
+            if byte != 0 {
+                builder : strings.Builder
+                strings.write_string(&builder, token.name)
+                if key == .BACKSPACE {
+                    strings.pop_rune(&builder)
+                } else {
+                    strings.write_byte(&builder, byte)
+                }
+                delete(token.name)
+                token.name = strings.to_string(builder)
+            }
+        } else  if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
             state.camera_pos.rel_tile.x -= 10
         } else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.L) {
             state.camera_pos.rel_tile.x += 10
@@ -158,6 +212,8 @@ main :: proc() {
                     append(&state.undo_history, Action{})
                 }
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                append(&state.temp_actions, make_action(context.temp_allocator)) or_break
+                temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
                 switch state.active_tool {
                     case .BRUSH: {
                         mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
@@ -167,8 +223,7 @@ main :: proc() {
                         set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color})
                     }
                     case .RECTANGLE: {
-                        rectangle_tool(&state, &tile_map, rl.GetMousePosition())
-                        state.clear_last_action = true
+                        rectangle_tool(&state, &tile_map, rl.GetMousePosition(), temp_action)
                     }
                     case .COLOR_PICKER: {
                         mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
@@ -178,24 +233,24 @@ main :: proc() {
                     case .SPAWN_TOKEN: {
                     }
                     case .MOVE_TOKEN: {
-                        move_token_tool(&state, &tile_map, rl.GetMousePosition())
-                        state.clear_last_action = true
+                        move_token_tool(&state, &tile_map, rl.GetMousePosition(), temp_action, true)
                     }
                 }
             }
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
+                action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 #partial switch state.active_tool {
                     case .RECTANGLE: {
-                        rectangle_tool(&state, &tile_map, rl.GetMousePosition())
+                        rectangle_tool(&state, &tile_map, rl.GetMousePosition(), action)
                     }
                     case .SPAWN_TOKEN: {
                         mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
-                        append(&state.tokens, Token{state.max_entity_id, mouse_tile_pos, state.selected_color, "Actor"})
+                        append(&state.tokens, Token{state.max_entity_id, mouse_tile_pos, state.selected_color, "", 0})
                         state.max_entity_id += 1
                     }
                     case .MOVE_TOKEN: {
-                        move_token_tool(&state, &tile_map, rl.GetMousePosition())
+                        move_token_tool(&state, &tile_map, rl.GetMousePosition(), action, false)
                     }
                 }
                 state.tool_start_position = nil
@@ -203,8 +258,11 @@ main :: proc() {
         } else if rl.IsMouseButtonDown(.RIGHT) {
             state.camera_pos.rel_tile -= rl.GetMouseDelta()
         } else if rl.IsKeyReleased(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
-            undo_last_action(&state, &tile_map)
-            pop_last_action(&state, &tile_map)
+            if len(state.undo_history) > 0 {
+                action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                undo_action(&state, &tile_map, action)
+                pop_last_action(&state, &tile_map, &state.undo_history)
+            }
         } else if rl.IsKeyPressed(.LEFT_CONTROL) {
             if state.previous_tool == nil{
                 state.previous_tool = state.active_tool
@@ -258,7 +316,14 @@ main :: proc() {
         for token in state.tokens {
             pos: rl.Vector2 = tile_map_to_screen_coord(token.position, &state, &tile_map);
             rl.DrawCircleV(pos, f32(tile_map.tile_side_in_pixels/2), token.color.xyzw)
-            rl.DrawText(strings.unsafe_string_to_cstring(token.name), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 20, rl.WHITE)
+            if (len(token.name) == 0) {
+                rl.DrawText(u64_to_cstring(token.id), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 18, rl.WHITE)
+            } else {
+                rl.DrawText(strings.clone_to_cstring(token.name, context.temp_allocator), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 18, rl.WHITE)
+            }
+            if (token.moved != 0) {
+                rl.DrawText(u64_to_cstring(u64(f32(token.moved) * tile_map.tile_side_in_feet)), i32(pos.x)-tile_map.tile_side_in_pixels, i32(pos.y)-tile_map.tile_side_in_pixels, 28, rl.WHITE)
+            }
         }
 
         if (state.draw_grid) {
@@ -294,12 +359,13 @@ main :: proc() {
         rl.GuiDrawIcon(icon, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
 
         // Before ending the loop revert the last action from history if it is temp
-        if (state.clear_last_action) {
-            undo_last_action(&state, &tile_map)
-            clear_last_action(&state, &tile_map)
+        for _, index in state.temp_actions {
+            undo_action(&state, &tile_map, &state.temp_actions[index])
         }
+        clear(&state.temp_actions)
 
         rl.EndDrawing()
+        free_all(context.temp_allocator)
     }
 
     rl.CloseWindow()
