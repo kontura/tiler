@@ -43,7 +43,6 @@ move_token_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32,
 }
 
 DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32) -> u32 {
-    append(&state.temp_actions, Action{})
     temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
 
     // calculate dx & dy
@@ -65,7 +64,7 @@ DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32) -> u
     last_pos: [2]u32 = {u32(math.round_f32(X)), u32(math.round_f32(Y))}
     for i: i32 = 0; i <= steps; i += 1 {
         pos: [2]u32 = {u32(math.round_f32(X)), u32(math.round_f32(Y))}
-        temp_action.tile_history[pos] = {get_tile(tile_map, pos).color}
+        temp_action.tile_history[pos] = get_tile(tile_map, pos)
         tile := get_tile(tile_map, pos)
         tile.color.g += 30
         set_tile_value(tile_map, pos, tile)

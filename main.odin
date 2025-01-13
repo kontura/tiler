@@ -218,7 +218,7 @@ main :: proc() {
                     case .BRUSH: {
                         mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
                         if (!(mouse_tile.abs_tile in action.tile_history)) {
-                            action.tile_history[mouse_tile.abs_tile] = {get_tile(&tile_map, mouse_tile.abs_tile).color}
+                            action.tile_history[mouse_tile.abs_tile] = get_tile(&tile_map, mouse_tile.abs_tile)
                         }
                         set_tile_value(&tile_map, mouse_tile.abs_tile, {state.selected_color})
                     }
