@@ -106,7 +106,6 @@ main :: proc() {
     state.screen_width = rl.GetScreenWidth()
     state.draw_grid = true
     state.active_tool = Tool.RECTANGLE
-    state.gui_rectangles["colorpicker"] = {f32(state.screen_width - 230), 0, 200, 200}
     defer delete(state.gui_rectangles)
     state.selected_color.a = 255
     defer {
@@ -160,6 +159,8 @@ main :: proc() {
 
         state.screen_height = rl.GetScreenHeight()
         state.screen_width = rl.GetScreenWidth()
+        state.gui_rectangles["colorpicker"] = {f32(state.screen_width - 230), 10, 200, 200}
+        state.gui_rectangles["colorbarhue"] = {f32(state.screen_width - 30), 5, 30, 205}
 
         state.temp_actions = make([dynamic]Action, context.temp_allocator)
 
@@ -336,7 +337,6 @@ main :: proc() {
         }
 
         rl.DrawTextureV(player_run_texture, {64, 64}, rl.WHITE)
-        ret := rl.GuiColorPanel(state.gui_rectangles["colorpicker"], "test", (^rl.Color)(&state.selected_color))
         mouse_pos: [2]f32 = rl.GetMousePosition()
         icon : rl.GuiIconName
         switch state.active_tool {
@@ -347,6 +347,10 @@ main :: proc() {
                 icon = .ICON_BOX
             }
             case .COLOR_PICKER: {
+                ret := rl.GuiColorPicker(state.gui_rectangles["colorpicker"], "test", (^rl.Color)(&state.selected_color))
+                if (ret != 0) {
+                    fmt.println(ret)
+                }
                 icon = .ICON_COLOR_PICKER
             }
             case .SPAWN_TOKEN: {
