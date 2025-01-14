@@ -292,8 +292,10 @@ main :: proc() {
                 state.active_tool = .COLOR_PICKER
             }
         } else if rl.IsKeyReleased(.LEFT_CONTROL) {
-            state.active_tool = state.previous_tool.?
-            state.previous_tool = nil
+            if state.previous_tool != nil {
+                state.active_tool = state.previous_tool.?
+                state.previous_tool = nil
+            }
         } else {
         }
         state.camera_pos = recanonicalize_position(&tile_map, state.camera_pos)
