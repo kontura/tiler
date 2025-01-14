@@ -372,10 +372,7 @@ main :: proc() {
                 icon = .ICON_BOX
             }
             case .COLOR_PICKER: {
-                ret := rl.GuiColorPicker(state.gui_rectangles["colorpicker"], "test", (^rl.Color)(&state.selected_color))
-                if (ret != 0) {
-                    fmt.println(ret)
-                }
+                rl.GuiColorPicker(state.gui_rectangles["colorpicker"], "test", (^rl.Color)(&state.selected_color))
                 icon = .ICON_COLOR_PICKER
             }
             case .SPAWN_TOKEN: {
