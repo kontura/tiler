@@ -321,7 +321,8 @@ main :: proc() {
 
                 mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
 
-                if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) && state.active_tool != .COLOR_PICKER {
+                if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) &&
+                    (state.active_tool == .RECTANGLE || state.active_tool == .BRUSH) {
                     current_tile_value = {state.selected_color}
                 }
 
