@@ -173,9 +173,22 @@ main :: proc() {
             if byte != 0 {
                 builder : strings.Builder
                 strings.write_string(&builder, token.name)
-                if key == .BACKSPACE {
+                #partial switch key {
+                case .BACKSPACE:
                     strings.pop_rune(&builder)
-                } else {
+                case .MINUS: {
+                    if token.size > 1 {
+                        token.size -= 1
+                    }
+                }
+                case .EQUAL: {
+                    if token.size < 10 && (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
+                        token.size += 1
+                    }
+                }
+                case .RIGHT_SHIFT, .LEFT_SHIFT: {
+                }
+                case:
                     strings.write_byte(&builder, byte)
                 }
                 delete(token.name)
