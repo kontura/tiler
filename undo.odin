@@ -6,7 +6,7 @@ Action :: struct {
     // previous tile state
     tile_history: map[[2]u32]Tile,
     // previous token position
-    token_history: map[u64]TileMapPosition,
+    token_history: map[u64]Maybe(TileMapPosition),
 }
 
 make_action :: proc(allocator: mem.Allocator) -> Action {
@@ -32,9 +32,14 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
         set_tile_value(tile_map, abs_tile, {tile.color})
     }
     for token_id, &pos in action.token_history {
-        for &token in state.tokens {
+        //TODO(amatej): This searching is bad, consider a map
+        for &token, index in state.tokens {
             if token.id == token_id {
-                token.position = pos
+                if (pos != nil) {
+                    token.position = pos.?
+                } else {
+                    unordered_remove(&state.tokens, index)
+                }
             }
         }
     }
