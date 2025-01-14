@@ -27,13 +27,13 @@ rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, 
 }
 
 move_token_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action, feedback: bool) {
-    token_tile_pos : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
-    token := find_token_at_tile_map(token_tile_pos, state)
+    token := find_token_at_screen(tile_map, state, state.tool_start_position.?)
     if (token != nil) {
         mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
         action.token_history[token.id] = token.position
-        token.position = mouse_tile_pos
+        set_token_position(token, mouse_tile_pos)
         if feedback {
+            token_tile_pos : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
             token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token_tile_pos.abs_tile)
         } else {
             token.moved = 0

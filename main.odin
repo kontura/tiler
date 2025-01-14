@@ -54,6 +54,16 @@ screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^
     return res
 }
 
+find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, pos: rl.Vector2) -> ^Token {
+    for &token in state.tokens {
+        if rl.CheckCollisionPointCircle(pos, get_token_circle(tile_map, state, token)) {
+            return &token
+        }
+    }
+
+    return nil
+}
+
 tile_map_to_screen_coord :: proc(pos: TileMapPosition, state: ^GameState, tile_map: ^TileMap) -> rl.Vector2 {
     res : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
@@ -164,8 +174,7 @@ main :: proc() {
 
         state.temp_actions = make([dynamic]Action, context.temp_allocator)
 
-        mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
-        token := find_token_at_tile_map(mouse_tile_pos, &state)
+        token := find_token_at_screen(&tile_map, &state, rl.GetMousePosition())
 
         if state.active_tool == .SPAWN_TOKEN && token != nil {
             key := rl.GetKeyPressed()
@@ -328,8 +337,8 @@ main :: proc() {
         }
 
         for token in state.tokens {
-            pos: rl.Vector2 = tile_map_to_screen_coord(token.position, &state, &tile_map);
-            rl.DrawCircleV(pos, f32(tile_map.tile_side_in_pixels/2), token.color.xyzw)
+            pos: rl.Vector2 = tile_map_to_screen_coord(token.position, &state, &tile_map)
+            rl.DrawCircleV(get_token_circle(&tile_map, &state, token), token.color.xyzw)
             if (len(token.name) == 0) {
                 rl.DrawText(u64_to_cstring(token.id), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 18, rl.WHITE)
             } else {
