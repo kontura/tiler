@@ -314,7 +314,7 @@ main :: proc() {
 
             for column_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x)); column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x)); column_offset += 1 {
                 current_tile: [2]u32
-                current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset);
+                current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset)
                 current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
 
                 current_tile_value : Tile = get_tile(&tile_map, current_tile)

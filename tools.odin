@@ -50,7 +50,7 @@ DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32) -> u
     dy : i32 = i32(p1.y - p0.y)
 
     // calculate steps required for generating pixels
-    steps := abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+    steps := abs(dx) > abs(dy) ? abs(dx) : abs(dy)
 
     Xinc := f32(dx) / f32(steps)
     Yinc := f32(dy) / f32(steps)
@@ -68,8 +68,8 @@ DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32) -> u
         tile := get_tile(tile_map, pos)
         tile.color.g += 30
         set_tile_value(tile_map, pos, tile)
-        X += Xinc; // increment in x at each step
-        Y += Yinc; // increment in y at each step
+        X += Xinc // increment in x at each step
+        Y += Yinc // increment in y at each step
 
         if (last_pos.x != pos.x && last_pos.y != pos.y) {
             if last_diagonal_doubled {
