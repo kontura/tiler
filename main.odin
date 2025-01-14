@@ -106,6 +106,8 @@ init :: proc() {
     state.draw_grid = true
     state.active_tool = Tool.RECTANGLE
     state.selected_color.a = 255
+    // entity id 0 is reserved for temporary preview entity
+    state.max_entity_id = 1
 
     tile_map = new(TileMap)
     tile_map.chunk_shift = 8
@@ -275,6 +277,30 @@ update :: proc() {
 
     screen_center : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
+    highligh_current_tile := false
+    switch state.active_tool {
+        case .BRUSH: {
+            highligh_current_tile = true
+        }
+        case .RECTANGLE: {
+            highligh_current_tile = true
+        }
+        case .COLOR_PICKER: {
+        }
+        case .SPAWN_TOKEN: {
+            // Preview temp token
+            mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
+            c := state.selected_color
+            c.a = 90
+            append(&state.tokens, make_token(0, mouse_tile_pos, c, " "))
+            append(&state.temp_actions, make_action(context.temp_allocator))
+            temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
+            temp_action.token_history[0] = nil
+        }
+        case .MOVE_TOKEN: {
+        }
+    }
+
     tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
     for row_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y)); row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y)); row_offset += 1 {
         cen_y : f32 = screen_center.y - tile_map.feet_to_pixels * state.camera_pos.rel_tile.y + f32(row_offset * tile_map.tile_side_in_pixels)
@@ -289,8 +315,7 @@ update :: proc() {
 
             mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
 
-            if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) &
-                (state.active_tool == .RECTANGLE || state.active_tool == .BRUSH) {
+            if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) && highligh_current_tile {
                 current_tile_value = {state.selected_color}
             }
 

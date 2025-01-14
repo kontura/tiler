@@ -32,8 +32,8 @@ get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) ->
     return center, radius
 }
 
-make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8) -> Token {
-    return Token{id, pos, color, "", 0, 1}
+make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name : string = "") -> Token {
+    return Token{id, pos, color, name, 0, 1}
 
 }
 
