@@ -260,7 +260,7 @@ main :: proc() {
                     }
                     case .SPAWN_TOKEN: {
                         mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), &state, &tile_map)
-                        append(&state.tokens, Token{state.max_entity_id, mouse_tile_pos, state.selected_color, "", 0})
+                        append(&state.tokens, make_token(state.max_entity_id, mouse_tile_pos, state.selected_color))
                         state.max_entity_id += 1
                     }
                     case .MOVE_TOKEN: {

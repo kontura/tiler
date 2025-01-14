@@ -19,6 +19,11 @@ find_token_at_tile_map :: proc(pos: TileMapPosition, state: ^GameState) -> ^Toke
     return nil
 }
 
+make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8) -> Token {
+    return Token{id, pos, color, "", 0, 1}
+
+}
+
 delete_token :: proc(token: ^Token) {
     delete(token.name)
 }
