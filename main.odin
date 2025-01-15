@@ -80,15 +80,8 @@ tile_map_to_screen_coord :: proc(pos: TileMapPosition, state: ^GameState, tile_m
 
 state: ^GameState
 tile_map: ^TileMap
-when ODIN_DEBUG {
-    track: mem.Tracking_Allocator
-}
 
 init :: proc() {
-    when ODIN_DEBUG {
-        mem.tracking_allocator_init(&track, context.allocator)
-        context.allocator = mem.tracking_allocator(&track)
-    }
 
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "GridImpro")
     player_run_texture := rl.LoadTexture("wolf-token.png")
@@ -412,21 +405,6 @@ shutdown :: proc() {
     free(state)
     free(tile_map)
 
-    when ODIN_DEBUG {
-        if len(track.allocation_map) > 0 {
-            fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
-            for _, entry in track.allocation_map {
-                fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
-            }
-        }
-        if len(track.bad_free_array) > 0 {
-            fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
-            for entry in track.bad_free_array {
-                fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
-            }
-        }
-        mem.tracking_allocator_destroy(&track)
-    }
 }
 
 // In a web build, this is called when browser changes size. Remove the
@@ -436,6 +414,26 @@ game_parent_window_size_changed :: proc(w, h: int) {
 }
 
 main :: proc() {
+    when ODIN_DEBUG {
+        track: mem.Tracking_Allocator
+        mem.tracking_allocator_init(&track, context.allocator)
+        context.allocator = mem.tracking_allocator(&track)
+        defer {
+            if len(track.allocation_map) > 0 {
+                fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
+                for _, entry in track.allocation_map {
+                    fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+                }
+            }
+            if len(track.bad_free_array) > 0 {
+                fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
+                for entry in track.bad_free_array {
+                    fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
+                }
+            }
+            mem.tracking_allocator_destroy(&track)
+        }
+    }
     init()
     for !rl.WindowShouldClose() {
         update()
