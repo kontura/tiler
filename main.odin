@@ -429,6 +429,12 @@ shutdown :: proc() {
     }
 }
 
+// In a web build, this is called when browser changes size. Remove the
+// `rl.SetWindowSize` call if you don't want a resizable game.
+game_parent_window_size_changed :: proc(w, h: int) {
+	rl.SetWindowSize(i32(w), i32(h))
+}
+
 main :: proc() {
     init()
     for !rl.WindowShouldClose() {
