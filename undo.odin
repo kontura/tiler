@@ -32,13 +32,17 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
         set_tile_value(tile_map, abs_tile, {tile.color})
     }
     for token_id, &pos in action.token_history {
-        //TODO(amatej): This searching is bad, consider a map
-        for &token, index in state.tokens {
-            if token.id == token_id {
-                if (pos != nil) {
-                    token.position = pos.?
-                } else {
-                    unordered_remove(&state.tokens, index)
+        token := &state.tokens[token_id]
+        if (pos != nil) {
+            token.position = pos.?
+        } else {
+            delete_key(&state.tokens, token_id)
+            initiative_list, ok := &state.initiative_to_tokens[token.initiative]
+            if ok {
+                for val, i in initiative_list {
+                    if val == token.id {
+                        unordered_remove(initiative_list, i)
+                    }
                 }
             }
         }

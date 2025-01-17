@@ -7,7 +7,7 @@ Tool :: enum {
     RECTANGLE,
     COLOR_PICKER,
     //CIRCLE,
-    SPAWN_TOKEN,
+    EDIT_TOKEN,
     MOVE_TOKEN,
 }
 

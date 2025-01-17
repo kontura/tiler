@@ -1,5 +1,8 @@
 package tiler
 
+import "core:math/rand"
+import "core:strings"
+
 Token :: struct {
     id: u64,
     position: TileMapPosition,
@@ -7,17 +10,8 @@ Token :: struct {
     name: string,
     moved: u32,
     size: i32,
+    initiative: i32,
     //TODO(amatej): image
-}
-
-find_token_at_tile_map :: proc(pos: TileMapPosition, state: ^GameState) -> ^Token {
-    for &token in state.tokens {
-        if token.position.abs_tile == pos.abs_tile {
-            return &token
-        }
-    }
-
-    return nil
 }
 
 get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (center: [2]f32, radius: f32) {
@@ -32,9 +26,16 @@ get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) ->
     return center, radius
 }
 
-make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name : string = "") -> Token {
-    return Token{id, pos, color, name, 0, 1}
+get_token_name_temp :: proc(token: ^Token) -> cstring {
+    if (len(token.name) == 0) {
+        return u64_to_cstring(token.id)
+    } else {
+        return strings.clone_to_cstring(token.name, context.temp_allocator)
+    }
+}
 
+make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name : string = "") -> Token {
+    return Token{id, pos, color, name, 0, 1, rand.int31_max(22) + 1}
 }
 
 delete_token :: proc(token: ^Token) {
