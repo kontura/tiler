@@ -164,6 +164,7 @@ update :: proc() {
         }
     }
 
+    // Keybinds
     if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
         state.camera_pos.rel_tile.x -= 10
     } else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.L) {
@@ -180,8 +181,6 @@ update :: proc() {
         state.active_tool = .EDIT_TOKEN
     } else if rl.IsKeyDown(.M) {
         state.active_tool = .MOVE_TOKEN
-    } else if rl.IsMouseButtonDown(.RIGHT) {
-        state.camera_pos.rel_tile -= rl.GetMouseDelta()
     } else if rl.IsKeyReleased(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
         if len(state.undo_history) > 0 {
             action : ^Action = &state.undo_history[len(state.undo_history)-1]
@@ -200,11 +199,14 @@ update :: proc() {
         }
     }
 
+    // Mouse clicks
     if rl.IsMouseButtonPressed(.LEFT) {
         if (state.tool_start_position == nil) {
             state.tool_start_position = rl.GetMousePosition()
             append(&state.undo_history, Action{})
         }
+    } else if rl.IsMouseButtonDown(.RIGHT) {
+        state.camera_pos.rel_tile -= rl.GetMouseDelta()
     }
 
     switch state.active_tool {
