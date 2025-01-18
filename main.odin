@@ -23,6 +23,7 @@ GameState :: struct {
     active_tool: Tool,
     previous_tool: Maybe(Tool),
     tool_start_position: Maybe([2]f32),
+    selected_token: u64,
     max_entity_id: u64,
     //TODO(amatej): check if the tool actually does any color change before recoding
     //              undoing non-color changes does nothing
@@ -287,15 +288,13 @@ update :: proc() {
         }
         case .INITIATIVE: {
             if rl.IsMouseButtonDown(.LEFT) {
-                action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                append(&state.temp_actions, make_action(context.temp_allocator))
-                temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-                move_initiative_token_tool(state, rl.GetMousePosition(), temp_action)
+                move_initiative_token_tool(state, rl.GetMousePosition(), nil)
             } else if rl.IsMouseButtonReleased(.LEFT) {
                 if (state.tool_start_position != nil) {
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     move_initiative_token_tool(state, rl.GetMousePosition(), action)
                 }
+                state.selected_token = 0
             }
             icon = .ICON_SHUFFLE
         }

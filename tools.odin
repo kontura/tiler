@@ -41,10 +41,17 @@ find_at_initiative :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
                 token := state.tokens[token_id]
                 token_size :=  f32(token.size) * 4 + 10
                 half_of_this_row := i32(token_size + 3)
-                row_offset += 2 * half_of_this_row
+                row_offset += 2*half_of_this_row
                 if f32(row_offset) >= pos {
-                    //fmt.println("returning(initiative, order, token_id): ", i, index, token.id)
-                    return i, i32(index), token.id
+                    // Given that the initiative tracker moves when the token is moved
+                    // (because of different sizes of empty row vs row with tokens) compare
+                    // not with half but with 1/3 of a half -> 1/6.
+                    // It is not exact but it seems to work alright.
+                    if f32(row_offset) - pos > f32(half_of_this_row)/3 {
+                        return i, i32(index), token.id
+                    } else {
+                        return i, i32(index)+1, token.id
+                    }
                 }
             }
         }
@@ -54,21 +61,23 @@ find_at_initiative :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
 }
 
 move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^Action) {
-    initiative, index, token_id := find_at_initiative(state, state.tool_start_position.?.y)
-    //fmt.println("selected initiative: ", initiative, " index: ", index)
-    //fmt.println(end_pos, state.tool_start_position.?)
-    if token_id != 0 {
+    if state.selected_token == 0 {
+        _, _, state.selected_token = find_at_initiative(state, state.tool_start_position.?.y)
+    } else {
         end_initiative, end_index, _ := find_at_initiative(state, end_pos.y)
-        ordered_remove(&state.initiative_to_tokens[initiative], index)
-        action.token_initiative_history[token_id] = [2]i32{initiative, index}
+        init, i := remove_token_by_id_from_initiative(state, state.selected_token)
+        if action != nil {
+            action.token_initiative_history[state.selected_token] = [2]i32{init, i}
+        }
+        remove_token_by_id_from_initiative(state, state.selected_token)
         if state.initiative_to_tokens[end_initiative] == nil {
             state.initiative_to_tokens[end_initiative] = make([dynamic]u64)
         }
         tokens := &state.initiative_to_tokens[end_initiative]
-        if i32(len(tokens)) > end_index {
-            inject_at(tokens, end_index, token_id)
+        if i32(len(tokens)) >= end_index {
+            inject_at(tokens, end_index, state.selected_token)
         } else {
-            append(tokens, token_id)
+            append(tokens, state.selected_token)
         }
     }
 }
