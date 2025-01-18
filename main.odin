@@ -29,6 +29,7 @@ GameState :: struct {
     initiative_to_tokens: map[i32][dynamic]u64,
     // Valid only for one loop
     temp_actions: [dynamic]Action,
+    key_consumed: bool,
 }
 
 Widget :: enum {
@@ -150,6 +151,7 @@ update :: proc() {
     }
 
     state.temp_actions = make([dynamic]Action, context.temp_allocator)
+    state.key_consumed = false
 
     icon : rl.GuiIconName
     //TODO(amatej): convert to temp action
@@ -161,41 +163,6 @@ update :: proc() {
     for widget, &rec in state.gui_rectangles {
         if (rl.CheckCollisionPointRec(rl.GetMousePosition(), rec)) {
             selected_widget = widget
-        }
-    }
-
-    // Keybinds
-    if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
-        state.camera_pos.rel_tile.x -= 10
-    } else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.L) {
-        state.camera_pos.rel_tile.x += 10
-    } else if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.J) {
-        state.camera_pos.rel_tile.y += 10
-    } else if rl.IsKeyDown(.UP) || rl.IsKeyDown(.K) {
-        state.camera_pos.rel_tile.y -= 10
-    } else if rl.IsKeyDown(.P) {
-        state.active_tool = .BRUSH
-    } else if rl.IsKeyDown(.R) {
-        state.active_tool = .RECTANGLE
-    } else if rl.IsKeyDown(.S) {
-        state.active_tool = .EDIT_TOKEN
-    } else if rl.IsKeyDown(.M) {
-        state.active_tool = .MOVE_TOKEN
-    } else if rl.IsKeyReleased(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
-        if len(state.undo_history) > 0 {
-            action : ^Action = &state.undo_history[len(state.undo_history)-1]
-            undo_action(state, tile_map, action)
-            pop_last_action(state, tile_map, &state.undo_history)
-        }
-    } else if rl.IsKeyPressed(.LEFT_CONTROL) {
-        if state.previous_tool == nil{
-            state.previous_tool = state.active_tool
-            state.active_tool = .COLOR_PICKER
-        }
-    } else if rl.IsKeyReleased(.LEFT_CONTROL) {
-        if state.previous_tool != nil {
-            state.active_tool = state.previous_tool.?
-            state.previous_tool = nil
         }
     }
 
@@ -266,6 +233,9 @@ update :: proc() {
         case .MAP: {
             if token != nil {
                 key := rl.GetKeyPressed()
+                if rl.IsKeyDown(.BACKSPACE) {
+                    key = .BACKSPACE
+                }
                 byte : u8 = u8(key)
                 if byte != 0 {
                     builder : strings.Builder
@@ -290,6 +260,7 @@ update :: proc() {
                     }
                     delete(token.name)
                     token.name = strings.to_string(builder)
+                    state.key_consumed = true
                 }
             } else if rl.IsMouseButtonPressed(.LEFT) {
                 t := make_token(state.max_entity_id, mouse_tile_pos, state.selected_color)
@@ -322,6 +293,47 @@ update :: proc() {
     if rl.IsMouseButtonReleased(.LEFT) {
         if (state.tool_start_position != nil) {
             state.tool_start_position = nil
+        }
+    }
+
+    // Keybinds
+    if !state.key_consumed {
+        if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
+            state.camera_pos.rel_tile.x -= 10
+        } else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.L) {
+            state.camera_pos.rel_tile.x += 10
+        } else if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.J) {
+            state.camera_pos.rel_tile.y += 10
+        } else if rl.IsKeyDown(.UP) || rl.IsKeyDown(.K) {
+            state.camera_pos.rel_tile.y -= 10
+        } else if rl.IsKeyPressed(.P) {
+            state.active_tool = .BRUSH
+        } else if rl.IsKeyPressed(.R) {
+            state.active_tool = .RECTANGLE
+        } else if rl.IsKeyPressed(.S) {
+            state.active_tool = .EDIT_TOKEN
+        } else if rl.IsKeyPressed(.M) {
+            state.active_tool = .MOVE_TOKEN
+        } else if rl.IsKeyPressed(.I) {
+            state.draw_initiative = !state.draw_initiative
+        } else if rl.IsKeyPressed(.G) {
+            state.draw_grid = !state.draw_grid
+        } else if rl.IsKeyReleased(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
+            if len(state.undo_history) > 0 {
+                action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                undo_action(state, tile_map, action)
+                pop_last_action(state, tile_map, &state.undo_history)
+            }
+        } else if rl.IsKeyPressed(.LEFT_CONTROL) {
+            if state.previous_tool == nil{
+                state.previous_tool = state.active_tool
+                state.active_tool = .COLOR_PICKER
+            }
+        } else if rl.IsKeyReleased(.LEFT_CONTROL) {
+            if state.previous_tool != nil {
+                state.active_tool = state.previous_tool.?
+                state.previous_tool = nil
+            }
         }
     }
 
