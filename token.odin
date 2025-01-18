@@ -54,3 +54,16 @@ set_token_position :: proc(token: ^Token, pos: TileMapPosition) {
     }
 
 }
+
+remove_token_by_id_from_initiative :: proc(state: ^GameState, token_id: u64) {
+    for _, &tokens in state.initiative_to_tokens {
+        for id, index in tokens {
+            if id == token_id {
+                ordered_remove(&tokens, index)
+                return
+            }
+        }
+    }
+
+
+}

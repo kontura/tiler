@@ -26,6 +26,53 @@ rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, 
     }
 }
 
+find_at_initiative :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
+    row_offset : i32 = 10
+    for i : i32 = 1; i < INITIATIVE_COUNT; i += 1 {
+        tokens := state.initiative_to_tokens[i]
+        row_offset += 3
+        if (tokens == nil || len(tokens) == 0) {
+            row_offset += 10
+            if f32(row_offset) >= pos {
+                return i, 0, 0
+            }
+        } else {
+            for token_id, index in tokens {
+                token := state.tokens[token_id]
+                token_size :=  f32(token.size) * 4 + 10
+                half_of_this_row := i32(token_size + 3)
+                row_offset += 2 * half_of_this_row
+                if f32(row_offset) >= pos {
+                    //fmt.println("returning(initiative, order, token_id): ", i, index, token.id)
+                    return i, i32(index), token.id
+                }
+            }
+        }
+    }
+
+    return 0, 0, 0
+}
+
+move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^Action) {
+    initiative, index, token_id := find_at_initiative(state, state.tool_start_position.?.y)
+    //fmt.println("selected initiative: ", initiative, " index: ", index)
+    //fmt.println(end_pos, state.tool_start_position.?)
+    if token_id != 0 {
+        end_initiative, end_index, _ := find_at_initiative(state, end_pos.y)
+        ordered_remove(&state.initiative_to_tokens[initiative], index)
+        action.token_initiative_history[token_id] = [2]i32{initiative, index}
+        if state.initiative_to_tokens[end_initiative] == nil {
+            state.initiative_to_tokens[end_initiative] = make([dynamic]u64)
+        }
+        tokens := &state.initiative_to_tokens[end_initiative]
+        if i32(len(tokens)) > end_index {
+            inject_at(tokens, end_index, token_id)
+        } else {
+            append(tokens, token_id)
+        }
+    }
+}
+
 move_token_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action, feedback: bool) {
     token := find_token_at_screen(tile_map, state, state.tool_start_position.?)
     if (token != nil) {
@@ -39,7 +86,6 @@ move_token_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32,
             token.moved = 0
         }
     }
-
 }
 
 DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32) -> u32 {

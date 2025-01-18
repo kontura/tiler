@@ -7,12 +7,14 @@ Action :: struct {
     tile_history: map[[2]u32]Tile,
     // previous token position
     token_history: map[u64]Maybe(TileMapPosition),
+    token_initiative_history: map[u64]Maybe([2]i32),
 }
 
 make_action :: proc(allocator: mem.Allocator) -> Action {
     action : Action
     action.tile_history.allocator = allocator
     action.token_history.allocator = allocator
+    action.token_initiative_history.allocator = allocator
 
     return action
 }
@@ -20,11 +22,13 @@ make_action :: proc(allocator: mem.Allocator) -> Action {
 delete_action :: proc(action: ^Action) {
     delete(action.tile_history)
     delete(action.token_history)
+    delete(action.token_initiative_history)
 }
 
 clear_action :: proc(action: ^Action) {
     clear(&action.tile_history)
     clear(&action.token_history)
+    clear(&action.token_initiative_history)
 }
 
 undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
@@ -45,6 +49,15 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
                     }
                 }
             }
+        }
+    }
+    for token_id, &init_pos in action.token_initiative_history {
+        remove_token_by_id_from_initiative(state, token_id)
+        tokens := &state.initiative_to_tokens[init_pos.?.x]
+        if i32(len(tokens)) > init_pos.?.y {
+            inject_at(tokens, init_pos.?.y, token_id)
+        } else {
+            append(tokens, token_id)
         }
     }
 }

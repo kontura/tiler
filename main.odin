@@ -10,6 +10,8 @@ import rl "vendor:raylib"
 INIT_SCREEN_WIDTH: i32 : 1280
 INIT_SCREEN_HEIGHT: i32 : 720
 
+INITIATIVE_COUNT : i32 : 50
+
 GameState :: struct {
     screen_width: i32,
     screen_height: i32,
@@ -284,6 +286,17 @@ update :: proc() {
             icon = .ICON_PLAYER
         }
         case .INITIATIVE: {
+            if rl.IsMouseButtonDown(.LEFT) {
+                action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                append(&state.temp_actions, make_action(context.temp_allocator))
+                temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
+                move_initiative_token_tool(state, rl.GetMousePosition(), temp_action)
+            } else if rl.IsMouseButtonReleased(.LEFT) {
+                if (state.tool_start_position != nil) {
+                    action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                    move_initiative_token_tool(state, rl.GetMousePosition(), action)
+                }
+            }
             icon = .ICON_SHUFFLE
         }
         }
@@ -346,6 +359,7 @@ update :: proc() {
 
     screen_center : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
+    // draw tile map
     tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
     for row_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y)); row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y)); row_offset += 1 {
         cen_y : f32 = screen_center.y - tile_map.feet_to_pixels * state.camera_pos.rel_tile.y + f32(row_offset * tile_map.tile_side_in_pixels)
@@ -391,21 +405,25 @@ update :: proc() {
     if (state.draw_initiative) {
         rl.DrawRectangleGradientEx(state.gui_rectangles[.INITIATIVE], {40,40,40,45}, {40,40,40,45}, {0,0,0,0}, {0,0,0,0})
         row_offset : i32 = 10
-        for i : i32 = 1; i < 40; i += 1 {
+        for i : i32 = 1; i < INITIATIVE_COUNT; i += 1 {
             tokens := state.initiative_to_tokens[i]
-            row_offset += 3
-            rl.DrawText(u64_to_cstring(u64(i)), 10, row_offset, 10, rl.GRAY)
             if (tokens == nil || len(tokens) == 0) {
-                row_offset += 10
+                if state.active_tool == .EDIT_TOKEN {
+                    rl.DrawText(u64_to_cstring(u64(i)), 10, row_offset, 10, rl.GRAY)
+                    row_offset += 13
+                } else {
+                    continue
+                }
             } else {
+                row_offset += 3
+                rl.DrawText(u64_to_cstring(u64(i)), 10, row_offset, 10, rl.GRAY)
                 for token_id in tokens {
                     token := state.tokens[token_id]
                     token_size :=  f32(token.size) * 4 + 10
                     half_of_this_row := i32(token_size + 3)
                     rl.DrawCircleV({30 + token_size/2, f32(row_offset + half_of_this_row)}, f32(token_size), token.color.xyzw)
                     rl.DrawText(get_token_name_temp(&token), i32(30 + token_size + 15), row_offset + i32(token_size) - 4, 18, rl.WHITE)
-                    row_offset += half_of_this_row
-                    row_offset += half_of_this_row
+                    row_offset += 2 * half_of_this_row
                 }
             }
             rl.DrawRectangleGradientH(0, row_offset, 100, 2, {40,40,40,155}, {0,0,0,0})
