@@ -21,7 +21,7 @@ Tile :: struct {
 }
 
 TileChunk :: struct {
-    tiles: [dynamic] Tile
+    tiles: [dynamic] Tile,
 }
 
 TileMap :: struct {

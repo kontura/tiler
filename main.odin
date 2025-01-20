@@ -95,8 +95,8 @@ state: ^GameState
 tile_map: ^TileMap
 
 init :: proc() {
-
-    rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "GridImpro")
+    rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
+    rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "Tiler")
     player_run_texture := rl.LoadTexture("wolf-token.png")
 
     // Since we don't run any simulation we don't have to run when there is not user input
@@ -136,9 +136,6 @@ init :: proc() {
     tile_map.tile_side_in_pixels = 30
     tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
-
-    tiles_per_width : u32 = 17
-    tiles_per_height : u32 = 9
 }
 
 update :: proc() {
@@ -195,7 +192,6 @@ update :: proc() {
     }
     case .RECTANGLE: {
         if rl.IsMouseButtonDown(.LEFT) {
-            action : ^Action = &state.undo_history[len(state.undo_history)-1]
             append(&state.temp_actions, make_action(context.temp_allocator))
             temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
             rectangle_tool(state, tile_map, rl.GetMousePosition(), temp_action)
@@ -210,7 +206,6 @@ update :: proc() {
     }
     case .MOVE_TOKEN: {
         if rl.IsMouseButtonDown(.LEFT) {
-            action : ^Action = &state.undo_history[len(state.undo_history)-1]
             append(&state.temp_actions, make_action(context.temp_allocator))
             temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
             move_token_tool(state, tile_map, rl.GetMousePosition(), temp_action, true)
@@ -509,7 +504,7 @@ shutdown :: proc() {
 
 // In a web build, this is called when browser changes size. Remove the
 // `rl.SetWindowSize` call if you don't want a resizable game.
-game_parent_window_size_changed :: proc(w, h: int) {
+parent_window_size_changed :: proc(w, h: int) {
 	rl.SetWindowSize(i32(w), i32(h))
 }
 
