@@ -61,9 +61,6 @@ screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^
 
     res = recanonicalize_position(tile_map, res)
 
-    //TODO(amatej): Maybe we also want to know where in the tile the mouse is,
-    //              we would need to set rel_tile.
-
     return res
 }
 
