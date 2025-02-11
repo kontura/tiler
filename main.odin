@@ -154,6 +154,7 @@ update :: proc() {
     icon : rl.GuiIconName
     //TODO(amatej): convert to temp action
     highligh_current_tile := false
+    highligh_current_tile_intersection := false
     token := find_token_at_screen(tile_map, state, rl.GetMousePosition())
     mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
     tooltip: Maybe(cstring) = nil
@@ -214,6 +215,7 @@ update :: proc() {
                 tooltip = circle_tool(state, tile_map, rl.GetMousePosition(), action)
             }
         } else {
+            highligh_current_tile_intersection = true
         }
         icon = .ICON_PLAYER_RECORD
     }
@@ -428,6 +430,22 @@ update :: proc() {
         if (token.moved != 0) {
             rl.DrawText(u64_to_cstring(u64(f32(token.moved) * tile_map.tile_side_in_feet)), i32(pos.x)-tile_map.tile_side_in_pixels, i32(pos.y)-tile_map.tile_side_in_pixels, 28, rl.WHITE)
         }
+    }
+
+    if highligh_current_tile_intersection {
+        half := tile_map.tile_side_in_feet/2
+        m := mouse_tile_pos
+        m.rel_tile.x = m.rel_tile.x >= 0 ? half : -half
+        m.rel_tile.y = m.rel_tile.y >= 0 ? half : -half
+        size : f32 = f32(tile_map.tile_side_in_pixels)
+        cross_pos := tile_map_to_screen_coord(m, state, tile_map)
+        cross_pos += m.rel_tile * tile_map.feet_to_pixels
+        rl.DrawRectangleV(cross_pos - {1, size/2},
+                         {2, size},
+                         {255, 255, 255, 255})
+        rl.DrawRectangleV(cross_pos - {size/2, 1},
+                         {size, 2},
+                         {255, 255, 255, 255})
     }
 
     // draw initiative tracker
