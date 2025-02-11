@@ -8,9 +8,52 @@ Tool :: enum {
     BRUSH,
     RECTANGLE,
     COLOR_PICKER,
-    //CIRCLE,
+    CIRCLE,
     EDIT_TOKEN,
     MOVE_TOKEN,
+}
+
+dist :: proc($T: typeid, p1: [2]T, p2: [2]T) -> f32 {
+    dx := f32(p2.x) - f32(p1.x)
+    dx *= dx
+    dy := f32(p2.y) - f32(p1.y)
+    dy *= dy
+
+    return math.sqrt_f32(dx + dy)
+}
+
+circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
+    screen_dist : f32 = dist(f32, state.tool_start_position.?, current_pos)
+    start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
+
+    start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? 2.5 : -2.5
+    start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? 2.5 : -2.5
+
+    current_mouse_tile : TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
+
+    //max_dist := dist(u32, current_mouse_tile.abs_tile, start_mouse_tile.abs_tile)
+    max_dist_in_feet := screen_dist * tile_map.pixels_to_feet
+    max_dist_up := u32(math.ceil_f32(max_dist_in_feet))
+
+    start_tile : [2]u32 = {start_mouse_tile.abs_tile.x - max_dist_up, start_mouse_tile.abs_tile.y - max_dist_up}
+    end_tile : [2]u32 = {start_mouse_tile.abs_tile.x + max_dist_up, start_mouse_tile.abs_tile.y + max_dist_up}
+
+    for y : u32 = start_tile.y; y <= end_tile.y; y += 1 {
+        for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
+            temp_tile_pos: TileMapPosition = {{x,y}, {0,0}}
+
+            dist := tile_distance(tile_map, temp_tile_pos, start_mouse_tile)
+
+            if (max_dist_in_feet > dist) {
+                action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
+                set_tile_value(tile_map, {x, y}, {state.selected_color.xyzw, {}})
+            }
+        }
+    }
+
+    builder := strings.builder_make(context.temp_allocator)
+    strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator=context.temp_allocator))
+    return strings.to_cstring(&builder)
 }
 
 rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action) -> cstring {

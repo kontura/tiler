@@ -40,6 +40,13 @@ TileMap :: struct {
     tile_chunks: [dynamic]TileChunk,
 }
 
+tile_distance :: proc(tile_map: ^TileMap, p1: TileMapPosition, p2: TileMapPosition) -> f32 {
+    p1_feet: [2]f32 = {f32(p1.abs_tile.x), f32(p1.abs_tile.y)} * tile_map.tile_side_in_feet + p1.rel_tile
+    p2_feet: [2]f32 = {f32(p2.abs_tile.x), f32(p2.abs_tile.y)} * tile_map.tile_side_in_feet + p2.rel_tile
+
+    return dist(f32, p1_feet, p2_feet)
+}
+
 get_tile_chunk :: proc(tile_map: ^TileMap, tile_chunk: [2]u32) -> ^TileChunk {
     res : ^TileChunk
 

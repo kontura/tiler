@@ -202,6 +202,20 @@ update :: proc() {
         icon = .ICON_BOX
         highligh_current_tile = true
     }
+    case .CIRCLE: {
+        if rl.IsMouseButtonDown(.LEFT) {
+            append(&state.temp_actions, make_action(context.temp_allocator))
+            temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
+            tooltip = circle_tool(state, tile_map, rl.GetMousePosition(), temp_action)
+        } else if rl.IsMouseButtonReleased(.LEFT) {
+            if (state.tool_start_position != nil) {
+                action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                tooltip = circle_tool(state, tile_map, rl.GetMousePosition(), action)
+            }
+        } else {
+        }
+        icon = .ICON_PLAYER_RECORD
+    }
     case .MOVE_TOKEN: {
         if rl.IsMouseButtonDown(.LEFT) {
             append(&state.temp_actions, make_action(context.temp_allocator))
