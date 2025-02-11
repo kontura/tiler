@@ -350,6 +350,8 @@ update :: proc() {
             state.active_tool = .BRUSH
         } else if rl.IsKeyPressed(.R) {
             state.active_tool = .RECTANGLE
+        } else if rl.IsKeyPressed(.C) {
+            state.active_tool = .CIRCLE
         } else if rl.IsKeyPressed(.S) {
             state.active_tool = .EDIT_TOKEN
         } else if rl.IsKeyPressed(.M) {
