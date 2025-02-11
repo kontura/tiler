@@ -74,6 +74,7 @@ find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, pos: rl.Vect
     return nil
 }
 
+// Snaps to grid (ignores rel_tile part)
 tile_map_to_screen_coord :: proc(pos: TileMapPosition, state: ^GameState, tile_map: ^TileMap) -> rl.Vector2 {
     res : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
