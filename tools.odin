@@ -1,6 +1,8 @@
 package tiler
 
 import "core:math"
+import "core:fmt"
+import "core:strings"
 
 Tool :: enum {
     BRUSH,
@@ -11,7 +13,7 @@ Tool :: enum {
     MOVE_TOKEN,
 }
 
-rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action) {
+rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action) -> cstring {
     start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
     end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
 
@@ -24,6 +26,13 @@ rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, 
             set_tile_value(tile_map, {x, y}, {state.selected_color.xyzw})
         }
     }
+
+    builder := strings.builder_make(context.temp_allocator)
+    strings.write_string(&builder, fmt.aprintf("%.0fx%.0f",
+                                               abs(f32(start_tile.x) - f32(end_tile.x)) * 5,
+                                               abs(f32(start_tile.y) - f32(end_tile.y)) * 5,
+                                               allocator=context.temp_allocator))
+    return strings.to_cstring(&builder)
 }
 
 find_at_initiative :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
