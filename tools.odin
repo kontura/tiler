@@ -26,8 +26,9 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
     screen_dist : f32 = dist(f32, state.tool_start_position.?, current_pos)
     start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
 
-    start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? 2.5 : -2.5
-    start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? 2.5 : -2.5
+    half := tile_map.tile_side_in_feet/2
+    start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? half : -half
+    start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? half : -half
 
     current_mouse_tile : TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
 
