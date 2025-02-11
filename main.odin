@@ -399,10 +399,10 @@ update :: proc() {
 
             current_tile_value : Tile = get_tile(tile_map, current_tile)
 
-            mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
-
-            if (current_tile.y == mouse_tile.abs_tile.y) && (current_tile.x == mouse_tile.abs_tile.x) && highligh_current_tile {
-                current_tile_value = {state.selected_color}
+            if highligh_current_tile {
+                if (current_tile.y == mouse_tile_pos.abs_tile.y) && (current_tile.x == mouse_tile_pos.abs_tile.x) {
+                    current_tile_value = {state.selected_color, nil}
+                }
             }
 
             // Calculate tile position on screen
