@@ -71,8 +71,8 @@ rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, 
 
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.aprintf("%.0fx%.0f",
-                                               abs(f32(start_tile.x) - f32(end_tile.x)) * 5,
-                                               abs(f32(start_tile.y) - f32(end_tile.y)) * 5,
+                                               abs(f32(start_tile.x) - f32(end_tile.x) - 1) * 5,
+                                               abs(f32(start_tile.y) - f32(end_tile.y) - 1) * 5,
                                                allocator=context.temp_allocator))
     return strings.to_cstring(&builder)
 }
