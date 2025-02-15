@@ -33,7 +33,7 @@ clear_action :: proc(action: ^Action) {
 
 undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     for abs_tile, &tile in action.tile_history {
-        set_tile_value(tile_map, abs_tile, {tile.color})
+        set_tile(tile_map, abs_tile, tile_make(tile.color, tile.walls, tile.wall_colors))
     }
     for token_id, &pos in action.token_history {
         token := &state.tokens[token_id]

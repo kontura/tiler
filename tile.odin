@@ -3,6 +3,10 @@ package tiler
 import "core:math"
 import "core:fmt"
 
+// TODO(amatej): add diagonal walls
+Direction :: enum{TOP, LEFT}
+WallSet :: bit_set[Direction]
+
 TileMapPosition :: struct {
     // Top left is 0,0
     // fixed point number, high bits determine chunk, low bits determine
@@ -25,6 +29,9 @@ TileChunkPosition :: struct {
 
 Tile :: struct {
     color: [4]u8,
+    walls: WallSet,
+    wall_colors: [Direction][4]u8,
+
 }
 
 TileChunk :: struct {
@@ -52,6 +59,14 @@ tile_distance :: proc(tile_map: ^TileMap, p1: TileMapPosition, p2: TileMapPositi
     p2_feet: [2]f32 = {f32(p2.abs_tile.x), f32(p2.abs_tile.y)} * tile_map.tile_side_in_feet + p2.rel_tile
 
     return dist(f32, p1_feet, p2_feet)
+}
+
+tile_pos_to_crossing_pos :: proc(p: TileMapPosition) -> [2]u32 {
+    res : [2]u32 = p.abs_tile
+    res.x += p.rel_tile.x > 0 ? 1 : 0
+    res.y += p.rel_tile.y > 0 ? 1 : 0
+
+    return res
 }
 
 get_tile_chunk :: proc(tile_map: ^TileMap, tile_chunk: [2]u32) -> ^TileChunk {
@@ -95,6 +110,8 @@ get_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> Tile {
 }
 
 tile_make :: proc{
+    tile_make_color_walls_colors,
+    tile_make_color_walls_color,
     tile_make_blank,
     tile_make_color,
 }
@@ -107,6 +124,26 @@ tile_make_color :: proc(color: [4]u8) -> Tile {
 
 tile_make_blank :: proc() -> Tile {
     return {}
+}
+
+tile_make_color_walls_colors :: proc(color: [4]u8, walls: WallSet, wall_colors: [Direction][4]u8) -> Tile {
+    t: Tile = {}
+    t.color = color
+    t.walls = walls
+    t.wall_colors = wall_colors
+
+    return t
+}
+
+tile_make_color_walls_color :: proc(color: [4]u8, walls: WallSet, wall_color: [4]u8) -> Tile {
+    t: Tile = {}
+    t.color = color
+    t.walls = walls
+    for d in walls {
+        t.wall_colors[d] = wall_color
+    }
+
+    return t
 }
 
 set_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32, val : Tile) {

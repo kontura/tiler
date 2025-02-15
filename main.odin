@@ -241,6 +241,21 @@ update :: proc() {
             icon = .ICON_COLOR_PICKER
         }
     }
+    case .WALL: {
+        if rl.IsMouseButtonDown(.LEFT) {
+            append(&state.temp_actions, make_action(context.temp_allocator))
+            temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
+            tooltip = wall_tool(state, tile_map, rl.GetMousePosition(), temp_action)
+        } else if rl.IsMouseButtonReleased(.LEFT) {
+            if (state.tool_start_position != nil) {
+                action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                tooltip = wall_tool(state, tile_map, rl.GetMousePosition(), action)
+            }
+        } else {
+            highligh_current_tile_intersection = true
+        }
+        icon = .ICON_BOX_GRID_BIG
+    }
     case .EDIT_TOKEN: {
         #partial switch selected_widget {
         case .MAP: {
@@ -354,6 +369,8 @@ update :: proc() {
             state.active_tool = .RECTANGLE
         } else if rl.IsKeyPressed(.C) {
             state.active_tool = .CIRCLE
+        } else if rl.IsKeyPressed(.W) {
+            state.active_tool = .WALL
         } else if rl.IsKeyPressed(.S) {
             state.active_tool = .EDIT_TOKEN
         } else if rl.IsKeyPressed(.M) {
@@ -415,6 +432,18 @@ update :: proc() {
             rl.DrawRectangleV({min_x, min_y},
                              {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
                              current_tile_value.color.xyzw)
+
+            if Direction.TOP in current_tile_value.walls {
+                //TODO(amatej): use DrawLineEx if we want to do diagonals
+                rl.DrawRectangleV({min_x, min_y},
+                                 {f32(tile_map.tile_side_in_pixels), f32(2)},
+                                 current_tile_value.wall_colors[Direction.TOP].xyzw)
+            }
+            if Direction.LEFT in current_tile_value.walls {
+                rl.DrawRectangleV({min_x, min_y},
+                                 {f32(2), f32(tile_map.tile_side_in_pixels)},
+                                 current_tile_value.wall_colors[Direction.LEFT].xyzw)
+            }
         }
 
         if (state.draw_grid) {

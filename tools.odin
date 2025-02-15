@@ -11,6 +11,7 @@ Tool :: enum {
     CIRCLE,
     EDIT_TOKEN,
     MOVE_TOKEN,
+    WALL,
 }
 
 dist :: proc($T: typeid, p1: [2]T, p2: [2]T) -> f32 {
@@ -20,6 +21,51 @@ dist :: proc($T: typeid, p1: [2]T, p2: [2]T) -> f32 {
     dy *= dy
 
     return math.sqrt_f32(dx + dy)
+}
+
+wall_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
+    drawn : f32 = 0
+    start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
+    // convert to crossing possition:
+    // The very top left (first) crossing i 0,0
+    // 0,0, +---+---+--+
+    //      |   |   |  |
+    //      +---+---+--+
+    //      |   |   |  |
+    //      +---+---+--+
+    start_crossing_pos : [2]u32 = tile_pos_to_crossing_pos(start_mouse_tile)
+
+    end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
+    end_crossing_pos : [2]u32 = tile_pos_to_crossing_pos(end_mouse_tile)
+
+    start: [2]u32 = {math.min(start_crossing_pos.x, end_crossing_pos.x), math.min(start_crossing_pos.y, end_crossing_pos.y)}
+    end: [2]u32 = {math.max(start_crossing_pos.x, end_crossing_pos.x), math.max(start_crossing_pos.y, end_crossing_pos.y)}
+
+    if abs(i32(start_crossing_pos.x) - i32(end_crossing_pos.x)) > abs(i32(start_crossing_pos.y) - i32(end_crossing_pos.y)) {
+        y : u32 = start_crossing_pos.y
+        drawn = f32(end.x - start.x)
+        for x : u32 = start.x; x < end.x; x += 1 {
+            action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
+            t := get_tile(tile_map, {x, y})
+            t.walls += {Direction.TOP}
+            t.wall_colors[Direction.TOP] = state.selected_color
+            set_tile(tile_map, {x, y}, t)
+        }
+    } else {
+        x : u32 = start_crossing_pos.x
+        drawn = f32(end.y - start.y)
+        for y : u32 = start.y; y < end.y; y += 1 {
+            action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
+            t := get_tile(tile_map, {x, y})
+            t.walls += {Direction.LEFT}
+            t.wall_colors[Direction.LEFT] = state.selected_color
+            set_tile(tile_map, {x, y}, t)
+        }
+    }
+
+    builder := strings.builder_make(context.temp_allocator)
+    strings.write_string(&builder, fmt.aprintf("%.1f", drawn * 5, allocator=context.temp_allocator))
+    return strings.to_cstring(&builder)
 }
 
 circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
@@ -65,7 +111,7 @@ rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, 
     for y : u32 = start_tile.y; y <= end_tile.y; y += 1 {
         for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
             action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
-            set_tile_value(tile_map, {x, y}, {state.selected_color.xyzw})
+            set_tile(tile_map, {x, y}, tile_make(state.selected_color.xyzw, action.tile_history[{x,y}].walls, action.tile_history[{x,y}].wall_colors))
         }
     }
 
