@@ -45,7 +45,7 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
 
             if (max_dist_in_feet > dist) {
                 action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
-                set_tile_value(tile_map, {x, y}, {state.selected_color.xyzw, {}})
+                set_tile(tile_map, {x, y}, tile_make(state.selected_color))
             }
         }
     }
@@ -173,7 +173,7 @@ DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32) -> u
         temp_action.tile_history[pos] = get_tile(tile_map, pos)
         tile := get_tile(tile_map, pos)
         tile.color.g += 30
-        set_tile_value(tile_map, pos, tile)
+        set_tile(tile_map, pos, tile)
         X += Xinc // increment in x at each step
         Y += Yinc // increment in y at each step
 

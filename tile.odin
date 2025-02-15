@@ -87,13 +87,29 @@ get_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> Tile {
     assert(chunk_pos.rel_tile.y < tile_map.chunk_dim)
 
     if (tile_chunk == nil) {
-        return {{0, 0, 0, 255}}
+        //TODO(amatej): return read only empty white tile
+        return tile_make()
     }
 
     return tile_chunk.tiles[chunk_pos.rel_tile.y * tile_map.chunk_dim + chunk_pos.rel_tile.x]
 }
 
-set_tile_value :: proc(tile_map: ^TileMap, abs_tile: [2]u32, val : Tile) {
+tile_make :: proc{
+    tile_make_blank,
+    tile_make_color,
+}
+
+tile_make_color :: proc(color: [4]u8) -> Tile {
+    t: Tile = {}
+    t.color = color
+    return t
+}
+
+tile_make_blank :: proc() -> Tile {
+    return {}
+}
+
+set_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32, val : Tile) {
     chunk_pos : TileChunkPosition = get_chunk_position_for(tile_map, abs_tile)
     tile_chunk : ^TileChunk = get_tile_chunk(tile_map, chunk_pos.tile_chunk)
 

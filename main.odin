@@ -126,7 +126,7 @@ init :: proc() {
         for x : u32 = 0; x < tile_map.tile_chunk_count.x; x += 1 {
             tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles = make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)
             for i: u32 = 0; i < tile_map.chunk_dim * tile_map.chunk_dim; i += 1 {
-                tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles[i] = { {77, 77, 77, 255} }
+                tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles[i] = tile_make([4]u8{77, 77, 77, 255})
             }
         }
     }
@@ -184,7 +184,7 @@ update :: proc() {
                 if (!(mouse_tile_pos.abs_tile in action.tile_history)) {
                     action.tile_history[mouse_tile_pos.abs_tile] = get_tile(tile_map, mouse_tile_pos.abs_tile)
                 }
-                set_tile_value(tile_map, mouse_tile_pos.abs_tile, {state.selected_color})
+                set_tile(tile_map, mouse_tile_pos.abs_tile, tile_make(state.selected_color))
             }
         }
         icon = .ICON_PENCIL
@@ -405,7 +405,7 @@ update :: proc() {
 
             if highligh_current_tile {
                 if (current_tile.y == mouse_tile_pos.abs_tile.y) && (current_tile.x == mouse_tile_pos.abs_tile.x) {
-                    current_tile_value = {state.selected_color, nil}
+                    current_tile_value = tile_make(state.selected_color)
                 }
             }
 
