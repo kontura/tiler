@@ -151,6 +151,8 @@ update :: proc() {
     state.temp_actions = make([dynamic]Action, context.temp_allocator)
     state.key_consumed = false
 
+    //TODO(amatej): somehow use the icons configured from config.odin,
+    //              but it is complicated by colorpicker
     icon : rl.GuiIconName
     //TODO(amatej): convert to temp action
     highligh_current_tile := false
@@ -353,47 +355,27 @@ update :: proc() {
         }
     }
 
-    // Keybinds
     if !state.key_consumed {
-        if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.H) {
-            state.camera_pos.rel_tile.x -= 10
-        } else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.L) {
-            state.camera_pos.rel_tile.x += 10
-        } else if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.J) {
-            state.camera_pos.rel_tile.y += 10
-        } else if rl.IsKeyDown(.UP) || rl.IsKeyDown(.K) {
-            state.camera_pos.rel_tile.y -= 10
-        } else if rl.IsKeyPressed(.P) {
-            state.active_tool = .BRUSH
-        } else if rl.IsKeyPressed(.R) {
-            state.active_tool = .RECTANGLE
-        } else if rl.IsKeyPressed(.C) {
-            state.active_tool = .CIRCLE
-        } else if rl.IsKeyPressed(.W) {
-            state.active_tool = .WALL
-        } else if rl.IsKeyPressed(.S) {
-            state.active_tool = .EDIT_TOKEN
-        } else if rl.IsKeyPressed(.M) {
-            state.active_tool = .MOVE_TOKEN
-        } else if rl.IsKeyPressed(.I) {
-            state.draw_initiative = !state.draw_initiative
-        } else if rl.IsKeyPressed(.G) {
-            state.draw_grid = !state.draw_grid
-        } else if rl.IsKeyReleased(.Z) && rl.IsKeyDown(.LEFT_CONTROL) {
-            if len(state.undo_history) > 0 {
-                action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                undo_action(state, tile_map, action)
-                pop_last_action(state, tile_map, &state.undo_history)
+        for c in config {
+            triggered : bool = true
+            for trigger in c.key_triggers {
+                trigger_proc : proc "c" (rl.KeyboardKey) -> bool
+                switch trigger.action {
+                case .DOWN: {
+                    trigger_proc = rl.IsKeyDown
+                }
+                case .RELEASED: {
+                    trigger_proc = rl.IsKeyReleased
+                }
+                case .PRESSED: {
+                    trigger_proc = rl.IsKeyPressed
+                }
+                }
+                triggered = triggered && trigger_proc(trigger.binding)
             }
-        } else if rl.IsKeyPressed(.LEFT_CONTROL) {
-            if state.previous_tool == nil{
-                state.previous_tool = state.active_tool
-                state.active_tool = .COLOR_PICKER
-            }
-        } else if rl.IsKeyReleased(.LEFT_CONTROL) {
-            if state.previous_tool != nil {
-                state.active_tool = state.previous_tool.?
-                state.previous_tool = nil
+            if triggered {
+                c.action(state)
+                break
             }
         }
     }
