@@ -12,6 +12,7 @@ Tool :: enum {
     EDIT_TOKEN,
     MOVE_TOKEN,
     WALL,
+    HELP,
 }
 
 dist :: proc($T: typeid, p1: [2]T, p2: [2]T) -> f32 {

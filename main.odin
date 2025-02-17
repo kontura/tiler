@@ -347,6 +347,8 @@ update :: proc() {
         }
         }
     }
+    case .HELP: {
+    }
     }
 
     if rl.IsMouseButtonReleased(.LEFT) {
@@ -499,6 +501,28 @@ update :: proc() {
 
     if state.active_tool == .COLOR_PICKER {
         rl.GuiColorPicker(state.gui_rectangles[.COLORPICKER], "color picker", (^rl.Color)(&state.selected_color))
+    }
+
+    if state.active_tool == .HELP {
+        rl.DrawRectangleV({30, 30},
+                         {f32(state.screen_width) - 60, f32(state.screen_height) - 60},
+                         {0, 0, 0, 155})
+        offset : i32 = 100
+        for c in config {
+            builder := strings.builder_make(context.temp_allocator)
+            for trigger in c.key_triggers {
+                strings.write_string(&builder, fmt.aprintf("%s (%s) + ", trigger.binding, trigger.action, allocator=context.temp_allocator))
+            }
+            strings.pop_rune(&builder)
+            strings.pop_rune(&builder)
+            rl.DrawText(strings.to_cstring(&builder), 100, offset, 18, rl.WHITE)
+            if c.icon != nil {
+                rl.GuiDrawIcon(c.icon, 500, offset, 1, rl.WHITE)
+            }
+            rl.DrawText(strings.clone_to_cstring(c.help, context.temp_allocator), 540, offset, 18, rl.WHITE)
+            offset += 30
+
+        }
     }
 
     //player_img := rl.LoadImageFromTexture(player_run_texture)
