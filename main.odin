@@ -17,6 +17,7 @@ GameState :: struct {
     screen_height: i32,
     camera_pos: TileMapPosition,
     selected_color: [4]u8,
+    selected_alpha: f32,
     gui_rectangles: map[Widget]rl.Rectangle,
     draw_grid: bool,
     draw_initiative: bool,
@@ -39,6 +40,7 @@ Widget :: enum {
     MAP,
     COLORPICKER,
     COLORBARHUE,
+    COLORBARALPHA,
     INITIATIVE,
 }
 
@@ -111,6 +113,7 @@ init :: proc() {
     state.draw_initiative = true
     state.active_tool = Tool.RECTANGLE
     state.selected_color.a = 255
+    state.selected_alpha = 1
     // entity id 0 is reserved for temporary preview entity
     state.max_entity_id = 1
 
@@ -144,6 +147,7 @@ update :: proc() {
     state.screen_width = rl.GetScreenWidth()
     state.gui_rectangles[.COLORPICKER] = {f32(state.screen_width - 230), 10, 200, 200}
     state.gui_rectangles[.COLORBARHUE] = {f32(state.screen_width - 30), 5, 30, 205}
+    state.gui_rectangles[.COLORBARALPHA] = {f32(state.screen_width - 230), 215, 200, 20}
     if state.draw_initiative {
         state.gui_rectangles[.INITIATIVE] = {0,0,120, f32(state.screen_height)}
     }
@@ -500,7 +504,9 @@ update :: proc() {
     }
 
     if state.active_tool == .COLOR_PICKER {
+        rl.GuiColorBarAlpha(state.gui_rectangles[.COLORBARALPHA], "color picker alpha", &state.selected_alpha)
         rl.GuiColorPicker(state.gui_rectangles[.COLORPICKER], "color picker", (^rl.Color)(&state.selected_color))
+        state.selected_color = rl.ColorAlpha(state.selected_color.xyzw, state.selected_alpha).xyzw
     }
 
     if state.active_tool == .HELP {

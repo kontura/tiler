@@ -3,6 +3,7 @@ package tiler
 import "core:math"
 import "core:fmt"
 import "core:strings"
+import rl "vendor:raylib"
 
 Tool :: enum {
     BRUSH,
@@ -22,6 +23,18 @@ dist :: proc($T: typeid, p1: [2]T, p2: [2]T) -> f32 {
     dy *= dy
 
     return math.sqrt_f32(dx + dy)
+}
+
+// Porter-Duff
+color_over :: proc(c1: [4]u8, c2: [4]u8) -> [4]u8 {
+    c1f := rl.ColorNormalize(c1.xyzw)
+    c2f := rl.ColorNormalize(c2.xyzw)
+    res: [4]f32
+    res.w = c1f.w + c2f.w * (1 - c1f.w)
+    res.x = (c1f.x * c1f.w + c2f.x * c2f.w * (1 - c1f.w)) / res.w
+    res.y = (c1f.y * c1f.w + c2f.y * c2f.w * (1 - c1f.w)) / res.w
+    res.z = (c1f.z * c1f.w + c2f.z * c2f.w * (1 - c1f.w)) / res.w
+    return rl.ColorFromNormalized(res).xyzw
 }
 
 wall_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
@@ -92,7 +105,8 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
 
             if (max_dist_in_feet > dist) {
                 action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
-                set_tile(tile_map, {x, y}, tile_make(state.selected_color))
+                set_tile(tile_map, {x, y}, tile_make_color_walls_colors(color_over(state.selected_color.xyzw, action.tile_history[{x,y}].color.xyzw),
+                                                                        action.tile_history[{x,y}].walls, action.tile_history[{x,y}].wall_colors))
             }
         }
     }
@@ -112,7 +126,8 @@ rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, 
     for y : u32 = start_tile.y; y <= end_tile.y; y += 1 {
         for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
             action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
-            set_tile(tile_map, {x, y}, tile_make(state.selected_color.xyzw, action.tile_history[{x,y}].walls, action.tile_history[{x,y}].wall_colors))
+            set_tile(tile_map, {x, y}, tile_make_color_walls_colors(color_over(state.selected_color.xyzw, action.tile_history[{x,y}].color.xyzw),
+                                                                    action.tile_history[{x,y}].walls, action.tile_history[{x,y}].wall_colors))
         }
     }
 
