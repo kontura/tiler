@@ -92,7 +92,7 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
     current_mouse_tile : TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
 
     max_dist_in_feet := tile_distance(tile_map, start_mouse_tile, current_mouse_tile)
-    max_dist_up := u32(math.ceil_f32(max_dist_in_feet))
+    max_dist_up := u32(math.ceil_f32(max_dist_in_feet/tile_map.tile_side_in_feet))
 
     start_tile : [2]u32 = {start_mouse_tile.abs_tile.x - max_dist_up, start_mouse_tile.abs_tile.y - max_dist_up}
     end_tile : [2]u32 = {start_mouse_tile.abs_tile.x + max_dist_up, start_mouse_tile.abs_tile.y + max_dist_up}
