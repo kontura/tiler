@@ -410,7 +410,7 @@ update :: proc() {
 
             if highligh_current_tile {
                 if (current_tile.y == mouse_tile_pos.abs_tile.y) && (current_tile.x == mouse_tile_pos.abs_tile.x) {
-                    current_tile_value = tile_make(state.selected_color)
+                    current_tile_value = tile_make(color_over(state.selected_color, current_tile_value.color))
                 }
             }
 
