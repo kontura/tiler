@@ -4,6 +4,8 @@ import "core:math"
 import "core:fmt"
 import "core:mem"
 import "core:strings"
+import "core:os"
+import "core:path/filepath"
 
 import rl "vendor:raylib"
 
@@ -34,6 +36,7 @@ GameState :: struct {
     // Valid only for one loop
     temp_actions: [dynamic]Action,
     key_consumed: bool,
+    textures: map[string]rl.Texture2D,
 }
 
 Widget :: enum {
@@ -97,7 +100,6 @@ tile_map: ^TileMap
 init :: proc() {
     rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "Tiler")
-    player_run_texture := rl.LoadTexture("wolf-token.png")
 
     // Since we don't run any simulation we don't have to run when there is not user input
     rl.EnableEventWaiting()
@@ -137,6 +139,28 @@ init :: proc() {
     tile_map.tile_side_in_pixels = 30
     tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
+
+    // Load all tokens from assets dir
+    f, err := os.open("assets")
+    defer os.close(f)
+    if err != os.ERROR_NONE {
+        fmt.eprintln("Could not open directory for reading", err)
+        os.exit(1)
+    }
+    fis: []os.File_Info
+    defer os.file_info_slice_delete(fis)
+    fis, err = os.read_dir(f, -1) // -1 reads all file infos
+    if err != os.ERROR_NONE {
+        fmt.eprintln("Could not read directory", err)
+        os.exit(2)
+    }
+
+    for fi in fis {
+        _, name := filepath.split(fi.fullpath)
+        if !fi.is_dir {
+            state.textures[strings.clone(filepath.stem(name))] = rl.LoadTexture(strings.clone_to_cstring(fi.fullpath, context.temp_allocator))
+        }
+    }
 }
 
 update :: proc() {
@@ -315,6 +339,12 @@ update :: proc() {
                     delete(token.name)
                     token.name = strings.to_string(builder)
                     state.key_consumed = true
+                    lowercase_name := strings.to_lower(token.name, context.temp_allocator)
+                    for key, &value in state.textures {
+                        if strings.has_prefix(lowercase_name, key) {
+                            token.texture = &value
+                        }
+                    }
                 }
             } else if rl.IsMouseButtonPressed(.LEFT) {
                 t := make_token(state.max_entity_id, mouse_tile_pos, state.selected_color)
@@ -442,7 +472,12 @@ update :: proc() {
     // draw tokens on map
     for _, &token in state.tokens {
         pos: rl.Vector2 = tile_map_to_screen_coord(token.position, state, tile_map)
-        rl.DrawCircleV(get_token_circle(tile_map, state, token), token.color.xyzw)
+        if (token.texture != nil) {
+            tex_pos, scale := get_token_texture_pos_size(tile_map, state, token)
+            rl.DrawTextureEx(token.texture^, tex_pos, 0, scale, rl.WHITE)
+        } else {
+            rl.DrawCircleV(get_token_circle(tile_map, state, token), token.color.xyzw)
+        }
         rl.DrawText(get_token_name_temp(&token), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 18, rl.WHITE)
         if (token.moved != 0) {
             rl.DrawText(u64_to_cstring(u64(f32(token.moved) * tile_map.tile_side_in_feet)), i32(pos.x)-tile_map.tile_side_in_pixels, i32(pos.y)-tile_map.tile_side_in_pixels, 28, rl.WHITE)
@@ -485,7 +520,14 @@ update :: proc() {
                     token := state.tokens[token_id]
                     token_size :=  f32(token.size) * 4 + 10
                     half_of_this_row := i32(token_size + 3)
-                    rl.DrawCircleV({30 + token_size/2, f32(row_offset + half_of_this_row)}, f32(token_size), token.color.xyzw)
+                    if (token.texture != nil) {
+                        pos : rl.Vector2 = {20, f32(row_offset)}
+                        // We assume token textures are squares
+                        scale := f32(22 + token.size*8)/f32(token.texture.width)
+                        rl.DrawTextureEx(token.texture^, pos, 0, scale, rl.WHITE)
+                    } else {
+                        rl.DrawCircleV({30 + token_size/2, f32(row_offset + half_of_this_row)}, f32(token_size), token.color.xyzw)
+                    }
                     rl.DrawText(get_token_name_temp(&token), i32(30 + token_size + 15), row_offset + i32(token_size) - 4, 18, rl.WHITE)
                     row_offset += 2 * half_of_this_row
                 }
@@ -531,11 +573,6 @@ update :: proc() {
         }
     }
 
-    //player_img := rl.LoadImageFromTexture(player_run_texture)
-    //rl.ImageResize(&player_img, tile_map.tile_side_in_pixels, tile_map.tile_side_in_pixels)
-    //scaled_player_texture := rl.LoadTextureFromImage(player_img)
-    //rl.DrawTextureV(scaled_player_texture, {64, 64}, rl.WHITE)
-
     mouse_pos: [2]f32 = rl.GetMousePosition()
     rl.GuiDrawIcon(icon, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
     if (tooltip != nil) {
@@ -554,6 +591,10 @@ update :: proc() {
 
 shutdown :: proc() {
     rl.CloseWindow()
+    for name, _ in state.textures {
+        delete(name)
+    }
+    delete(state.textures)
     delete(state.gui_rectangles)
     for _, &token_ids in state.initiative_to_tokens {
         delete(token_ids)

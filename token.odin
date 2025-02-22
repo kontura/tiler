@@ -2,6 +2,7 @@ package tiler
 
 import "core:math/rand"
 import "core:strings"
+import rl "vendor:raylib"
 
 Token :: struct {
     id: u64,
@@ -11,7 +12,7 @@ Token :: struct {
     moved: u32,
     size: i32,
     initiative: i32,
-    //TODO(amatej): image
+    texture: ^rl.Texture2D,
 }
 
 get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (center: [2]f32, radius: f32) {
@@ -26,6 +27,16 @@ get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) ->
     return center, radius
 }
 
+get_token_texture_pos_size :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (pos: [2]f32, scale: f32) {
+    pos = tile_map_to_screen_coord(token.position, state, tile_map)
+    pos -= f32(tile_map.tile_side_in_pixels)/2
+    pos -= f32(token.size / 2) * f32(tile_map.tile_side_in_pixels)
+    // We assume token textures are squares
+    scale = f32(tile_map.tile_side_in_pixels * token.size)/f32(token.texture.width)
+
+    return pos, scale
+}
+
 get_token_name_temp :: proc(token: ^Token) -> cstring {
     if (len(token.name) == 0) {
         return u64_to_cstring(token.id)
@@ -35,7 +46,7 @@ get_token_name_temp :: proc(token: ^Token) -> cstring {
 }
 
 make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name : string = "") -> Token {
-    return Token{id, pos, color, name, 0, 1, rand.int31_max(22) + 1}
+    return Token{id, pos, color, name, 0, 1, rand.int31_max(22) + 1, nil}
 }
 
 delete_token :: proc(token: ^Token) {
