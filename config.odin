@@ -38,13 +38,9 @@ move_down :: proc(state: ^GameState) {
 
 config : []Config = {
     {.ICON_ARROW_LEFT, {{.LEFT, .DOWN}}, "Move to the left", move_left},
-    {.ICON_ARROW_LEFT, {{.H, .DOWN}}, "Move to the left", move_left},
     {.ICON_ARROW_RIGHT, {{.RIGHT, .DOWN}}, "Move to the right", move_right},
-    {.ICON_ARROW_RIGHT, {{.L, .DOWN}}, "Move to the right", move_right},
     {.ICON_ARROW_UP, {{.UP, .DOWN}}, "Move up", move_up},
-    {.ICON_ARROW_UP, {{.K, .DOWN}}, "Move up", move_up},
     {.ICON_ARROW_DOWN, {{.DOWN, .DOWN}}, "Move down", move_down},
-    {.ICON_ARROW_DOWN, {{.J, .DOWN}}, "Move down", move_down},
     {.ICON_PENCIL, {{.P, .PRESSED}}, "Pintbrush", proc(state: ^GameState) {
         state.active_tool = .BRUSH}},
     {.ICON_BOX, {{.R, .PRESSED}}, "Rectangle tool", proc(state: ^GameState) {
