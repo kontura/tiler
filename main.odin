@@ -141,25 +141,10 @@ init :: proc() {
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
 
     // Load all tokens from assets dir
-    f, err := os.open("assets")
-    defer os.close(f)
-    if err != os.ERROR_NONE {
-        fmt.eprintln("Could not open directory for reading", err)
-        os.exit(1)
-    }
-    fis: []os.File_Info
-    defer os.file_info_slice_delete(fis)
-    fis, err = os.read_dir(f, -1) // -1 reads all file infos
-    if err != os.ERROR_NONE {
-        fmt.eprintln("Could not read directory", err)
-        os.exit(2)
-    }
-
-    for fi in fis {
-        _, name := filepath.split(fi.fullpath)
-        if !fi.is_dir {
-            state.textures[strings.clone(filepath.stem(name))] = rl.LoadTexture(strings.clone_to_cstring(fi.fullpath, context.temp_allocator))
-        }
+    for file_name in list_files_in_dir("assets") {
+        split := strings.split(file_name, ".", allocator=context.temp_allocator)
+        join := strings.join({"assets/", file_name}, "", allocator=context.temp_allocator)
+        state.textures[strings.clone(split[0])] = rl.LoadTexture(strings.clone_to_cstring(join, context.temp_allocator))
     }
 }
 
@@ -624,6 +609,33 @@ shutdown :: proc() {
 // `rl.SetWindowSize` call if you don't want a resizable game.
 parent_window_size_changed :: proc(w, h: int) {
 	rl.SetWindowSize(i32(w), i32(h))
+}
+
+list_files_in_dir :: proc(path: string) -> []string {
+    f, err := os.open(path)
+    defer os.close(f)
+    if err != os.ERROR_NONE {
+        fmt.eprintln("Could not open directory for reading", err)
+        os.exit(1)
+    }
+    fis: []os.File_Info
+    defer os.file_info_slice_delete(fis)
+    fis, err = os.read_dir(f, -1) // -1 reads all file infos
+    if err != os.ERROR_NONE {
+        fmt.eprintln("Could not read directory", err)
+        os.exit(2)
+    }
+
+    res := make([dynamic]string, context.temp_allocator)
+
+    for fi in fis {
+        _, name := filepath.split(fi.fullpath)
+        if !fi.is_dir {
+            append(&res, strings.clone(name, allocator=context.temp_allocator))
+        }
+    }
+
+    return res[:]
 }
 
 main :: proc() {
