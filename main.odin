@@ -274,7 +274,32 @@ update :: proc() {
     case .EDIT_TOKEN: {
         #partial switch selected_widget {
         case .MAP: {
-            if token != nil {
+            if rl.IsKeyPressed(.TAB) {
+                ids := make([dynamic]u64, context.temp_allocator)
+                for token_id in state.tokens {
+                    append(&ids, token_id)
+                }
+
+                if token != nil {
+                    for token_id, index in ids {
+                        if token.id == token_id {
+                            if index + 1 >= len(ids) {
+                                // if we have gone to the end, focus the first one
+                                next_token_pos := tile_map_to_screen_coord(state.tokens[ids[0]].position, state, tile_map)
+                                rl.SetMousePosition(i32(next_token_pos.x), i32(next_token_pos.y))
+                            } else {
+                                next_token_pos := tile_map_to_screen_coord(state.tokens[ids[index+1]].position, state, tile_map)
+                                rl.SetMousePosition(i32(next_token_pos.x), i32(next_token_pos.y))
+                            }
+                            break
+                        }
+                    }
+                } else {
+                    // if we don't have a token selected focus the first one
+                    next_token_pos := tile_map_to_screen_coord(state.tokens[ids[0]].position, state, tile_map)
+                    rl.SetMousePosition(i32(next_token_pos.x), i32(next_token_pos.y))
+                }
+            } else if token != nil {
                 key := rl.GetKeyPressed()
                 if rl.IsKeyDown(.BACKSPACE) {
                     key = .BACKSPACE
@@ -294,26 +319,6 @@ update :: proc() {
                     case .EQUAL: {
                         if token.size < 10 && (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
                             token.size += 1
-                        }
-                    }
-                    case .TAB: {
-                        ids := make([dynamic]u64, context.temp_allocator)
-                        for token_id in state.tokens {
-                            append(&ids, token_id)
-                        }
-
-                        for token_id, index in ids {
-                            if token.id == token_id {
-                                if index + 1 >= len(ids) {
-                                    // if we have gone to the end, focus the first one
-                                    next_token_pos := tile_map_to_screen_coord(state.tokens[ids[0]].position, state, tile_map)
-                                    rl.SetMousePosition(i32(next_token_pos.x), i32(next_token_pos.y))
-                                } else {
-                                    next_token_pos := tile_map_to_screen_coord(state.tokens[ids[index+1]].position, state, tile_map)
-                                    rl.SetMousePosition(i32(next_token_pos.x), i32(next_token_pos.y))
-                                }
-                                break
-                            }
                         }
                     }
                     case .RIGHT_SHIFT, .LEFT_SHIFT: {
