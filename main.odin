@@ -123,17 +123,10 @@ init :: proc() {
     tile_map.chunk_shift = 8
     tile_map.chunk_mask = (1 << tile_map.chunk_shift) - 1
     tile_map.chunk_dim = (1 << tile_map.chunk_shift)
-    tile_map.tile_chunk_count = {4, 4}
 
-    tile_map.tile_chunks = make([dynamic]TileChunk, tile_map.tile_chunk_count.x * tile_map.tile_chunk_count.y)
-
-    for y : u32 = 0; y < tile_map.tile_chunk_count.y; y += 1 {
-        for x : u32 = 0; x < tile_map.tile_chunk_count.x; x += 1 {
-            tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles = make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)
-            for i: u32 = 0; i < tile_map.chunk_dim * tile_map.chunk_dim; i += 1 {
-                tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles[i] = tile_make([4]u8{77, 77, 77, 255})
-            }
-        }
+    tile_map.tile_chunks[{0,0}] = {make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)}
+    for i: u32 = 0; i < tile_map.chunk_dim * tile_map.chunk_dim; i += 1 {
+        tile_map.tile_chunks[{0,0}].tiles[i] = tile_make([4]u8{77, 77, 77, 255})
     }
     tile_map.tile_side_in_feet = 5
     tile_map.tile_side_in_pixels = 30
@@ -598,10 +591,8 @@ shutdown :: proc() {
         delete_action(&state.undo_history[index])
     }
     delete(state.undo_history)
-    for y : u32 = 0; y < tile_map.tile_chunk_count.y; y += 1 {
-        for x : u32 = 0; x < tile_map.tile_chunk_count.x; x += 1 {
-            delete(tile_map.tile_chunks[y * tile_map.tile_chunk_count.x + x].tiles)
-        }
+    for key, _ in tile_map.tile_chunks {
+        delete(tile_map.tile_chunks[key].tiles)
     }
     delete(tile_map.tile_chunks)
 

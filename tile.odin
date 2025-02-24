@@ -49,9 +49,7 @@ TileMap :: struct {
     feet_to_pixels: f32,
     pixels_to_feet: f32,
 
-    tile_chunk_count: [2]u32,
-
-    tile_chunks: [dynamic]TileChunk,
+    tile_chunks: map[[2]u32]TileChunk,
 }
 
 tile_distance :: proc(tile_map: ^TileMap, p1: TileMapPosition, p2: TileMapPosition) -> f32 {
@@ -70,16 +68,16 @@ tile_pos_to_crossing_pos :: proc(p: TileMapPosition) -> [2]u32 {
 }
 
 get_tile_chunk :: proc(tile_map: ^TileMap, tile_chunk: [2]u32) -> ^TileChunk {
-    res : ^TileChunk
-
-    if ((tile_chunk.x >= 0) && (tile_chunk.x < tile_map.tile_chunk_count.x) &&
-        (tile_chunk.y >= 0) && (tile_chunk.y < tile_map.tile_chunk_count.y)) {
-
-        res = &tile_map.tile_chunks[tile_chunk.y * tile_map.tile_chunk_count.x + tile_chunk.x]
+    res, ok := &tile_map.tile_chunks[tile_chunk]
+    if ok {
+        return res
+    } else {
+        tile_map.tile_chunks[tile_chunk] = {make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)}
+        for i: u32 = 0; i < tile_map.chunk_dim * tile_map.chunk_dim; i += 1 {
+            tile_map.tile_chunks[tile_chunk].tiles[i] = tile_make([4]u8{77, 77, 77, 255})
+        }
+        return &tile_map.tile_chunks[tile_chunk]
     }
-    //TODO(amatej): We could possibly automatically create a new chunk when needed.
-
-    return res
 }
 
 get_chunk_position_for :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> TileChunkPosition {
