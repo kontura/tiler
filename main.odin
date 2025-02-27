@@ -124,10 +124,6 @@ init :: proc() {
     tile_map.chunk_mask = (1 << tile_map.chunk_shift) - 1
     tile_map.chunk_dim = (1 << tile_map.chunk_shift)
 
-    tile_map.tile_chunks[{0,0}] = {make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)}
-    for i: u32 = 0; i < tile_map.chunk_dim * tile_map.chunk_dim; i += 1 {
-        tile_map.tile_chunks[{0,0}].tiles[i] = tile_make([4]u8{77, 77, 77, 255})
-    }
     tile_map.tile_side_in_feet = 5
     tile_map.tile_side_in_pixels = 30
     tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
