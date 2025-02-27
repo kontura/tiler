@@ -1,7 +1,6 @@
 package tiler
 
 import "core:math"
-import "core:fmt"
 
 // TODO(amatej): add diagonal walls
 Direction :: enum{TOP, LEFT}

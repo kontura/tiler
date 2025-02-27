@@ -1,6 +1,5 @@
 package tiler
 import rl "vendor:raylib"
-import "core:fmt"
 
 KeyAction :: enum {
     DOWN,
