@@ -2,7 +2,6 @@ package tiler
 import "core:mem"
 
 Action :: struct {
-    tool: Tool,
     // previous tile state
     tile_history: map[[2]u32]Tile,
     // previous token position
