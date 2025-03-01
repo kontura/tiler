@@ -334,7 +334,7 @@ update :: proc() {
                 append(&state.initiative_to_tokens[t.initiative], t.id)
                 append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                action.token_history[state.max_entity_id] = nil
+                append(&action.token_created, state.max_entity_id)
                 state.max_entity_id += 1
             } else {
                 c := state.selected_color
@@ -342,7 +342,7 @@ update :: proc() {
                 state.tokens[0] = make_token(0, mouse_tile_pos, c, " ")
                 append(&state.temp_actions, make_action(context.temp_allocator))
                 temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-                temp_action.token_history[0] = nil
+                append(&temp_action.token_created, 0)
             }
             icon = .ICON_PLAYER
         }
