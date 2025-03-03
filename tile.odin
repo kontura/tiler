@@ -37,6 +37,18 @@ TileChunk :: struct {
     tiles: [dynamic] Tile,
 }
 
+// Compresed tile chunks are used when serializing only
+// It is much more efficient than dumping the entire raw
+// TileChunk
+CompressedTileChunk :: struct {
+    counts: [dynamic]u64,
+    tiles: [dynamic]Tile,
+}
+
+CompressedTileChunks :: struct {
+    tile_chunks: map[[2]u32]CompressedTileChunk,
+}
+
 TileMap :: struct {
     chunk_shift : u32,
     chunk_mask : u32,
@@ -168,4 +180,38 @@ recanonicalize_position :: proc(tile_map: ^TileMap, pos: TileMapPosition) -> Til
     recanonicalize_coord(tile_map, &res.abs_tile.y, &res.rel_tile.y)
 
     return res
+}
+
+// Compress tile chunk to arrays of counts of a given tile in the same order.
+// For example: the first counts[0] tiles are tiles[0] in given TileChunk.
+compress_tile_chunk :: proc(tile_chunk: ^TileChunk, allocator := context.temp_allocator) -> CompressedTileChunk {
+    counts := make([dynamic]u64, allocator)
+    tiles := make([dynamic]Tile, allocator)
+
+    counted_tile: Tile = tile_chunk.tiles[0]
+    count: u64 = 1
+    for i: int = 1; i < len(tile_chunk.tiles); i += 1 {
+        if counted_tile == tile_chunk.tiles[i] {
+            count += 1
+        } else {
+            append(&tiles, counted_tile)
+            append(&counts, count)
+            count = 1
+            counted_tile = tile_chunk.tiles[i]
+        }
+    }
+    append(&tiles, counted_tile)
+    append(&counts, count)
+
+    return {counts, tiles}
+}
+
+decompress_tile_chunk_into :: proc(ctc: ^CompressedTileChunk, tile_chunk: ^TileChunk) {
+    assert(len(tile_chunk.tiles) == 0)
+    assert(len(ctc.counts) == len(ctc.tiles))
+    for i: int = 0; i < len(ctc.counts); i += 1 {
+        for j: u64 = 0; j < ctc.counts[i]; j += 1 {
+            append(&tile_chunk.tiles, ctc.tiles[i])
+        }
+    }
 }
