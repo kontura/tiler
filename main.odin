@@ -330,38 +330,46 @@ update :: proc() {
                 }
             } else if token != nil {
                 key := rl.GetKeyPressed()
-                if rl.IsKeyDown(.BACKSPACE) {
-                    key = .BACKSPACE
-                }
-                byte : u8 = u8(key)
-                if byte != 0 {
-                    builder : strings.Builder
-                    strings.write_string(&builder, token.name)
-                    #partial switch key {
-                    case .BACKSPACE:
-                        strings.pop_rune(&builder)
-                    case .MINUS: {
-                        if token.size > 1 {
-                            token.size -= 1
+                if key == .DELETE {
+                    remove_token_by_id_from_initiative(state, token.id)
+                    delete_key(&state.tokens, token.id)
+                    append(&state.undo_history, Action{})
+                    action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                    append(&action.token_deleted, token^)
+                } else {
+                    if rl.IsKeyDown(.BACKSPACE) {
+                        key = .BACKSPACE
+                    }
+                    byte : u8 = u8(key)
+                    if byte != 0 {
+                        builder : strings.Builder
+                        strings.write_string(&builder, token.name)
+                        #partial switch key {
+                        case .BACKSPACE:
+                            strings.pop_rune(&builder)
+                        case .MINUS: {
+                            if token.size > 1 {
+                                token.size -= 1
+                            }
                         }
-                    }
-                    case .EQUAL: {
-                        if token.size < 10 && (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
-                            token.size += 1
+                        case .EQUAL: {
+                            if token.size < 10 && (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
+                                token.size += 1
+                            }
                         }
-                    }
-                    case .RIGHT_SHIFT, .LEFT_SHIFT: {
-                    }
-                    case:
-                        strings.write_byte(&builder, byte)
-                    }
-                    delete(token.name)
-                    token.name = strings.to_string(builder)
-                    state.key_consumed = true
-                    lowercase_name := strings.to_lower(token.name, context.temp_allocator)
-                    for key, &value in state.textures {
-                        if strings.has_prefix(lowercase_name, key) {
-                            token.texture = &value
+                        case .RIGHT_SHIFT, .LEFT_SHIFT: {
+                        }
+                        case:
+                            strings.write_byte(&builder, byte)
+                        }
+                        delete(token.name)
+                        token.name = strings.to_string(builder)
+                        state.key_consumed = true
+                        lowercase_name := strings.to_lower(token.name, context.temp_allocator)
+                        for key, &value in state.textures {
+                            if strings.has_prefix(lowercase_name, key) {
+                                token.texture = &value
+                            }
                         }
                     }
                 }

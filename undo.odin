@@ -8,6 +8,7 @@ Action :: struct {
     token_history: map[u64]TileMapPosition,
     token_initiative_history: map[u64][2]i32,
     token_created: [dynamic]u64,
+    token_deleted: [dynamic]Token,
 }
 
 make_action :: proc(allocator: mem.Allocator) -> Action {
@@ -16,6 +17,7 @@ make_action :: proc(allocator: mem.Allocator) -> Action {
     action.token_history.allocator = allocator
     action.token_initiative_history.allocator = allocator
     action.token_created.allocator = allocator
+    action.token_deleted.allocator = allocator
 
     return action
 }
@@ -25,6 +27,7 @@ delete_action :: proc(action: ^Action) {
     delete(action.token_history)
     delete(action.token_created)
     delete(action.token_initiative_history)
+    delete(action.token_deleted)
 }
 
 clear_action :: proc(action: ^Action) {
@@ -32,6 +35,7 @@ clear_action :: proc(action: ^Action) {
     clear(&action.token_history)
     clear(&action.token_created)
     clear(&action.token_initiative_history)
+    clear(&action.token_deleted)
 }
 
 undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
@@ -54,6 +58,10 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     for token_id in action.token_created {
         remove_token_by_id_from_initiative(state, token_id)
         delete_key(&state.tokens, token_id)
+    }
+    for &token in action.token_deleted {
+        state.tokens[token.id] =  token
+        append(&state.initiative_to_tokens[token.initiative], token.id)
     }
 }
 
