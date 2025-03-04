@@ -52,15 +52,7 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
         }
     }
     for token_id in action.token_created {
-        token := &state.tokens[token_id]
-        initiative_list, ok := &state.initiative_to_tokens[token.initiative]
-        if ok {
-            for val, i in initiative_list {
-                if val == token.id {
-                    unordered_remove(initiative_list, i)
-                }
-            }
-        }
+        remove_token_by_id_from_initiative(state, token_id)
         delete_key(&state.tokens, token_id)
     }
 }
