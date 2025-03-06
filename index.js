@@ -31,7 +31,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-// include: /tmp/tmpgwrcrar8.js
+// include: /tmp/tmp69yx47cl.js
 
   Module['expectedDataFileDownloads'] ??= 0;
   Module['expectedDataFileDownloads']++;
@@ -208,25 +208,25 @@ Module['FS_createPath']("/", "assets", true, true);
     }
 
     }
-    loadPackage({"files": [{"filename": "/assets/README.md", "start": 0, "end": 163}, {"filename": "/assets/ar100.png", "start": 163, "end": 45221}, {"filename": "/assets/cat.png", "start": 45221, "end": 45538}, {"filename": "/assets/daren.png", "start": 45538, "end": 95616}, {"filename": "/assets/rodion.png", "start": 95616, "end": 143069}, {"filename": "/assets/ut.png", "start": 143069, "end": 199857}, {"filename": "/assets/wold.png", "start": 199857, "end": 212937}], "remote_package_size": 212937});
+    loadPackage({"files": [{"filename": "/assets/README.md", "start": 0, "end": 163}, {"filename": "/assets/ar100.png", "start": 163, "end": 45221}, {"filename": "/assets/cat.png", "start": 45221, "end": 45538}, {"filename": "/assets/daren.png", "start": 45538, "end": 95616}, {"filename": "/assets/rodion.png", "start": 95616, "end": 143069}, {"filename": "/assets/ut.png", "start": 143069, "end": 199857}, {"filename": "/assets/wolf.png", "start": 199857, "end": 212937}], "remote_package_size": 212937});
 
   })();
 
-// end include: /tmp/tmpgwrcrar8.js
-// include: /tmp/tmpffwv2jmo.js
+// end include: /tmp/tmp69yx47cl.js
+// include: /tmp/tmp3runktac.js
 
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if (Module['$ww'] || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD)) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  // end include: /tmp/tmpffwv2jmo.js
-// include: /tmp/tmpidemdpdr.js
+  // end include: /tmp/tmp3runktac.js
+// include: /tmp/tmpm3v9zk2y.js
 
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach((task) => {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  // end include: /tmp/tmpidemdpdr.js
+  // end include: /tmp/tmpm3v9zk2y.js
 
 
 // Sometimes an existing Module object exists with properties
@@ -414,7 +414,7 @@ legacyModuleProp('asm', 'wasmExports');
 legacyModuleProp('readAsync', 'readAsync');
 legacyModuleProp('readBinary', 'readBinary');
 legacyModuleProp('setWindowTitle', 'setWindowTitle');
-var IDBFS = 'IDBFS is no longer included by default; build with -lidbfs.js';
+
 var PROXYFS = 'PROXYFS is no longer included by default; build with -lproxyfs.js';
 var WORKERFS = 'WORKERFS is no longer included by default; build with -lworkerfs.js';
 var FETCHFS = 'FETCHFS is no longer included by default; build with -lfetchfs.js';
@@ -503,6 +503,8 @@ var HEAP,
   HEAPF64;
 
 var runtimeInitialized = false;
+
+var runtimeExited = false;
 
 // include: URIUtils.js
 // Prefix of data URIs emitted by SINGLE_FILE and related options.
@@ -736,6 +738,17 @@ TTY.init();
   callRuntimeCallbacks(__ATINIT__);
 }
 
+function exitRuntime() {
+  assert(!runtimeExited);
+  checkStackCookie();
+  ___funcs_on_exit(); // Native atexit() functions
+  callRuntimeCallbacks(__ATEXIT__);
+  FS.quit();
+TTY.shutdown();
+IDBFS.quit();
+  runtimeExited = true;
+}
+
 function postRun() {
   checkStackCookie();
 
@@ -758,6 +771,7 @@ function addOnInit(cb) {
 }
 
 function addOnExit(cb) {
+  __ATEXIT__.unshift(cb);
 }
 
 function addOnPostRun(cb) {
@@ -878,6 +892,7 @@ function abort(what) {
 function createExportWrapper(name, nargs) {
   return (...args) => {
     assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
+    assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
     var f = wasmExports[name];
     assert(f, `exported native function \`${name}\` not found`);
     // Only assert for too many arguments. Too few can be valid since the missing arguments will be zero filled.
@@ -1046,48 +1061,50 @@ async function createWasm() {
 // === Body ===
 
 var ASM_CONSTS = {
-  145472: () => { if (document.fullscreenElement) return 1; },  
- 145518: () => { return document.getElementById('canvas').width; },  
- 145570: () => { return parseInt(document.getElementById('canvas').style.width); },  
- 145638: () => { document.exitFullscreen(); },  
- 145665: () => { setTimeout(function() { Module.requestFullscreen(false, false); }, 100); },  
- 145738: () => { if (document.fullscreenElement) return 1; },  
- 145784: () => { return document.getElementById('canvas').width; },  
- 145836: () => { return screen.width; },  
- 145861: () => { document.exitFullscreen(); },  
- 145888: () => { setTimeout(function() { Module.requestFullscreen(false, true); setTimeout(function() { canvas.style.width="unset"; }, 100); }, 100); },  
- 146021: () => { return window.innerWidth; },  
- 146047: () => { return window.innerHeight; },  
- 146074: () => { if (document.fullscreenElement) return 1; },  
- 146120: () => { return document.getElementById('canvas').width; },  
- 146172: () => { return parseInt(document.getElementById('canvas').style.width); },  
- 146240: () => { if (document.fullscreenElement) return 1; },  
- 146286: () => { return document.getElementById('canvas').width; },  
- 146338: () => { return screen.width; },  
- 146363: () => { return window.innerWidth; },  
- 146389: () => { return window.innerHeight; },  
- 146416: () => { if (document.fullscreenElement) return 1; },  
- 146462: () => { return document.getElementById('canvas').width; },  
- 146514: () => { return screen.width; },  
- 146539: () => { document.exitFullscreen(); },  
- 146566: () => { if (document.fullscreenElement) return 1; },  
- 146612: () => { return document.getElementById('canvas').width; },  
- 146664: () => { return parseInt(document.getElementById('canvas').style.width); },  
- 146732: () => { document.exitFullscreen(); },  
- 146759: ($0) => { document.getElementById('canvas').style.opacity = $0; },  
- 146817: () => { return screen.width; },  
- 146842: () => { return screen.height; },  
- 146868: () => { return window.screenX; },  
- 146895: () => { return window.screenY; },  
- 146922: ($0) => { navigator.clipboard.writeText(UTF8ToString($0)); },  
- 146975: ($0) => { document.getElementById("canvas").style.cursor = UTF8ToString($0); },  
- 147046: () => { document.getElementById('canvas').style.cursor = 'none'; },  
- 147103: ($0, $1, $2, $3) => { try { navigator.getGamepads()[$0].vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: $3, weakMagnitude: $1, strongMagnitude: $2 }); } catch (e) { try { navigator.getGamepads()[$0].hapticActuators[0].pulse($2, $3); } catch (e) { } } },  
- 147359: ($0) => { document.getElementById('canvas').style.cursor = UTF8ToString($0); },  
- 147430: () => { if (document.fullscreenElement) return 1; },  
- 147476: () => { return window.innerWidth; },  
- 147502: () => { return window.innerHeight; },  
- 147529: () => { if (document.pointerLockElement) return 1; }
+  154048: () => { console.log("mounting idbfs"); if (typeof FS === 'undefined' || typeof IDBFS === 'undefined') { console.error("FS or IDBFS is not available"); return; } FS.mkdir('/persist'); FS.mount(IDBFS, {autoPersist: true}, '/persist'); FS.syncfs(true, function(err) { if (err) { console.error("error syncing", err); } else { console.log("fs sync to great succ."); _load(); } }); },  
+ 154420: () => { FS.syncfs(false, function(err) { if (err) { console.error("error syncing", err); } else { console.log("fs sync to great succ."); } }); },  
+ 154559: () => { if (document.fullscreenElement) return 1; },  
+ 154605: () => { return document.getElementById('canvas').width; },  
+ 154657: () => { return parseInt(document.getElementById('canvas').style.width); },  
+ 154725: () => { document.exitFullscreen(); },  
+ 154752: () => { setTimeout(function() { Module.requestFullscreen(false, false); }, 100); },  
+ 154825: () => { if (document.fullscreenElement) return 1; },  
+ 154871: () => { return document.getElementById('canvas').width; },  
+ 154923: () => { return screen.width; },  
+ 154948: () => { document.exitFullscreen(); },  
+ 154975: () => { setTimeout(function() { Module.requestFullscreen(false, true); setTimeout(function() { canvas.style.width="unset"; }, 100); }, 100); },  
+ 155108: () => { return window.innerWidth; },  
+ 155134: () => { return window.innerHeight; },  
+ 155161: () => { if (document.fullscreenElement) return 1; },  
+ 155207: () => { return document.getElementById('canvas').width; },  
+ 155259: () => { return parseInt(document.getElementById('canvas').style.width); },  
+ 155327: () => { if (document.fullscreenElement) return 1; },  
+ 155373: () => { return document.getElementById('canvas').width; },  
+ 155425: () => { return screen.width; },  
+ 155450: () => { return window.innerWidth; },  
+ 155476: () => { return window.innerHeight; },  
+ 155503: () => { if (document.fullscreenElement) return 1; },  
+ 155549: () => { return document.getElementById('canvas').width; },  
+ 155601: () => { return screen.width; },  
+ 155626: () => { document.exitFullscreen(); },  
+ 155653: () => { if (document.fullscreenElement) return 1; },  
+ 155699: () => { return document.getElementById('canvas').width; },  
+ 155751: () => { return parseInt(document.getElementById('canvas').style.width); },  
+ 155819: () => { document.exitFullscreen(); },  
+ 155846: ($0) => { document.getElementById('canvas').style.opacity = $0; },  
+ 155904: () => { return screen.width; },  
+ 155929: () => { return screen.height; },  
+ 155955: () => { return window.screenX; },  
+ 155982: () => { return window.screenY; },  
+ 156009: ($0) => { navigator.clipboard.writeText(UTF8ToString($0)); },  
+ 156062: ($0) => { document.getElementById("canvas").style.cursor = UTF8ToString($0); },  
+ 156133: () => { document.getElementById('canvas').style.cursor = 'none'; },  
+ 156190: ($0, $1, $2, $3) => { try { navigator.getGamepads()[$0].vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: $3, weakMagnitude: $1, strongMagnitude: $2 }); } catch (e) { try { navigator.getGamepads()[$0].hapticActuators[0].pulse($2, $3); } catch (e) { } } },  
+ 156446: ($0) => { document.getElementById('canvas').style.cursor = UTF8ToString($0); },  
+ 156517: () => { if (document.fullscreenElement) return 1; },  
+ 156563: () => { return window.innerWidth; },  
+ 156589: () => { return window.innerHeight; },  
+ 156616: () => { if (document.pointerLockElement) return 1; }
 };
 
 // end include: preamble.js
@@ -1128,7 +1145,7 @@ var ASM_CONSTS = {
     }
   }
 
-  var noExitRuntime = Module['noExitRuntime'] || true;
+  var noExitRuntime = Module['noExitRuntime'] || false;
 
   var ptrToString = (ptr) => {
       assert(typeof ptr === 'number');
@@ -1885,6 +1902,13 @@ var ASM_CONSTS = {
   write(stream, buffer, offset, length, position, canOwn) {
           // The data buffer should be a typed array view
           assert(!(buffer instanceof ArrayBuffer));
+          // If the buffer is located in main memory (HEAP), and if
+          // memory can grow, we can't hold on to references of the
+          // memory buffer, as they may get invalidated. That means we
+          // need to do copy its contents.
+          if (buffer.buffer === HEAP8.buffer) {
+            canOwn = false;
+          }
   
           if (!length) return 0;
           var node = stream.node;
@@ -2059,6 +2083,379 @@ var ASM_CONSTS = {
   
   
   
+  
+  
+  
+  var IDBFS = {
+  dbs:{
+  },
+  indexedDB:() => {
+        if (typeof indexedDB != 'undefined') return indexedDB;
+        var ret = null;
+        if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+        assert(ret, 'IDBFS used, but indexedDB not supported');
+        return ret;
+      },
+  DB_VERSION:21,
+  DB_STORE_NAME:"FILE_DATA",
+  queuePersist:(mount) => {
+        function onPersistComplete() {
+          if (mount.idbPersistState === 'again') startPersist(); // If a new sync request has appeared in between, kick off a new sync
+          else mount.idbPersistState = 0; // Otherwise reset sync state back to idle to wait for a new sync later
+        }
+        function startPersist() {
+          mount.idbPersistState = 'idb'; // Mark that we are currently running a sync operation
+          IDBFS.syncfs(mount, /*populate:*/false, onPersistComplete);
+        }
+  
+        if (!mount.idbPersistState) {
+          // Programs typically write/copy/move multiple files in the in-memory
+          // filesystem within a single app frame, so when a filesystem sync
+          // command is triggered, do not start it immediately, but only after
+          // the current frame is finished. This way all the modified files
+          // inside the main loop tick will be batched up to the same sync.
+          mount.idbPersistState = setTimeout(startPersist, 0);
+        } else if (mount.idbPersistState === 'idb') {
+          // There is an active IndexedDB sync operation in-flight, but we now
+          // have accumulated more files to sync. We should therefore queue up
+          // a new sync after the current one finishes so that all writes
+          // will be properly persisted.
+          mount.idbPersistState = 'again';
+        }
+      },
+  mount:(mount) => {
+        // reuse core MEMFS functionality
+        var mnt = MEMFS.mount(mount);
+        // If the automatic IDBFS persistence option has been selected, then automatically persist
+        // all modifications to the filesystem as they occur.
+        if (mount?.opts?.autoPersist) {
+          mnt.idbPersistState = 0; // IndexedDB sync starts in idle state
+          var memfs_node_ops = mnt.node_ops;
+          mnt.node_ops = Object.assign({}, mnt.node_ops); // Clone node_ops to inject write tracking
+          mnt.node_ops.mknod = (parent, name, mode, dev) => {
+            var node = memfs_node_ops.mknod(parent, name, mode, dev);
+            // Propagate injected node_ops to the newly created child node
+            node.node_ops = mnt.node_ops;
+            // Remember for each IDBFS node which IDBFS mount point they came from so we know which mount to persist on modification.
+            node.idbfs_mount = mnt.mount;
+            // Remember original MEMFS stream_ops for this node
+            node.memfs_stream_ops = node.stream_ops;
+            // Clone stream_ops to inject write tracking
+            node.stream_ops = Object.assign({}, node.stream_ops);
+  
+            // Track all file writes
+            node.stream_ops.write = (stream, buffer, offset, length, position, canOwn) => {
+              // This file has been modified, we must persist IndexedDB when this file closes
+              stream.node.isModified = true;
+              return node.memfs_stream_ops.write(stream, buffer, offset, length, position, canOwn);
+            };
+  
+            // Persist IndexedDB on file close
+            node.stream_ops.close = (stream) => {
+              var n = stream.node;
+              if (n.isModified) {
+                IDBFS.queuePersist(n.idbfs_mount);
+                n.isModified = false;
+              }
+              if (n.memfs_stream_ops.close) return n.memfs_stream_ops.close(stream);
+            };
+  
+            return node;
+          };
+          // Also kick off persisting the filesystem on other operations that modify the filesystem.
+          mnt.node_ops.mkdir   = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.mkdir(...args));
+          mnt.node_ops.rmdir   = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.rmdir(...args));
+          mnt.node_ops.symlink = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.symlink(...args));
+          mnt.node_ops.unlink  = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.unlink(...args));
+          mnt.node_ops.rename  = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.rename(...args));
+        }
+        return mnt;
+      },
+  syncfs:(mount, populate, callback) => {
+        IDBFS.getLocalSet(mount, (err, local) => {
+          if (err) return callback(err);
+  
+          IDBFS.getRemoteSet(mount, (err, remote) => {
+            if (err) return callback(err);
+  
+            var src = populate ? remote : local;
+            var dst = populate ? local : remote;
+  
+            IDBFS.reconcile(src, dst, callback);
+          });
+        });
+      },
+  quit:() => {
+        Object.values(IDBFS.dbs).forEach((value) => value.close());
+        IDBFS.dbs = {};
+      },
+  getDB:(name, callback) => {
+        // check the cache first
+        var db = IDBFS.dbs[name];
+        if (db) {
+          return callback(null, db);
+        }
+  
+        var req;
+        try {
+          req = IDBFS.indexedDB().open(name, IDBFS.DB_VERSION);
+        } catch (e) {
+          return callback(e);
+        }
+        if (!req) {
+          return callback("Unable to connect to IndexedDB");
+        }
+        req.onupgradeneeded = (e) => {
+          var db = /** @type {IDBDatabase} */ (e.target.result);
+          var transaction = e.target.transaction;
+  
+          var fileStore;
+  
+          if (db.objectStoreNames.contains(IDBFS.DB_STORE_NAME)) {
+            fileStore = transaction.objectStore(IDBFS.DB_STORE_NAME);
+          } else {
+            fileStore = db.createObjectStore(IDBFS.DB_STORE_NAME);
+          }
+  
+          if (!fileStore.indexNames.contains('timestamp')) {
+            fileStore.createIndex('timestamp', 'timestamp', { unique: false });
+          }
+        };
+        req.onsuccess = () => {
+          db = /** @type {IDBDatabase} */ (req.result);
+  
+          // add to the cache
+          IDBFS.dbs[name] = db;
+          callback(null, db);
+        };
+        req.onerror = (e) => {
+          callback(e.target.error);
+          e.preventDefault();
+        };
+      },
+  getLocalSet:(mount, callback) => {
+        var entries = {};
+  
+        function isRealDir(p) {
+          return p !== '.' && p !== '..';
+        };
+        function toAbsolute(root) {
+          return (p) => PATH.join2(root, p);
+        };
+  
+        var check = FS.readdir(mount.mountpoint).filter(isRealDir).map(toAbsolute(mount.mountpoint));
+  
+        while (check.length) {
+          var path = check.pop();
+          var stat;
+  
+          try {
+            stat = FS.stat(path);
+          } catch (e) {
+            return callback(e);
+          }
+  
+          if (FS.isDir(stat.mode)) {
+            check.push(...FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
+          }
+  
+          entries[path] = { 'timestamp': stat.mtime };
+        }
+  
+        return callback(null, { type: 'local', entries: entries });
+      },
+  getRemoteSet:(mount, callback) => {
+        var entries = {};
+  
+        IDBFS.getDB(mount.mountpoint, (err, db) => {
+          if (err) return callback(err);
+  
+          try {
+            var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
+            transaction.onerror = (e) => {
+              callback(e.target.error);
+              e.preventDefault();
+            };
+  
+            var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
+            var index = store.index('timestamp');
+  
+            index.openKeyCursor().onsuccess = (event) => {
+              var cursor = event.target.result;
+  
+              if (!cursor) {
+                return callback(null, { type: 'remote', db, entries });
+              }
+  
+              entries[cursor.primaryKey] = { 'timestamp': cursor.key };
+  
+              cursor.continue();
+            };
+          } catch (e) {
+            return callback(e);
+          }
+        });
+      },
+  loadLocalEntry:(path, callback) => {
+        var stat, node;
+  
+        try {
+          var lookup = FS.lookupPath(path);
+          node = lookup.node;
+          stat = FS.stat(path);
+        } catch (e) {
+          return callback(e);
+        }
+  
+        if (FS.isDir(stat.mode)) {
+          return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode });
+        } else if (FS.isFile(stat.mode)) {
+          // Performance consideration: storing a normal JavaScript array to a IndexedDB is much slower than storing a typed array.
+          // Therefore always convert the file contents to a typed array first before writing the data to IndexedDB.
+          node.contents = MEMFS.getFileDataAsTypedArray(node);
+          return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode, 'contents': node.contents });
+        } else {
+          return callback(new Error('node type not supported'));
+        }
+      },
+  storeLocalEntry:(path, entry, callback) => {
+        try {
+          if (FS.isDir(entry['mode'])) {
+            FS.mkdirTree(path, entry['mode']);
+          } else if (FS.isFile(entry['mode'])) {
+            FS.writeFile(path, entry['contents'], { canOwn: true });
+          } else {
+            return callback(new Error('node type not supported'));
+          }
+  
+          FS.chmod(path, entry['mode']);
+          FS.utime(path, entry['timestamp'], entry['timestamp']);
+        } catch (e) {
+          return callback(e);
+        }
+  
+        callback(null);
+      },
+  removeLocalEntry:(path, callback) => {
+        try {
+          var stat = FS.stat(path);
+  
+          if (FS.isDir(stat.mode)) {
+            FS.rmdir(path);
+          } else if (FS.isFile(stat.mode)) {
+            FS.unlink(path);
+          }
+        } catch (e) {
+          return callback(e);
+        }
+  
+        callback(null);
+      },
+  loadRemoteEntry:(store, path, callback) => {
+        var req = store.get(path);
+        req.onsuccess = (event) => callback(null, event.target.result);
+        req.onerror = (e) => {
+          callback(e.target.error);
+          e.preventDefault();
+        };
+      },
+  storeRemoteEntry:(store, path, entry, callback) => {
+        try {
+          var req = store.put(entry, path);
+        } catch (e) {
+          callback(e);
+          return;
+        }
+        req.onsuccess = (event) => callback();
+        req.onerror = (e) => {
+          callback(e.target.error);
+          e.preventDefault();
+        };
+      },
+  removeRemoteEntry:(store, path, callback) => {
+        var req = store.delete(path);
+        req.onsuccess = (event) => callback();
+        req.onerror = (e) => {
+          callback(e.target.error);
+          e.preventDefault();
+        };
+      },
+  reconcile:(src, dst, callback) => {
+        var total = 0;
+  
+        var create = [];
+        Object.keys(src.entries).forEach((key) => {
+          var e = src.entries[key];
+          var e2 = dst.entries[key];
+          if (!e2 || e['timestamp'].getTime() != e2['timestamp'].getTime()) {
+            create.push(key);
+            total++;
+          }
+        });
+  
+        var remove = [];
+        Object.keys(dst.entries).forEach((key) => {
+          if (!src.entries[key]) {
+            remove.push(key);
+            total++;
+          }
+        });
+  
+        if (!total) {
+          return callback(null);
+        }
+  
+        var errored = false;
+        var db = src.type === 'remote' ? src.db : dst.db;
+        var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
+        var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
+  
+        function done(err) {
+          if (err && !errored) {
+            errored = true;
+            return callback(err);
+          }
+        };
+  
+        // transaction may abort if (for example) there is a QuotaExceededError
+        transaction.onerror = transaction.onabort = (e) => {
+          done(e.target.error);
+          e.preventDefault();
+        };
+  
+        transaction.oncomplete = (e) => {
+          if (!errored) {
+            callback(null);
+          }
+        };
+  
+        // sort paths in ascending order so directory entries are created
+        // before the files inside them
+        create.sort().forEach((path) => {
+          if (dst.type === 'local') {
+            IDBFS.loadRemoteEntry(store, path, (err, entry) => {
+              if (err) return done(err);
+              IDBFS.storeLocalEntry(path, entry, done);
+            });
+          } else {
+            IDBFS.loadLocalEntry(path, (err, entry) => {
+              if (err) return done(err);
+              IDBFS.storeRemoteEntry(store, path, entry, done);
+            });
+          }
+        });
+  
+        // sort paths in descending order so files are deleted before their
+        // parent directories
+        remove.sort().reverse().forEach((path) => {
+          if (dst.type === 'local') {
+            IDBFS.removeLocalEntry(path, done);
+          } else {
+            IDBFS.removeRemoteEntry(store, path, done);
+          }
+        });
+      },
+  };
   
   
   
@@ -3481,6 +3878,7 @@ var ASM_CONSTS = {
   
         FS.filesystems = {
           'MEMFS': MEMFS,
+          'IDBFS': IDBFS,
         };
       },
   init(input, output, error) {
@@ -4267,6 +4665,12 @@ var ASM_CONSTS = {
         }
         JSEvents.deferredCalls = [];
       },
+  registerRemoveEventListeners() {
+        if (!JSEvents.removeEventListenersRegistered) {
+          __ATEXIT__.push(JSEvents.removeAllEventListeners);
+          JSEvents.removeEventListenersRegistered = true;
+        }
+      },
   inEventHandler:0,
   deferredCalls:[],
   deferCall(targetFunction, precedence, argsList) {
@@ -4356,6 +4760,7 @@ var ASM_CONSTS = {
                                                eventHandler.eventListenerFunc,
                                                eventHandler.useCapture);
           JSEvents.eventHandlers.push(eventHandler);
+          JSEvents.registerRemoveEventListeners();
         } else {
           for (var i = 0; i < JSEvents.eventHandlers.length; ++i) {
             if (JSEvents.eventHandlers[i].target == eventHandler.target
@@ -6622,17 +7027,78 @@ var ASM_CONSTS = {
   var _emscripten_glViewport = _glViewport;
 
   var getHeapMax = () =>
-      HEAPU8.length;
+      // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
+      // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
+      // for any code that deals with heap sizes, which would require special
+      // casing all heap size related code to treat 0 specially.
+      2147483648;
   
   
-  var abortOnCannotGrowMemory = (requestedSize) => {
-      abort(`Cannot enlarge memory arrays to size ${requestedSize} bytes (OOM). Either (1) compile with -sINITIAL_MEMORY=X with X higher than the current value ${HEAP8.length}, (2) compile with -sALLOW_MEMORY_GROWTH which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with -sABORTING_MALLOC=0`);
+  var growMemory = (size) => {
+      var b = wasmMemory.buffer;
+      var pages = ((size - b.byteLength + 65535) / 65536) | 0;
+      try {
+        // round size grow request up to wasm page size (fixed 64KB per spec)
+        wasmMemory.grow(pages); // .grow() takes a delta compared to the previous size
+        updateMemoryViews();
+        return 1 /*success*/;
+      } catch(e) {
+        err(`growMemory: Attempted to grow heap from ${b.byteLength} bytes to ${size} bytes, but got error: ${e}`);
+      }
+      // implicit 0 return to save code size (caller will cast "undefined" into 0
+      // anyhow)
     };
   var _emscripten_resize_heap = (requestedSize) => {
       var oldSize = HEAPU8.length;
       // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
       requestedSize >>>= 0;
-      abortOnCannotGrowMemory(requestedSize);
+      // With multithreaded builds, races can happen (another thread might increase the size
+      // in between), so return a failure, and let the caller retry.
+      assert(requestedSize > oldSize);
+  
+      // Memory resize rules:
+      // 1.  Always increase heap size to at least the requested size, rounded up
+      //     to next page multiple.
+      // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap
+      //     geometrically: increase the heap size according to
+      //     MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%), At most
+      //     overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
+      // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap
+      //     linearly: increase the heap size by at least
+      //     MEMORY_GROWTH_LINEAR_STEP bytes.
+      // 3.  Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by
+      //     MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+      // 4.  If we were unable to allocate as much memory, it may be due to
+      //     over-eager decision to excessively reserve due to (3) above.
+      //     Hence if an allocation fails, cut down on the amount of excess
+      //     growth, in an attempt to succeed to perform a smaller allocation.
+  
+      // A limit is set for how much we can grow. We should not exceed that
+      // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
+      var maxHeapSize = getHeapMax();
+      if (requestedSize > maxHeapSize) {
+        err(`Cannot enlarge memory, requested ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
+        return false;
+      }
+  
+      // Loop through potential heap size increases. If we attempt a too eager
+      // reservation that fails, cut down on the attempted size and reserve a
+      // smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
+      for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+        var overGrownHeapSize = oldSize * (1 + 0.2 / cutDown); // ensure geometric growth
+        // but limit overreserving (default to capping at +96MB overgrowth at most)
+        overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + 100663296 );
+  
+        var newSize = Math.min(maxHeapSize, alignMemory(Math.max(requestedSize, overGrownHeapSize), 65536));
+  
+        var replacement = growMemory(newSize);
+        if (replacement) {
+  
+          return true;
+        }
+      }
+      err(`Failed to grow the heap from ${oldSize} bytes to ${newSize} bytes, not enough memory!`);
+      return false;
     };
 
   /** @suppress {checkTypes} */
@@ -7053,7 +7519,9 @@ var ASM_CONSTS = {
   var exitJS = (status, implicit) => {
       EXITSTATUS = status;
   
-      checkUnflushedContent();
+      if (!keepRuntimeAlive()) {
+        exitRuntime();
+      }
   
       // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
       if (keepRuntimeAlive() && !implicit) {
@@ -7067,6 +7535,9 @@ var ASM_CONSTS = {
   
   
   var maybeExit = () => {
+      if (runtimeExited) {
+        return;
+      }
       if (!keepRuntimeAlive()) {
         try {
           _exit(EXITSTATUS);
@@ -7076,7 +7547,7 @@ var ASM_CONSTS = {
       }
     };
   var callUserCallback = (func) => {
-      if (ABORT) {
+      if (runtimeExited || ABORT) {
         err('user callback triggered after runtime exited or application aborted.  Ignoring.');
         return;
       }
@@ -7088,11 +7559,20 @@ var ASM_CONSTS = {
       }
     };
   
+  
+  var runtimeKeepalivePush = () => {
+      runtimeKeepaliveCounter += 1;
+    };
+  
+  var runtimeKeepalivePop = () => {
+      assert(runtimeKeepaliveCounter > 0);
+      runtimeKeepaliveCounter -= 1;
+    };
   /** @param {number=} timeout */
   var safeSetTimeout = (func, timeout) => {
-      
+      runtimeKeepalivePush();
       return setTimeout(() => {
-        
+        runtimeKeepalivePop();
         callUserCallback(func);
       }, timeout);
     };
@@ -7810,6 +8290,7 @@ var ASM_CONSTS = {
       }
   
   
+  
   var _emscripten_set_main_loop_timing = (mode, value) => {
       MainLoop.timingMode = mode;
       MainLoop.timingValue = value;
@@ -7820,7 +8301,7 @@ var ASM_CONSTS = {
       }
   
       if (!MainLoop.running) {
-        
+        runtimeKeepalivePush();
         MainLoop.running = true;
       }
       if (mode == 0) {
@@ -7872,6 +8353,7 @@ var ASM_CONSTS = {
   
   
   
+  
     /**
      * @param {number=} arg
      * @param {boolean=} noSetTiming
@@ -7884,7 +8366,7 @@ var ASM_CONSTS = {
       var thisMainLoopId = MainLoop.currentlyRunningMainloop;
       function checkIsRunning() {
         if (thisMainLoopId < MainLoop.currentlyRunningMainloop) {
-          
+          runtimeKeepalivePop();
           maybeExit();
           return false;
         }
@@ -9899,6 +10381,8 @@ var wasmImports = {
 var wasmExports;
 createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
+var _load = Module['_load'] = createExportWrapper('load', 0);
+var _load_save = Module['_load_save'] = createExportWrapper('load_save', 0);
 var _default_context_ptr = Module['_default_context_ptr'] = createExportWrapper('default_context_ptr', 0);
 var _main_start = Module['_main_start'] = createExportWrapper('main_start', 0);
 var __start = Module['__start'] = createExportWrapper('_start', 0);
@@ -9906,9 +10390,11 @@ var __end = Module['__end'] = createExportWrapper('_end', 0);
 var _main_update = Module['_main_update'] = createExportWrapper('main_update', 0);
 var _main_end = Module['_main_end'] = createExportWrapper('main_end', 0);
 var _web_window_size_changed = Module['_web_window_size_changed'] = createExportWrapper('web_window_size_changed', 2);
+var _store_save = Module['_store_save'] = createExportWrapper('store_save', 0);
 var _malloc = createExportWrapper('malloc', 1);
 var _free = createExportWrapper('free', 1);
 var _fflush = createExportWrapper('fflush', 1);
+var ___funcs_on_exit = createExportWrapper('__funcs_on_exit', 0);
 var _strerror = createExportWrapper('strerror', 1);
 var _emscripten_stack_init = () => (_emscripten_stack_init = wasmExports['emscripten_stack_init'])();
 var _emscripten_stack_get_free = () => (_emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'])();
@@ -9941,7 +10427,6 @@ var missingLibrarySymbols = [
   'stackAlloc',
   'getTempRet0',
   'setTempRet0',
-  'growMemory',
   'inetPton4',
   'inetNtop4',
   'inetPton6',
@@ -9955,8 +10440,6 @@ var missingLibrarySymbols = [
   'autoResumeAudioContext',
   'getDynCaller',
   'dynCall',
-  'runtimeKeepalivePush',
-  'runtimeKeepalivePop',
   'asmjsMangle',
   'HandleAllocator',
   'getNativeTypeSize',
@@ -10087,7 +10570,7 @@ var unexportedSymbols = [
   'zeroMemory',
   'exitJS',
   'getHeapMax',
-  'abortOnCannotGrowMemory',
+  'growMemory',
   'ENV',
   'ERRNO_CODES',
   'strError',
@@ -10103,6 +10586,8 @@ var unexportedSymbols = [
   'jstoi_s',
   'handleException',
   'keepRuntimeAlive',
+  'runtimeKeepalivePush',
+  'runtimeKeepalivePop',
   'callUserCallback',
   'maybeExit',
   'asyncLoad',
@@ -10213,6 +10698,7 @@ var unexportedSymbols = [
   'allocateUTF8OnStack',
   'print',
   'printErr',
+  'IDBFS',
 ];
 unexportedSymbols.forEach(unexportedRuntimeSymbol);
 
@@ -10275,45 +10761,6 @@ function run() {
     doRun();
   }
   checkStackCookie();
-}
-
-function checkUnflushedContent() {
-  // Compiler settings do not allow exiting the runtime, so flushing
-  // the streams is not possible. but in ASSERTIONS mode we check
-  // if there was something to flush, and if so tell the user they
-  // should request that the runtime be exitable.
-  // Normally we would not even include flush() at all, but in ASSERTIONS
-  // builds we do so just for this check, and here we see if there is any
-  // content to flush, that is, we check if there would have been
-  // something a non-ASSERTIONS build would have not seen.
-  // How we flush the streams depends on whether we are in SYSCALLS_REQUIRE_FILESYSTEM=0
-  // mode (which has its own special function for this; otherwise, all
-  // the code is inside libc)
-  var oldOut = out;
-  var oldErr = err;
-  var has = false;
-  out = err = (x) => {
-    has = true;
-  }
-  try { // it doesn't matter if it fails
-    _fflush(0);
-    // also flush in the JS FS layer
-    ['stdout', 'stderr'].forEach((name) => {
-      var info = FS.analyzePath('/dev/' + name);
-      if (!info) return;
-      var stream = info.object;
-      var rdev = stream.rdev;
-      var tty = TTY.ttys[rdev];
-      if (tty?.output?.length) {
-        has = true;
-      }
-    });
-  } catch(e) {}
-  out = oldOut;
-  err = oldErr;
-  if (has) {
-    warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the Emscripten FAQ), or make sure to emit a newline when you printf etc.');
-  }
 }
 
 if (Module['preInit']) {
