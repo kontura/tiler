@@ -12,6 +12,8 @@ import rl "vendor:raylib"
 INIT_SCREEN_WIDTH: i32 : 1280
 INIT_SCREEN_HEIGHT: i32 : 720
 
+BUILDER_FAILED :: "Builder failed"
+
 INITIATIVE_COUNT : i32 : 50
 
 GameState :: struct {
@@ -50,7 +52,7 @@ Widget :: enum {
 u64_to_cstring :: proc(num: u64) -> cstring{
     builder := strings.builder_make(context.temp_allocator)
     strings.write_u64(&builder, num)
-    return strings.to_cstring(&builder)
+    return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
@@ -590,7 +592,7 @@ update :: proc() {
             }
             strings.pop_rune(&builder)
             strings.pop_rune(&builder)
-            rl.DrawText(strings.to_cstring(&builder), 100, offset, 18, rl.WHITE)
+            rl.DrawText(strings.to_cstring(&builder) or_else BUILDER_FAILED, 100, offset, 18, rl.WHITE)
             if c.icon != nil {
                 rl.GuiDrawIcon(c.icon, 500, offset, 1, rl.WHITE)
             }

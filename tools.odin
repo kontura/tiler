@@ -79,7 +79,7 @@ wall_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, a
 
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.aprintf("%.1f", drawn * 5, allocator=context.temp_allocator))
-    return strings.to_cstring(&builder)
+    return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
 circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
@@ -113,7 +113,7 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
 
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator=context.temp_allocator))
-    return strings.to_cstring(&builder)
+    return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
 rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action) -> cstring {
@@ -136,7 +136,7 @@ rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, 
                                                abs(f32(start_tile.x) - f32(end_tile.x) - 1) * 5,
                                                abs(f32(start_tile.y) - f32(end_tile.y) - 1) * 5,
                                                allocator=context.temp_allocator))
-    return strings.to_cstring(&builder)
+    return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
 find_at_initiative :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
