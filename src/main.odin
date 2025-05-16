@@ -2,10 +2,7 @@ package tiler
 
 import "core:math"
 import "core:fmt"
-import "core:mem"
 import "core:strings"
-import "core:os"
-import "core:path/filepath"
 
 import rl "vendor:raylib"
 
@@ -118,6 +115,17 @@ serialize_to_bytes :: proc(allocator := context.temp_allocator) -> []byte {
     return s.data[:]
 }
 
+load_save :: proc() {
+    data, ok := read_entire_file("/persist/tiler_save", context.temp_allocator)
+    if ok {
+        load_from_serialized(data)
+    }
+}
+
+store_save :: proc() {
+    write_entire_file("/persist/tiler_save", serialize_to_bytes())
+}
+
 load_from_serialized :: proc(data: []byte) {
     s: Serializer
     serializer_init_reader(&s, data)
@@ -171,11 +179,6 @@ init :: proc() {
         split := strings.split(file_name, ".", allocator=context.temp_allocator)
         join := strings.join({"assets/", file_name}, "", allocator=context.temp_allocator)
         state.textures[strings.clone(split[0])] = rl.LoadTexture(strings.clone_to_cstring(join, context.temp_allocator))
-    }
-
-    data, ok := os.read_entire_file("./save", context.temp_allocator)
-    if ok {
-        load_from_serialized(data)
     }
 }
 
@@ -619,8 +622,6 @@ update :: proc() {
 }
 
 shutdown :: proc() {
-    os.write_entire_file("./save", serialize_to_bytes())
-
     rl.CloseWindow()
     for name, _ in state.textures {
         delete(name)
@@ -681,4 +682,8 @@ main :: proc() {
         update()
     }
     shutdown()
+}
+
+should_run :: proc() -> bool {
+    return true
 }
