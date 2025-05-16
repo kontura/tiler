@@ -1,6 +1,8 @@
 package tiler
 import "core:mem"
 
+// TODO(amatej): store only deltas (difference) of new and old
+//               that way we can add/subtract when doing redo/undo
 Action :: struct {
     // previous tile state
     tile_history: map[[2]u32]Tile,
