@@ -55,7 +55,6 @@ ws : EMSCRIPTEN_WEBSOCKET_T
 doc: AMdocPtr
 syncState: AMsyncStatePtr
 socket_ready: bool = false
-update_counter: u32
 
 update_doc_from_game_state :: proc(doc: AMdocPtr) {
     token_list_result := AMmapPutObject(doc, AM_ROOT, AMstr("tokens"), .AM_OBJ_TYPE_LIST)
@@ -230,8 +229,6 @@ main_start :: proc "c" () {
             }
         }
 
-
-
         fmt.println("Setting up websocket")
         if (emscripten_websocket_is_supported() == 1) {
             attrs := EmscriptenWebSocketCreateAttributes{ "http://localhost:9010", nil, true }
@@ -251,9 +248,8 @@ main_start :: proc "c" () {
 main_update :: proc "c" () -> bool {
 	context = web_context
 	game.update()
-        if update_counter > 200 {
+        if game.state.needs_sync {
             update_doc_from_game_state(doc)
-            update_counter = 0
             if socket_ready {
                 finished : bool = false
                 msg_bytes : AMbyteSpan
@@ -265,11 +261,10 @@ main_update :: proc "c" () -> bool {
                         emscripten_websocket_send_binary(ws, msg_bytes.src, u32(msg_bytes.count))
                     }
                 }
+                game.state.needs_sync = false
             }
         }
 
-        //print_map_key_value(doc, "key")
-        update_counter += 1
 	return game.should_run()
 }
 

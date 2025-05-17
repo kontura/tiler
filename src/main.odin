@@ -36,6 +36,7 @@ GameState :: struct {
     temp_actions: [dynamic]Action,
     key_consumed: bool,
     textures: map[string]rl.Texture2D,
+    needs_sync: bool,
 }
 
 Widget :: enum {
@@ -163,6 +164,7 @@ init :: proc() {
     state.selected_alpha = 1
     // entity id 0 is reserved for temporary preview entity
     state.max_entity_id = 1
+    state.needs_sync = true
 
     tile_map = new(TileMap)
     tile_map.chunk_shift = 8
@@ -277,6 +279,7 @@ update :: proc() {
             if (state.tool_start_position != nil) {
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 move_token_tool(state, tile_map, rl.GetMousePosition(), action, false)
+                state.needs_sync = true
             }
         }
         icon = .ICON_TARGET_MOVE
@@ -338,6 +341,7 @@ update :: proc() {
                 if key == .DELETE {
                     remove_token_by_id_from_initiative(state, token.id)
                     delete_key(&state.tokens, token.id)
+                    state.needs_sync = true
                     append(&state.undo_history, Action{})
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     append(&action.token_deleted, token^)
@@ -381,6 +385,7 @@ update :: proc() {
             } else if rl.IsMouseButtonPressed(.LEFT) {
                 t := make_token(state.max_entity_id, mouse_tile_pos, state.selected_color)
                 state.tokens[t.id] =  t
+                state.needs_sync = true
                 if state.initiative_to_tokens[t.initiative] == nil {
                     state.initiative_to_tokens[t.initiative] = make([dynamic]u64)
                 }
