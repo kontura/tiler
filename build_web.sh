@@ -23,11 +23,14 @@ ODIN_PATH=$(odin root)
 
 cp $ODIN_PATH/core/sys/wasm/js/odin.js $OUT_DIR
 
-files="src/main_web/main.c $OUT_DIR/game.wasm.o ${ODIN_PATH}/vendor/raylib/wasm/libraylib.a ${ODIN_PATH}/vendor/raylib/wasm/libraygui.a /home/kontura/src/automerge/rust/target/wasm32-unknown-emscripten/debug/libautomerge_core.a"
+files="src/main_web/main.c $OUT_DIR/game.wasm.o ${ODIN_PATH}/vendor/raylib/wasm/libraylib.a \
+       ${ODIN_PATH}/vendor/raylib/wasm/libraygui.a /home/kontura/src/automerge/rust/target/wasm32-unknown-emscripten/debug/libautomerge_core.a"
 
 # index_template.html contains the javascript code that calls the procedures in
 # src/main_web/main_web.odin
-flags="-sUSE_GLFW=3 -sFORCE_FILESYSTEM -sWASM_BIGINT -sWARN_ON_UNDEFINED_SYMBOLS=0 -sASSERTIONS --shell-file src/main_web/index_template.html --preload-file assets -lidbfs.js -DPLATFORM_WEB -sALLOW_MEMORY_GROWTH -sEXIT_RUNTIME=1 -lwebsocket.js"
+flags="-sUSE_GLFW=3 -sFORCE_FILESYSTEM -sWASM_BIGINT -sWARN_ON_UNDEFINED_SYMBOLS=0 -sASSERTIONS \
+      --shell-file src/main_web/index_template.html --preload-file assets -lidbfs.js -DPLATFORM_WEB \
+      -sEXIT_RUNTIME=1 -lwebsocket.js -sINITIAL_HEAP=33554432"
 
 # For debugging: Add `-g` to `emcc` (gives better error callstack in chrome)
 emcc -o $OUT_DIR/index.html $files $flags
