@@ -159,7 +159,7 @@ init :: proc() {
     state.screen_width = rl.GetScreenWidth()
     state.draw_grid = true
     state.draw_initiative = true
-    state.active_tool = Tool.RECTANGLE
+    state.active_tool = Tool.MOVE_TOKEN
     state.selected_color.a = 255
     state.selected_alpha = 1
     // entity id 0 is reserved for temporary preview entity
