@@ -82,6 +82,7 @@ wall_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, a
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
+//TODO(amatej): circle tool doesn't work after looping tile_chunks
 circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
     start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
 
@@ -210,6 +211,7 @@ move_token_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32,
     }
 }
 
+//TODO(amatej): this doesn't work when we loop to previous tile_chunk
 DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32) -> u32 {
     temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
 
