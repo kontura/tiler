@@ -30,7 +30,7 @@ files="src/main_web/main.c $OUT_DIR/game.wasm.o ${ODIN_PATH}/vendor/raylib/wasm/
 # src/main_web/main_web.odin
 flags="-sUSE_GLFW=3 -sFORCE_FILESYSTEM -sWASM_BIGINT -sWARN_ON_UNDEFINED_SYMBOLS=0 -sASSERTIONS \
       --shell-file src/main_web/index_template.html --preload-file assets -lidbfs.js -DPLATFORM_WEB \
-      -sEXIT_RUNTIME=1 -lwebsocket.js -sINITIAL_HEAP=33554432"
+      -sEXIT_RUNTIME=1 -lwebsocket.js -sINITIAL_HEAP=32MB"
 
 # For debugging: Add `-g` to `emcc` (gives better error callstack in chrome)
 emcc -o $OUT_DIR/index.html $files $flags
