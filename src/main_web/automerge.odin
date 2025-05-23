@@ -153,10 +153,10 @@ foreign _ {
 }
 
 AMitemTo :: proc {
-    AMitemToStr,
     AMitemToUint,
     AMitemToInt,
     AMitemToString,
+    AMitemToBytes,
 }
 
 AMmapPut :: proc {
@@ -181,6 +181,15 @@ AMitemToString :: proc(item: AMitemPtr, value: ^string) -> c.bool {
     }
 }
 
+item_to_or_report :: proc(item: AMitemPtr, $T: typeid, loc := #caller_location) -> T {
+    value: T
+    if (!AMitemTo(item, &value)) {
+        fmt.println("Failed to convert item at: ", loc)
+    }
+    return value
+}
+
+
 odin_str :: proc(str: string) -> AMbyteSpan {
     span: AMbyteSpan
     span.src = raw_data(str)
@@ -195,47 +204,39 @@ decode_and_receive :: proc(
 	doc: AMdocPtr,
 	sync_state: AMsyncStatePtr,
 ) {
-	fmt.println("recieved count: ", byte_count)
-	decodeResult := AMsyncMessageDecode(data, byte_count)
-	if (AMresultStatus(decodeResult) != AMstatus.AM_STATUS_OK) {
-		fmt.println("error encountered decodeResult")
-	}
-	assert(AMitemValType(AMresultItem(decodeResult)) == .AM_VAL_TYPE_SYNC_MESSAGE)
+	decode_result := AMsyncMessageDecode(data, byte_count)
+        defer AMresultFree(decode_result)
+        item, _ := result_to_item(decode_result)
+	assert(AMitemValType(item) == .AM_VAL_TYPE_SYNC_MESSAGE)
+
 	automerge_msg: AMsyncMessagePtr
-	AMitemToSyncMessage(AMresultItem(decodeResult), &automerge_msg)
-	receiveResult := AMreceiveSyncMessage(doc, sync_state, automerge_msg)
-	//defer AMresultFree(receiveResult)
-	if (AMresultStatus(receiveResult) != AMstatus.AM_STATUS_OK) {
-		fmt.println("error encountered receiveResult")
-	}
+	AMitemToSyncMessage(item, &automerge_msg)
+	receive_result := AMreceiveSyncMessage(doc, sync_state, automerge_msg)
+	defer AMresultFree(receive_result)
+        verify_result(receive_result)
 }
 
-generate_and_encode :: proc(doc: AMdocPtr, sync_state: AMsyncStatePtr) -> (AMbyteSpan, bool) {
-	msgResult := AMgenerateSyncMessage(doc, sync_state)
-	//defer AMresultFree(msgResult)
-	if (AMresultStatus(msgResult) != AMstatus.AM_STATUS_OK) {
-		fmt.println("error encountered msgResult")
-	}
-	msgItem := AMresultItem(msgResult)
+verify_result :: proc(result: AMresultPtr, loc := #caller_location) -> (status:bool) {
+    if result == nil {
+        return false
+    }
+    if (AMresultStatus(result) != AMstatus.AM_STATUS_OK) {
+        fmt.println("Result status NOT ok: ", am_byte_span_to_string(AMresultError(result)), " at: ", loc)
+        return false
+    }
+    return true
+}
 
-        msg_bytes_empty: AMbyteSpan
-	#partial switch AMitemValType(msgItem) {
-	case .AM_VAL_TYPE_SYNC_MESSAGE:
-                msg_bytes_data: AMbyteSpan
-		msg: AMsyncMessagePtr
-		AMitemToSyncMessage(msgItem, &msg)
-		encodeResult := AMsyncMessageEncode(msg)
-		if !AMitemToBytes(AMresultItem(encodeResult), &msg_bytes_data) {
-			fmt.println("error encountered encodeResult")
-		}
-		fmt.println("generated count: ", msg_bytes_data.count)
-		return msg_bytes_data, false
+result_to_item :: proc(result: AMresultPtr, loc := #caller_location) -> (item: AMitemPtr, status: bool) {
+    verify_result(result, loc) or_return
+    item = AMresultItem(result)
+    return item, true
+}
 
-	case .AM_VAL_TYPE_VOID:
-		return msg_bytes_empty, true
-	}
-	assert(false)
-	return msg_bytes_empty, false
+result_to_objid :: proc(result: AMresultPtr, loc := #caller_location) -> (obj_id: AMobjIdPtr, status: bool) {
+    item := result_to_item(result, loc) or_return
+    obj_id = AMitemObjId(item)
+    return obj_id, true
 }
 
 am_byte_span_to_string :: proc(span: AMbyteSpan) -> string {
