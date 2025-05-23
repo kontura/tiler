@@ -143,7 +143,7 @@ load_from_serialized :: proc(data: []byte) {
     delete(compressed_chunks.tile_chunks)
 }
 
-init :: proc() {
+init :: proc(mobile := false) {
     rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "Tiler")
 
@@ -172,7 +172,11 @@ init :: proc() {
     tile_map.chunk_dim = (1 << tile_map.chunk_shift)
 
     tile_map.tile_side_in_feet = 5
-    tile_map.tile_side_in_pixels = 30
+    if mobile {
+        tile_map.tile_side_in_pixels = 120
+    } else {
+        tile_map.tile_side_in_pixels = 30
+    }
     tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
 

@@ -183,7 +183,7 @@ update_game_state_from_doc :: proc(doc: AMdocPtr) {
 }
 
 @export
-main_start :: proc "c" () {
+main_start :: proc "c" (mobile: bool) {
 	context = runtime.default_context()
 	// The WASM allocator doesn't seem to work properly in combination with
 	// emscripten. There is some kind of conflict with how the manage memory.
@@ -241,7 +241,7 @@ main_start :: proc "c" () {
         }
 
         mount_idbfs()
-	game.init()
+	game.init(mobile)
 }
 
 @export
