@@ -1,6 +1,7 @@
 package main_web
 
 import "core:c"
+import "core:strings"
 import "core:fmt"
 
 AMactorIdPtr :: rawptr
@@ -13,6 +14,10 @@ AMsyncMessagePtr :: rawptr
 
 // This actually is accessible struct
 AMitemsPtr :: rawptr
+
+AMitems :: struct {
+    details: [+8+8+8]u8,
+}
 
 AMstatus :: enum c.int {
 	AM_STATUS_OK = 0,
@@ -102,8 +107,10 @@ AMbyteSpan :: struct {
 @(default_calling_convention = "c")
 foreign _ {
 	AMcreate :: proc(actor_id: AMactorIdPtr) -> AMresultPtr ---
+        AMcommit :: proc(doc: AMdocPtr, message: AMbyteSpan, timestamp: ^i64) -> AMresultPtr ---
 	AMresultStatus :: proc(result: AMresultPtr) -> AMstatus ---
 	AMresultItem :: proc(result: AMresultPtr) -> AMitemPtr ---
+	AMresultItems :: proc(result: AMresultPtr) -> AMitems ---
 	AMitemToDoc :: proc(item: AMitemPtr, doc: ^AMdocPtr) -> c.bool ---
 
 	AMmapPutStr :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: AMbyteSpan) -> AMresultPtr ---
@@ -112,10 +119,13 @@ foreign _ {
         AMmapPutInt :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.int64_t) -> AMresultPtr ---
         AMmapPutUint :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.uint64_t) -> AMresultPtr ---
 
+        AMmapRange :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, begin: AMbyteSpan, end: AMbyteSpan, heads: AMitemsPtr) -> AMresultPtr ---
 	AMmapGet :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, heads: AMitemsPtr) -> AMresultPtr ---
+	AMmapDelete :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan) -> AMresultPtr ---
 
         AMlistPutObject :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, pos: c.size_t, insert: bool, obj_type: AMobjType) -> AMresultPtr ---
         AMlistGet :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, pos: c.size_t, heads: AMitemsPtr) -> AMresultPtr ---
+        AMlistRange :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, begin: c.size_t, end: c.size_t, heads: AMitemsPtr) -> AMresultPtr ---
 
 	AMresultError :: proc(result: AMresultPtr) -> AMbyteSpan ---
 
@@ -125,6 +135,8 @@ foreign _ {
 	AMitemToInt :: proc(item: AMitemPtr, value: ^c.int64_t) -> c.bool ---
 
         AMitemObjId :: proc(item: AMitemPtr) -> AMobjIdPtr ---
+        AMitemsNext :: proc(items: AMitemsPtr, n: c.ptrdiff_t) -> AMitemsPtr ---
+
         AMobjSize :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, heads: AMitemsPtr) -> c.size_t ---
 
 	AMresultFree :: proc(result: AMresultPtr) ---
@@ -138,6 +150,35 @@ foreign _ {
 	AMsyncMessageDecode :: proc(src: [^]u8, count: c.size_t) -> AMresultPtr ---
 	AMsyncMessageEncode :: proc(sync_message: AMsyncMessagePtr) -> AMresultPtr ---
 	AMitemValType :: proc(item: AMitemPtr) -> AMvalType ---
+}
+
+AMitemTo :: proc {
+    AMitemToStr,
+    AMitemToUint,
+    AMitemToInt,
+    AMitemToString,
+}
+
+AMmapPut :: proc {
+    AMmapPutStr,
+    AMmapPutString,
+    AMmapPutObject,
+    AMmapPutInt,
+    AMmapPutUint,
+}
+
+AMmapPutString :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: string) -> AMresultPtr {
+    return AMmapPutStr(doc, obj_id, key, AMstr(strings.clone_to_cstring(value, allocator=context.temp_allocator)))
+}
+
+AMitemToString :: proc(item: AMitemPtr, value: ^string) -> c.bool {
+    got: AMbyteSpan
+    if (AMitemToStr(item, &got)) {
+        value^ = string(got.src[:got.count])
+        return true
+    } else {
+        return false
+    }
 }
 
 odin_str :: proc(str: string) -> AMbyteSpan {
@@ -159,10 +200,11 @@ decode_and_receive :: proc(
 	if (AMresultStatus(decodeResult) != AMstatus.AM_STATUS_OK) {
 		fmt.println("error encountered decodeResult")
 	}
+	assert(AMitemValType(AMresultItem(decodeResult)) == .AM_VAL_TYPE_SYNC_MESSAGE)
 	automerge_msg: AMsyncMessagePtr
 	AMitemToSyncMessage(AMresultItem(decodeResult), &automerge_msg)
 	receiveResult := AMreceiveSyncMessage(doc, sync_state, automerge_msg)
-	defer AMresultFree(receiveResult)
+	//defer AMresultFree(receiveResult)
 	if (AMresultStatus(receiveResult) != AMstatus.AM_STATUS_OK) {
 		fmt.println("error encountered receiveResult")
 	}
@@ -176,37 +218,26 @@ generate_and_encode :: proc(doc: AMdocPtr, sync_state: AMsyncStatePtr) -> (AMbyt
 	}
 	msgItem := AMresultItem(msgResult)
 
-	msg_bytes: AMbyteSpan
+        msg_bytes_empty: AMbyteSpan
 	#partial switch AMitemValType(msgItem) {
 	case .AM_VAL_TYPE_SYNC_MESSAGE:
+                msg_bytes_data: AMbyteSpan
 		msg: AMsyncMessagePtr
 		AMitemToSyncMessage(msgItem, &msg)
 		encodeResult := AMsyncMessageEncode(msg)
-		if !AMitemToBytes(AMresultItem(encodeResult), &msg_bytes) {
+		if !AMitemToBytes(AMresultItem(encodeResult), &msg_bytes_data) {
 			fmt.println("error encountered encodeResult")
 		}
-		fmt.println("generated count: ", msg_bytes.count)
-		return msg_bytes, false
+		fmt.println("generated count: ", msg_bytes_data.count)
+		return msg_bytes_data, false
 
 	case .AM_VAL_TYPE_VOID:
-		return msg_bytes, true
+		return msg_bytes_empty, true
 	}
 	assert(false)
-	return msg_bytes, false
+	return msg_bytes_empty, false
 }
 
-print_map_key_value :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring) {
-	getResult: AMresultPtr = AMmapGet(doc, obj_id, AMstr(key), c.NULL)
-	defer AMresultFree(getResult)
-	if (AMresultStatus(getResult) != AMstatus.AM_STATUS_OK) {
-		fmt.println("error encountered getResult")
-	}
-
-	got: AMbyteSpan
-	if (AMitemToStr(AMresultItem(getResult), &got)) {
-		fmt.println("value under ", key, " key: ", string(got.src[:got.count]))
-	} else {
-		fmt.println("expected to read a string")
-	}
-
+am_byte_span_to_string :: proc(span: AMbyteSpan) -> string {
+    return string(span.src[:span.count])
 }
