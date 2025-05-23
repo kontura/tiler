@@ -30,7 +30,6 @@ Tile :: struct {
     color: [4]u8,
     walls: WallSet,
     wall_colors: [Direction][4]u8,
-
 }
 
 TileChunk :: struct {
@@ -61,6 +60,30 @@ TileMap :: struct {
     pixels_to_feet: f32,
 
     tile_chunks: map[[2]u32]TileChunk,
+}
+
+tile_add :: proc(t1: ^Tile, t2: ^Tile) -> Tile {
+    delta: Tile
+    delta.color = t1.color + t2.color
+
+    delta.walls = t1.walls + t2.walls
+
+    delta.wall_colors[Direction.TOP] = t1.wall_colors[Direction.TOP] + t2.wall_colors[Direction.TOP]
+    delta.wall_colors[Direction.LEFT] = t1.wall_colors[Direction.LEFT] + t2.wall_colors[Direction.LEFT]
+
+    return delta
+}
+
+tile_subtract :: proc(t1: ^Tile, t2: ^Tile) -> Tile {
+    delta: Tile
+    delta.color = t1.color - t2.color
+
+    delta.walls = t1.walls - t2.walls
+
+    delta.wall_colors[Direction.TOP] = t1.wall_colors[Direction.TOP] - t2.wall_colors[Direction.TOP]
+    delta.wall_colors[Direction.LEFT] = t1.wall_colors[Direction.LEFT] - t2.wall_colors[Direction.LEFT]
+
+    return delta
 }
 
 tile_distance :: proc(tile_map: ^TileMap, p1: TileMapPosition, p2: TileMapPosition) -> f32 {

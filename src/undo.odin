@@ -1,12 +1,11 @@
 package tiler
 import "core:mem"
 
-// TODO(amatej): store only deltas (difference) of new and old
-//               that way we can add/subtract when doing redo/undo
 Action :: struct {
-    // previous tile state
+    //TODO(amatej): I could store these more reasonably, like start, end, tool
+    // tile delta old_tile - new_tile
     tile_history: map[[2]u32]Tile,
-    // previous token position
+    // previous token position (#TODO(amatej): convert to deltas)
     token_history: map[u64]TileMapPosition,
     token_initiative_history: map[u64][2]i32,
     token_created: [dynamic]u64,
@@ -42,7 +41,8 @@ clear_action :: proc(action: ^Action) {
 
 undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     for abs_tile, &tile in action.tile_history {
-        set_tile(tile_map, abs_tile, tile_make(tile.color, tile.walls, tile.wall_colors))
+        old_tile := get_tile(tile_map, abs_tile)
+        set_tile(tile_map, abs_tile, tile_add(&old_tile, &tile))
     }
     for token_id, &pos in action.token_history {
         token := &state.tokens[token_id]
@@ -65,6 +65,35 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
         state.tokens[token.id] =  token
         append(&state.initiative_to_tokens[token.initiative], token.id)
     }
+}
+
+redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
+    for abs_tile, &tile in action.tile_history {
+        old_tile := get_tile(tile_map, abs_tile)
+        set_tile(tile_map, abs_tile, tile_subtract(&old_tile, &tile))
+    }
+    //TODO(amatej): possibly add token actions once they do deltas
+   // for token_id, &pos in action.token_history {
+   //     token := &state.tokens[token_id]
+   //     token.position = pos
+   // }
+   // for token_id, &init_pos in action.token_initiative_history {
+   //     remove_token_by_id_from_initiative(state, token_id)
+   //     tokens := &state.initiative_to_tokens[init_pos.x]
+   //     if i32(len(tokens)) > init_pos.y {
+   //         inject_at(tokens, init_pos.y, token_id)
+   //     } else {
+   //         append(tokens, token_id)
+   //     }
+   // }
+   // for token_id in action.token_created {
+   //     remove_token_by_id_from_initiative(state, token_id)
+   //     delete_key(&state.tokens, token_id)
+   // }
+   // for &token in action.token_deleted {
+   //     state.tokens[token.id] =  token
+   //     append(&state.initiative_to_tokens[token.initiative], token.id)
+   // }
 }
 
 clear_last_action :: proc(state: ^GameState, tile_map:  ^TileMap) {

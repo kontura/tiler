@@ -59,21 +59,23 @@ wall_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, a
         y : u32 = start_crossing_pos.y
         drawn = f32(end.x - start.x)
         for x : u32 = start.x; x < end.x; x += 1 {
-            action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
-            t := get_tile(tile_map, {x, y})
-            t.walls += {Direction.TOP}
-            t.wall_colors[Direction.TOP] = state.selected_color
-            set_tile(tile_map, {x, y}, t)
+            old_tile := get_tile(tile_map, {x, y})
+            new_tile := old_tile
+            new_tile.walls += {Direction.TOP}
+            new_tile.wall_colors[Direction.TOP] = state.selected_color
+            action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+            set_tile(tile_map, {x, y}, new_tile)
         }
     } else {
         x : u32 = start_crossing_pos.x
         drawn = f32(end.y - start.y)
         for y : u32 = start.y; y < end.y; y += 1 {
-            action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
-            t := get_tile(tile_map, {x, y})
-            t.walls += {Direction.LEFT}
-            t.wall_colors[Direction.LEFT] = state.selected_color
-            set_tile(tile_map, {x, y}, t)
+            old_tile := get_tile(tile_map, {x, y})
+            new_tile := old_tile
+            new_tile.walls += {Direction.LEFT}
+            new_tile.wall_colors[Direction.LEFT] = state.selected_color
+            action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+            set_tile(tile_map, {x, y}, new_tile)
         }
     }
 
@@ -105,9 +107,10 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
             dist := tile_distance(tile_map, temp_tile_pos, start_mouse_tile)
 
             if (max_dist_in_feet > dist) {
-                action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
-                set_tile(tile_map, {x, y}, tile_make_color_walls_colors(color_over(state.selected_color.xyzw, action.tile_history[{x,y}].color.xyzw),
-                                                                        action.tile_history[{x,y}].walls, action.tile_history[{x,y}].wall_colors))
+                old_tile := get_tile(tile_map, {x, y})
+                new_tile := tile_make_color_walls_colors(color_over(state.selected_color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
+                action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+                set_tile(tile_map, {x, y}, new_tile)
             }
         }
     }
@@ -126,9 +129,10 @@ rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, 
 
     for y : u32 = start_tile.y; y <= end_tile.y; y += 1 {
         for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
-            action.tile_history[{x,y}] = get_tile(tile_map, {x, y})
-            set_tile(tile_map, {x, y}, tile_make_color_walls_colors(color_over(state.selected_color.xyzw, action.tile_history[{x,y}].color.xyzw),
-                                                                    action.tile_history[{x,y}].walls, action.tile_history[{x,y}].wall_colors))
+            old_tile := get_tile(tile_map, {x, y})
+            new_tile := tile_make_color_walls_colors(color_over(state.selected_color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
+            action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+            set_tile(tile_map, {x, y}, new_tile)
         }
     }
 
@@ -234,10 +238,11 @@ DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32) -> u
     last_pos: [2]u32 = {u32(math.round_f32(X)), u32(math.round_f32(Y))}
     for i: i32 = 0; i <= steps; i += 1 {
         pos: [2]u32 = {u32(math.round_f32(X)), u32(math.round_f32(Y))}
-        temp_action.tile_history[pos] = get_tile(tile_map, pos)
-        tile := get_tile(tile_map, pos)
-        tile.color.g += 30
-        set_tile(tile_map, pos, tile)
+        old_tile := get_tile(tile_map, pos)
+        green_tile := old_tile
+        green_tile.color.g += 30
+        temp_action.tile_history[pos] = tile_subtract(&old_tile, &green_tile)
+        set_tile(tile_map, pos, green_tile)
         X += Xinc // increment in x at each step
         Y += Yinc // increment in y at each step
 
