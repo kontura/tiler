@@ -2,8 +2,15 @@ package tiler
 import "core:mem"
 
 Action :: struct {
-    //TODO(amatej): I could store these more reasonably, like start, end, tool
-    // tile delta old_tile - new_tile
+    tool: Tool,
+    start: TileMapPosition,
+    end: TileMapPosition,
+    color: [4]u8,
+
+    // tile delta old_tile - new_tile (this could be a nice cache? because unding an action
+    // stored in input format would require to redo all actions from the start, but once done
+    // we could store more state in this so we don't have to always redo) Although undo is typically
+    // done just once? But the starting actions we get re-done many times..
     tile_history: map[[2]u32]Tile,
     // previous token position (#TODO(amatej): convert to deltas)
     token_history: map[u64]TileMapPosition,
@@ -68,9 +75,13 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
 }
 
 redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
-    for abs_tile, &tile in action.tile_history {
-        old_tile := get_tile(tile_map, abs_tile)
-        set_tile(tile_map, abs_tile, tile_subtract(&old_tile, &tile))
+    if action.tool == .RECTANGLE {
+        rectangle_tool(action.start, action.end, action.color, tile_map, nil)
+    } else {
+        for abs_tile, &tile in action.tile_history {
+            old_tile := get_tile(tile_map, abs_tile)
+            set_tile(tile_map, abs_tile, tile_subtract(&old_tile, &tile))
+        }
     }
     //TODO(amatej): possibly add token actions once they do deltas
    // for token_id, &pos in action.token_history {

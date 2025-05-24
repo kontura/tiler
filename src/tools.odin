@@ -128,7 +128,9 @@ rectangle_tool :: proc(start_mouse_tile: TileMapPosition, end_mouse_tile: TileMa
         for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
             old_tile := get_tile(tile_map, {x, y})
             new_tile := tile_make_color_walls_colors(color_over(selected_color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
-            action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+            if action != nil{
+                action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+            }
             set_tile(tile_map, {x, y}, new_tile)
         }
     }

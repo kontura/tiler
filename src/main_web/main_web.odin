@@ -111,7 +111,7 @@ onmessage :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSo
     return true
 }
 
-update_only_on_change :: proc(obj: am.AMobjIdPtr, key: cstring, $T: typeid, new: T, loc := #caller_location) -> bool {
+update_only_on_change :: proc(obj: am.AMobjIdPtr, key: cstring, new: $T, loc := #caller_location) -> bool {
     using am
     result := AMmapGet(doc, obj, AMstr(key), c.NULL)
     item := result_to_item(result) or_return
@@ -176,39 +176,55 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
         defer AMresultFree(put_result)
         action_map := result_to_objid(put_result) or_return
 
-        tile_history_result := AMmapPutObject(doc, action_map, AMstr("tile_history"), .AM_OBJ_TYPE_LIST)
-        defer AMresultFree(tile_history_result)
-        tile_history := result_to_objid(tile_history_result) or_return
+        if action.tool == .RECTANGLE {
+            put_map_value(doc, action_map, "start_x", u64(action.start.abs_tile.x)) or_return
+            put_map_value(doc, action_map, "start_y", u64(action.start.abs_tile.y)) or_return
 
-        for pos, &tile in action.tile_history {
-            tile_result := AMlistPutObject(doc, tile_history, c.SIZE_MAX, true, .AM_OBJ_TYPE_MAP)
-            defer AMresultFree(tile_result)
-            tile_map := result_to_objid(tile_result) or_return
+            put_map_value(doc, action_map, "end_x", u64(action.end.abs_tile.x)) or_return
+            put_map_value(doc, action_map, "end_y", u64(action.end.abs_tile.y)) or_return
 
-            x_result := AMmapPutUint(doc, tile_map, AMstr("x"), u64(pos.x))
-            defer AMresultFree(x_result)
-            verify_result(x_result) or_return
-
-            y_result := AMmapPutUint(doc, tile_map, AMstr("y"), u64(pos.y))
-            defer AMresultFree(y_result)
-            verify_result(y_result) or_return
 
             color_bytes: AMbyteSpan
             color_bytes.count = 4
-            color_bytes.src = &tile.color[0]
-            color_result := AMmapPutBytes(doc, tile_map, AMstr("color"), color_bytes)
+            color_bytes.src = &action.color[0]
+            color_result := AMmapPutBytes(doc, action_map, AMstr("color"), color_bytes)
             defer AMresultFree(color_result)
             verify_result(color_result)
+        } else {
+            tile_history_result := AMmapPutObject(doc, action_map, AMstr("tile_history"), .AM_OBJ_TYPE_LIST)
+            defer AMresultFree(tile_history_result)
+            tile_history := result_to_objid(tile_history_result) or_return
+            for pos, &tile in action.tile_history {
+                tile_result := AMlistPutObject(doc, tile_history, c.SIZE_MAX, true, .AM_OBJ_TYPE_MAP)
+                defer AMresultFree(tile_result)
+                tile_map := result_to_objid(tile_result) or_return
 
-            for wall in tile.walls {
-                wall_str, ok := fmt.enum_value_to_string(wall)
-                if ok {
-                    wall_color_bytes: AMbyteSpan
-                    wall_color_bytes.count = 4
-                    wall_color_bytes.src = &tile.wall_colors[wall][0]
-                    wall_color_result := AMmapPutBytes(doc, tile_map, AMstr(strings.clone_to_cstring(wall_str, allocator=context.temp_allocator)), wall_color_bytes)
-                    defer AMresultFree(wall_color_result)
-                    verify_result(wall_color_result) or_return
+
+                x_result := AMmapPutUint(doc, tile_map, AMstr("x"), u64(pos.x))
+                defer AMresultFree(x_result)
+                verify_result(x_result) or_return
+
+                y_result := AMmapPutUint(doc, tile_map, AMstr("y"), u64(pos.y))
+                defer AMresultFree(y_result)
+                verify_result(y_result) or_return
+
+                color_bytes: AMbyteSpan
+                color_bytes.count = 4
+                color_bytes.src = &tile.color[0]
+                color_result := AMmapPutBytes(doc, tile_map, AMstr("color"), color_bytes)
+                defer AMresultFree(color_result)
+                verify_result(color_result)
+
+                for wall in tile.walls {
+                    wall_str, ok := fmt.enum_value_to_string(wall)
+                    if ok {
+                        wall_color_bytes: AMbyteSpan
+                        wall_color_bytes.count = 4
+                        wall_color_bytes.src = &tile.wall_colors[wall][0]
+                        wall_color_result := AMmapPutBytes(doc, tile_map, AMstr(strings.clone_to_cstring(wall_str, allocator=context.temp_allocator)), wall_color_bytes)
+                        defer AMresultFree(wall_color_result)
+                        verify_result(wall_color_result) or_return
+                    }
                 }
             }
         }
@@ -249,11 +265,11 @@ update_doc_tokens :: proc(doc: am.AMdocPtr, tokens: ^map[u64]game.Token) -> bool
             token_id = AMitemObjId(token_item)
         }
 
-        update_only_on_change(token_id, "name", string, token.name) or_return
-        update_only_on_change(token_id, "initiative", i64, i64(token.initiative)) or_return
-        update_only_on_change(token_id, "size", i64, i64(token.size)) or_return
-        update_only_on_change(token_id, "x", u64, u64(token.position.abs_tile.x)) or_return
-        update_only_on_change(token_id, "y", u64, u64(token.position.abs_tile.y)) or_return
+        update_only_on_change(token_id, "name", token.name) or_return
+        update_only_on_change(token_id, "initiative", i64(token.initiative)) or_return
+        update_only_on_change(token_id, "size", i64(token.size)) or_return
+        update_only_on_change(token_id, "x", u64(token.position.abs_tile.x)) or_return
+        update_only_on_change(token_id, "y", u64(token.position.abs_tile.y)) or_return
 
     }
 
@@ -287,6 +303,28 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
 
         action_map := AMitemObjId(action_item)
 
+
+        start_x_result: AMresultPtr = AMmapGet(doc, action_map, AMstr("start_x"), c.NULL)
+        defer AMresultFree(start_x_result)
+        start_x_item, _ := result_to_item(start_x_result)
+        if AMitemValType(start_x_item) != .AM_VAL_TYPE_VOID {
+            start: game.TileMapPosition
+            end: game.TileMapPosition
+            start.abs_tile.x = u32(item_to_or_report(start_x_item, u64))
+            start.abs_tile.y = u32(get_map_value(doc, action_map, "start_y", u64))
+            end.abs_tile.x = u32(get_map_value(doc, action_map, "end_x", u64))
+            end.abs_tile.y = u32(get_map_value(doc, action_map, "end_y", u64))
+
+            game_action.start = start
+            game_action.end = end
+            color := get_map_value(doc, action_map, "color", AMbyteSpan)
+            game_action.color[0] = color.src[0]
+            game_action.color[1] = color.src[1]
+            game_action.color[2] = color.src[2]
+            game_action.color[3] = color.src[3]
+            game_action.tool = game.Tool.RECTANGLE
+        }
+
         tile_history_result: AMresultPtr = AMmapGet(doc, action_map, AMstr("tile_history"), c.NULL)
         defer AMresultFree(tile_history_result)
         tile_history_item, _ := result_to_item(tile_history_result)
@@ -302,10 +340,7 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
             for tile_item != c.NULL {
                 tile_map := AMitemObjId(tile_item)
 
-                x_result := AMmapGet(doc, tile_map, AMstr("x"), c.NULL)
-                defer AMresultFree(x_result)
-                x_item, _ := result_to_item(x_result)
-                x := item_to_or_report(x_item, u64)
+                x := get_map_value(doc, tile_map, "x", u64)
 
                 y_result := AMmapGet(doc, tile_map, AMstr("y"), c.NULL)
                 defer AMresultFree(y_result)
@@ -356,40 +391,13 @@ get_tokens_from_doc :: proc(doc: am.AMdocPtr) -> map[u64]game.Token {
     for token_item != c.NULL {
         token_map := AMitemObjId(token_item)
 
-        id_result := AMmapGet(doc, token_map, AMstr("id"), c.NULL)
-        defer AMresultFree(id_result)
-        id_item, _ := result_to_item(id_result)
-        id := item_to_or_report(id_item, u64)
-
-        x_result := AMmapGet(doc, token_map, AMstr("x"), c.NULL)
-        defer AMresultFree(x_result)
-        x_item, _ := result_to_item(x_result)
-        x := item_to_or_report(x_item, u64)
-
-        y_result := AMmapGet(doc, token_map, AMstr("y"), c.NULL)
-        defer AMresultFree(y_result)
-        y_item, _ := result_to_item(y_result)
-        y := item_to_or_report(y_item, u64)
-
-        name_result := AMmapGet(doc, token_map, AMstr("name"), c.NULL)
-        defer AMresultFree(name_result)
-        name_item, _ := result_to_item(name_result)
-        name := item_to_or_report(name_item, string)
-
-        size_result := AMmapGet(doc, token_map, AMstr("size"), c.NULL)
-        defer AMresultFree(size_result)
-        size_item, _ := result_to_item(size_result)
-        size := item_to_or_report(size_item, i64)
-
-        initiative_result := AMmapGet(doc, token_map, AMstr("initiative"), c.NULL)
-        defer AMresultFree(initiative_result)
-        initiative_item, _ := result_to_item(initiative_result)
-        initiative := item_to_or_report(initiative_item, i64)
-
-        color_result := AMmapGet(doc, token_map, AMstr("color"), c.NULL)
-        defer AMresultFree(color_result)
-        color_item, _ := result_to_item(color_result)
-        color := item_to_or_report(color_item, AMbyteSpan)
+        id := get_map_value(doc, token_map, "id", u64)
+        x := get_map_value(doc, token_map, "x", u64)
+        y := get_map_value(doc, token_map, "y", u64)
+        name := get_map_value(doc, token_map, "name", string)
+        size := get_map_value(doc, token_map, "size", i64)
+        initiative := get_map_value(doc, token_map, "initiative", i64)
+        color := get_map_value(doc, token_map, "color", AMbyteSpan)
 
         token_pos: game.TileMapPosition
         token_pos.abs_tile.x = u32(x)

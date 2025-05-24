@@ -260,7 +260,12 @@ update :: proc() {
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
                 end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
+                action.tool = .RECTANGLE
+                action.start = start_mouse_tile
+                action.end = end_mouse_tile
+                action.color = state.selected_color
                 tooltip = rectangle_tool(start_mouse_tile, end_mouse_tile, state.selected_color, tile_map, action)
+                state.needs_sync = true
             }
         }
         icon = .ICON_BOX
