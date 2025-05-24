@@ -12,6 +12,8 @@ import "core:math/rand"
 import "core:strings"
 import "core:time"
 import game ".."
+import am "../automerge"
+
 
 @(private="file")
 web_context: runtime.Context
@@ -22,11 +24,11 @@ foreign {
 }
 
 ws: EMSCRIPTEN_WEBSOCKET_T
-doc: AMdocPtr
-doc_result: AMresultPtr
+doc: am.AMdocPtr
+doc_result: am.AMresultPtr
 socket_ready: bool = false
 my_allocator: mem.Allocator
-peers: map[string]AMsyncStatePtr
+peers: map[string]am.AMsyncStatePtr
 my_id: [3]u8
 
 build_binary_message :: proc(target: []u8, payload: []u8) -> []u8{
@@ -75,6 +77,7 @@ onclose :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSock
     return true
 }
 onmessage :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSocketMessageEvent, userData: rawptr ) -> c.bool {
+    using am
     context = runtime.default_context()
     context.allocator = my_allocator
     if websocketEvent.isText {
@@ -108,7 +111,8 @@ onmessage :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSo
     return true
 }
 
-update_only_on_change :: proc(obj: AMobjIdPtr, key: cstring, $T: typeid, new: T, loc := #caller_location) -> bool {
+update_only_on_change :: proc(obj: am.AMobjIdPtr, key: cstring, $T: typeid, new: T, loc := #caller_location) -> bool {
+    using am
     result := AMmapGet(doc, obj, AMstr(key), c.NULL)
     item := result_to_item(result) or_return
     defer AMresultFree(result)
@@ -133,13 +137,14 @@ update_only_on_change :: proc(obj: AMobjIdPtr, key: cstring, $T: typeid, new: T,
     return true
 }
 
-update_doc_from_game_state :: proc(doc: AMdocPtr) {
+update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
     //TODO(amatej): max_entity_id as a counter
     update_doc_tokens(doc, &game.state.tokens)
     update_doc_actions(doc, game.state.undo_history[:])
 }
 
-get_or_insert :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, type: AMobjType) -> AMresultPtr {
+get_or_insert :: proc(doc: am.AMdocPtr, obj_id: am.AMobjIdPtr, key: cstring, type: am.AMobjType) -> am.AMresultPtr {
+    using am
     result := AMmapGet(doc, obj_id, AMstr(key), c.NULL)
     item, _ := result_to_item(result)
     if AMitemValType(item) == .AM_VAL_TYPE_VOID {
@@ -153,7 +158,8 @@ get_or_insert :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, type: AMo
     }
 }
 
-update_doc_actions :: proc(doc: AMdocPtr, actions: []game.Action) -> bool {
+update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
+    using am
     actions_result := get_or_insert(doc, AM_ROOT, "actions", .AM_OBJ_TYPE_LIST)
     defer AMresultFree(actions_result)
     actions_id := result_to_objid(actions_result) or_return
@@ -213,7 +219,8 @@ update_doc_actions :: proc(doc: AMdocPtr, actions: []game.Action) -> bool {
     return true
 }
 
-update_doc_tokens :: proc(doc: AMdocPtr, tokens: ^map[u64]game.Token) -> bool {
+update_doc_tokens :: proc(doc: am.AMdocPtr, tokens: ^map[u64]game.Token) -> bool {
+    using am
     tokens_result := get_or_insert(doc, AM_ROOT, "tokens", .AM_OBJ_TYPE_MAP)
     defer AMresultFree(tokens_result)
     tokens_id := result_to_objid(tokens_result) or_return
@@ -262,7 +269,8 @@ update_doc_tokens :: proc(doc: AMdocPtr, tokens: ^map[u64]game.Token) -> bool {
     return true
 }
 
-get_undo_history_from_doc :: proc(doc: AMdocPtr) -> []game.Action {
+get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
+    using am
     undo_history := make([dynamic]game.Action, allocator=context.temp_allocator)
 
     undo_history_result: AMresultPtr = AMmapGet(doc, AM_ROOT, AMstr("actions"), c.NULL)
@@ -332,7 +340,8 @@ get_undo_history_from_doc :: proc(doc: AMdocPtr) -> []game.Action {
     return undo_history[:]
 }
 
-get_tokens_from_doc :: proc(doc: AMdocPtr) -> map[u64]game.Token {
+get_tokens_from_doc :: proc(doc: am.AMdocPtr) -> map[u64]game.Token {
+    using am
     tokens_result: AMresultPtr = AMmapGet(doc, AM_ROOT, AMstr("tokens"), c.NULL)
     defer AMresultFree(tokens_result)
     tokens_id, _ := result_to_objid(tokens_result)
@@ -404,7 +413,7 @@ get_tokens_from_doc :: proc(doc: AMdocPtr) -> map[u64]game.Token {
     return tokens
 }
 
-update_game_state_from_doc :: proc(doc: AMdocPtr) {
+update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
     //TODO(amatej): I need to sync:
     // - max_entity_id (needs to be a counter)
 
@@ -445,6 +454,7 @@ update_game_state_from_doc :: proc(doc: AMdocPtr) {
 
 @export
 main_start :: proc "c" (mobile: bool) {
+        using am
 	context = runtime.default_context()
 	// The WASM allocator doesn't seem to work properly in combination with
 	// emscripten. There is some kind of conflict with how the manage memory.
@@ -489,6 +499,7 @@ main_start :: proc "c" (mobile: bool) {
 
 @export
 main_update :: proc "c" () -> bool {
+        using am
 	context = web_context
 	game.update()
         if game.state.needs_sync {
@@ -533,7 +544,7 @@ main_update :: proc "c" () -> bool {
 
 @export
 main_end :: proc "c" () {
-        AMresultFree(doc_result)
+        am.AMresultFree(doc_result)
 	context = web_context
 	game.shutdown()
 }
