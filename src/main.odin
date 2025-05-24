@@ -252,11 +252,15 @@ update :: proc() {
         if rl.IsMouseButtonDown(.LEFT) {
             append(&state.temp_actions, make_action(context.temp_allocator))
             temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-            tooltip = rectangle_tool(state, tile_map, rl.GetMousePosition(), temp_action)
+            start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
+            end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
+            tooltip = rectangle_tool(start_mouse_tile, end_mouse_tile, state.selected_color, tile_map, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                tooltip = rectangle_tool(state, tile_map, rl.GetMousePosition(), action)
+                start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
+                end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
+                tooltip = rectangle_tool(start_mouse_tile, end_mouse_tile, state.selected_color, tile_map, action)
             }
         }
         icon = .ICON_BOX

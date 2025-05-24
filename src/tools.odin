@@ -120,17 +120,14 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
-rectangle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action) -> cstring {
-    start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
-    end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
-
+rectangle_tool :: proc(start_mouse_tile: TileMapPosition, end_mouse_tile: TileMapPosition, selected_color: [4]u8, tile_map: ^TileMap, action: ^Action) -> cstring {
     start_tile : [2]u32 = {math.min(start_mouse_tile.abs_tile.x, end_mouse_tile.abs_tile.x), math.min(start_mouse_tile.abs_tile.y, end_mouse_tile.abs_tile.y)}
     end_tile : [2]u32 = {math.max(start_mouse_tile.abs_tile.x, end_mouse_tile.abs_tile.x), math.max(start_mouse_tile.abs_tile.y, end_mouse_tile.abs_tile.y)}
 
     for y : u32 = start_tile.y; y <= end_tile.y; y += 1 {
         for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
             old_tile := get_tile(tile_map, {x, y})
-            new_tile := tile_make_color_walls_colors(color_over(state.selected_color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
+            new_tile := tile_make_color_walls_colors(color_over(selected_color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
             action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
             set_tile(tile_map, {x, y}, new_tile)
         }
