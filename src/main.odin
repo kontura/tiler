@@ -210,13 +210,14 @@ update :: proc() {
     //TODO(amatej): convert to temp action
     highligh_current_tile := false
     highligh_current_tile_intersection := false
-    token := find_token_at_screen(tile_map, state, rl.GetMousePosition())
-    mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
+    mouse_pos: [2]f32 = rl.GetMousePosition()
+    token := find_token_at_screen(tile_map, state, mouse_pos)
+    mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
     tooltip: Maybe(cstring) = nil
 
     selected_widget : Widget= .MAP
     for widget, &rec in state.gui_rectangles {
-        if (rl.CheckCollisionPointRec(rl.GetMousePosition(), rec)) {
+        if (rl.CheckCollisionPointRec(mouse_pos, rec)) {
             selected_widget = widget
         }
     }
@@ -253,13 +254,13 @@ update :: proc() {
             append(&state.temp_actions, make_action(context.temp_allocator))
             temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
             start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
-            end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
+            end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
             tooltip = rectangle_tool(start_mouse_tile, end_mouse_tile, state.selected_color, tile_map, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
-                end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(rl.GetMousePosition(), state, tile_map)
+                end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
                 action.tool = .RECTANGLE
                 action.start = start_mouse_tile
                 action.end = end_mouse_tile
@@ -275,11 +276,11 @@ update :: proc() {
         if rl.IsMouseButtonDown(.LEFT) {
             append(&state.temp_actions, make_action(context.temp_allocator))
             temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-            tooltip = circle_tool(state, tile_map, rl.GetMousePosition(), temp_action)
+            tooltip = circle_tool(state, tile_map, mouse_pos, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                tooltip = circle_tool(state, tile_map, rl.GetMousePosition(), action)
+                tooltip = circle_tool(state, tile_map, mouse_pos, action)
             }
         } else {
             highligh_current_tile_intersection = true
@@ -290,11 +291,11 @@ update :: proc() {
         if rl.IsMouseButtonDown(.LEFT) {
             append(&state.temp_actions, make_action(context.temp_allocator))
             temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-            move_token_tool(state, tile_map, rl.GetMousePosition(), temp_action, true)
+            move_token_tool(state, tile_map, mouse_pos, temp_action, true)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                move_token_tool(state, tile_map, rl.GetMousePosition(), action, false)
+                move_token_tool(state, tile_map, mouse_pos, action, false)
                 state.needs_sync = true
             }
         }
@@ -313,11 +314,11 @@ update :: proc() {
         if rl.IsMouseButtonDown(.LEFT) {
             append(&state.temp_actions, make_action(context.temp_allocator))
             temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-            tooltip = wall_tool(state, tile_map, rl.GetMousePosition(), temp_action)
+            tooltip = wall_tool(state, tile_map, mouse_pos, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                tooltip = wall_tool(state, tile_map, rl.GetMousePosition(), action)
+                tooltip = wall_tool(state, tile_map, mouse_pos, action)
             }
         } else {
             highligh_current_tile_intersection = true
@@ -422,11 +423,11 @@ update :: proc() {
         }
         case .INITIATIVE: {
             if rl.IsMouseButtonDown(.LEFT) {
-                move_initiative_token_tool(state, rl.GetMousePosition(), nil)
+                move_initiative_token_tool(state, mouse_pos, nil)
             } else if rl.IsMouseButtonReleased(.LEFT) {
                 if (state.tool_start_position != nil) {
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                    move_initiative_token_tool(state, rl.GetMousePosition(), action)
+                    move_initiative_token_tool(state, mouse_pos, action)
                 }
                 state.selected_token = 0
             }
@@ -626,7 +627,6 @@ update :: proc() {
         }
     }
 
-    mouse_pos: [2]f32 = rl.GetMousePosition()
     rl.GuiDrawIcon(icon, i32(mouse_pos.x) - 4, i32(mouse_pos.y) - 30, 2, rl.WHITE)
     if (tooltip != nil) {
         rl.DrawText(tooltip.?, i32(mouse_pos.x) + 10, i32(mouse_pos.y) + 30, 28, rl.WHITE)
