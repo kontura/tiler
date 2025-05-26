@@ -90,7 +90,7 @@ tile_distance :: proc(tile_map: ^TileMap, p1: TileMapPosition, p2: TileMapPositi
     p1_feet: [2]f32 = {f32(p1.abs_tile.x), f32(p1.abs_tile.y)} * tile_map.tile_side_in_feet + p1.rel_tile
     p2_feet: [2]f32 = {f32(p2.abs_tile.x), f32(p2.abs_tile.y)} * tile_map.tile_side_in_feet + p2.rel_tile
 
-    return dist(f32, p1_feet, p2_feet)
+    return dist(p1_feet, p2_feet)
 }
 
 tile_pos_to_crossing_pos :: proc(p: TileMapPosition) -> [2]u32 {

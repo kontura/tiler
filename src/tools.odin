@@ -16,7 +16,7 @@ Tool :: enum {
     HELP,
 }
 
-dist :: proc($T: typeid, p1: [2]T, p2: [2]T) -> f32 {
+dist :: proc(p1: [2]$T, p2: [2]T) -> f32 {
     dx := f32(p2.x) - f32(p1.x)
     dx *= dx
     dy := f32(p2.y) - f32(p1.y)
