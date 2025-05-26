@@ -138,7 +138,27 @@ update_only_on_change :: proc(obj: am.AMobjIdPtr, key: cstring, new: $T, loc := 
 }
 
 update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
-    //TODO(amatej): max_entity_id as a counter
+    using am
+
+    result := AMmapGet(doc, AM_ROOT, AMstr("max_entity_id"), c.NULL)
+    item, _ := result_to_item(result)
+    if AMitemValType(item) == .AM_VAL_TYPE_VOID {
+        AMresultFree(result)
+        // Insert new
+        new_result := AMmapPutCounter(doc, AM_ROOT, AMstr("max_entity_id"), i64(game.state.max_entity_id))
+        verify_result(new_result)
+    } else {
+        max: i64
+        if !AMitemToCounter(item, &max) {
+            fmt.println("Failed to convert from item to max_entity_id counter")
+        }
+        for max < i64(game.state.max_entity_id) {
+            AMmapIncrement(doc, AM_ROOT, AMstr("max_entity_id"), 1)
+            max += 1
+        }
+
+    }
+
     update_doc_tokens(doc, &game.state.tokens)
     update_doc_actions(doc, game.state.undo_history[:])
 }
@@ -183,13 +203,16 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
             put_map_value(doc, action_map, "end_x", u64(action.end.abs_tile.x)) or_return
             put_map_value(doc, action_map, "end_y", u64(action.end.abs_tile.y)) or_return
 
-
             color_bytes: AMbyteSpan
             color_bytes.count = 4
             color_bytes.src = &action.color[0]
-            color_result := AMmapPutBytes(doc, action_map, AMstr("color"), color_bytes)
-            defer AMresultFree(color_result)
-            verify_result(color_result)
+            put_map_value(doc, action_map, "color", color_bytes) or_return
+            tool_str, ok := fmt.enum_value_to_string(action.tool)
+            if ok {
+                put_map_value(doc, action_map, "tool", tool_str) or_return
+            } else {
+                assert(false)
+            }
         } else {
             tile_history_result := AMmapPutObject(doc, action_map, AMstr("tile_history"), .AM_OBJ_TYPE_LIST)
             defer AMresultFree(tile_history_result)
@@ -252,15 +275,11 @@ update_doc_tokens :: proc(doc: am.AMdocPtr, tokens: ^map[u64]game.Token) -> bool
             // Insert a map into the map for each token
             token_result = AMmapPutObject(doc, tokens_id, AMstr(fmt.caprint(token.id)), .AM_OBJ_TYPE_MAP)
             token_id = result_to_objid(token_result) or_return
-            id_result := AMmapPutUint(doc, token_id, AMstr("id"), token.id)
-            verify_result(id_result) or_return
-            defer AMresultFree(id_result)
+            put_map_value(doc, token_id, "id", token.id) or_return
             color_bytes: AMbyteSpan
             color_bytes.count = 4
             color_bytes.src = &token.color[0]
-            color_result := AMmapPutBytes(doc, token_id, AMstr("color"), color_bytes)
-            verify_result(color_result) or_return
-            defer AMresultFree(color_result)
+            put_map_value(doc, token_id, "color", color_bytes) or_return
         } else {
             token_id = AMitemObjId(token_item)
         }
@@ -300,17 +319,14 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
     action_item : AMitemPtr = AMitemsNext(&items, 1)
     for action_item != c.NULL {
         game_action: game.Action
-
         action_map := AMitemObjId(action_item)
-
-
-        start_x_result: AMresultPtr = AMmapGet(doc, action_map, AMstr("start_x"), c.NULL)
-        defer AMresultFree(start_x_result)
-        start_x_item, _ := result_to_item(start_x_result)
-        if AMitemValType(start_x_item) != .AM_VAL_TYPE_VOID {
+        tool_result: AMresultPtr = AMmapGet(doc, action_map, AMstr("tool"), c.NULL)
+        defer AMresultFree(tool_result)
+        tool_item, _ := result_to_item(tool_result)
+        if AMitemValType(tool_item) != .AM_VAL_TYPE_VOID {
             start: game.TileMapPosition
             end: game.TileMapPosition
-            start.abs_tile.x = u32(item_to_or_report(start_x_item, u64))
+            start.abs_tile.x = u32(get_map_value(doc, action_map, "start_x", u64))
             start.abs_tile.y = u32(get_map_value(doc, action_map, "start_y", u64))
             end.abs_tile.x = u32(get_map_value(doc, action_map, "end_x", u64))
             end.abs_tile.y = u32(get_map_value(doc, action_map, "end_y", u64))
@@ -322,7 +338,14 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
             game_action.color[1] = color.src[1]
             game_action.color[2] = color.src[2]
             game_action.color[3] = color.src[3]
-            game_action.tool = game.Tool.RECTANGLE
+
+            tool_str := item_to_or_report(tool_item, string)
+            tool, ok := fmt.string_to_enum_value(game.Tool, tool_str)
+            if ok {
+                game_action.tool = tool
+            } else {
+                assert(false)
+            }
         }
 
         tile_history_result: AMresultPtr = AMmapGet(doc, action_map, AMstr("tile_history"), c.NULL)
@@ -422,8 +445,17 @@ get_tokens_from_doc :: proc(doc: am.AMdocPtr) -> map[u64]game.Token {
 }
 
 update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
-    //TODO(amatej): I need to sync:
-    // - max_entity_id (needs to be a counter)
+    using am
+
+    result := AMmapGet(doc, AM_ROOT, AMstr("max_entity_id"), c.NULL)
+    item, _ := result_to_item(result)
+    if AMitemValType(item) != .AM_VAL_TYPE_VOID {
+        max: i64
+        if !AMitemToCounter(item, &max) {
+            fmt.println("Failed to convert from item to max_entity_id counter")
+        }
+        game.state.max_entity_id = u64(max)
+    }
 
     doc_tokens := get_tokens_from_doc(doc)
 

@@ -133,6 +133,7 @@ foreign _ {
 	AMitemToBytes :: proc(item: AMitemPtr, value: ^AMbyteSpan) -> c.bool ---
 	AMitemToUint :: proc(item: AMitemPtr, value: ^c.uint64_t) -> c.bool ---
 	AMitemToInt :: proc(item: AMitemPtr, value: ^c.int64_t) -> c.bool ---
+	AMitemToCounter :: proc(item: AMitemPtr, value: ^c.int64_t) -> c.bool ---
 
         AMitemObjId :: proc(item: AMitemPtr) -> AMobjIdPtr ---
         AMitemsNext :: proc(items: AMitemsPtr, n: c.ptrdiff_t) -> AMitemsPtr ---
@@ -150,6 +151,10 @@ foreign _ {
 	AMsyncMessageDecode :: proc(src: [^]u8, count: c.size_t) -> AMresultPtr ---
 	AMsyncMessageEncode :: proc(sync_message: AMsyncMessagePtr) -> AMresultPtr ---
 	AMitemValType :: proc(item: AMitemPtr) -> AMvalType ---
+
+        AMmapPutCounter :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.int64_t) -> AMresultPtr ---
+        AMmapIncrement :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.int64_t) -> AMresultPtr ---
+
 }
 
 AMitemTo :: proc {
@@ -160,7 +165,7 @@ AMitemTo :: proc {
 }
 
 AMmapPut :: proc {
-    AMmapPutStr,
+    AMmapPutBytes,
     AMmapPutString,
     AMmapPutObject,
     AMmapPutInt,
@@ -201,14 +206,14 @@ odin_str :: proc(str: string) -> AMbyteSpan {
 put_map_value :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: $T, loc := #caller_location) -> bool {
     result := AMmapPut(doc, obj_id, AMstr(key), T(value))
     defer AMresultFree(result)
-    verify_result(result) or_return
+    verify_result(result, loc) or_return
     return true
 }
 
 get_map_value :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, $T: typeid, loc := #caller_location) -> T {
     result := AMmapGet(doc, obj_id, AMstr(key), c.NULL)
     defer AMresultFree(result)
-    item, _ := result_to_item(result)
+    item, _ := result_to_item(result, loc)
     return item_to_or_report(item, T)
 }
 
