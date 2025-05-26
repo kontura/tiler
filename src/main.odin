@@ -281,6 +281,7 @@ update :: proc() {
             if (state.tool_start_position != nil) {
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 tooltip = circle_tool(state, tile_map, mouse_pos, action)
+                state.needs_sync = true
             }
         } else {
             highligh_current_tile_intersection = true
