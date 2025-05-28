@@ -38,6 +38,9 @@ GameState :: struct {
     textures: map[string]rl.Texture2D,
     needs_sync: bool,
     mobile: bool,
+    previous_touch_dist: f32,
+    previous_touch_pos: [2]f32,
+    previous_touch_count: i32,
 }
 
 Widget :: enum {
@@ -228,15 +231,19 @@ update :: proc() {
         }
     }
 
-    // Mouse clicks
-    if rl.IsMouseButtonPressed(.LEFT) {
-        if (state.tool_start_position == nil) {
-            state.tool_start_position = rl.GetMousePosition()
-            append(&state.undo_history, Action{})
+    if !state.mobile {
+        // Mouse clicks
+        if rl.IsMouseButtonPressed(.LEFT) {
+            if (state.tool_start_position == nil) {
+                state.tool_start_position = mouse_pos
+                append(&state.undo_history, Action{})
+            }
+        } else if rl.IsMouseButtonDown(.RIGHT) && !state.mobile {
+            state.camera_pos.rel_tile -= rl.GetMouseDelta()
         }
-    } else if rl.IsMouseButtonDown(.RIGHT) {
-        state.camera_pos.rel_tile -= rl.GetMouseDelta()
+        tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMove())
     }
+    touch_count := rl.GetTouchPointCount()
 
     switch state.active_tool {
     case .BRUSH: {
@@ -445,6 +452,30 @@ update :: proc() {
         }
         }
     }
+    case .TOUCH_MOVE: {
+        fmt.println(state.previous_touch_pos)
+        if state.previous_touch_pos != 0 {
+            d := state.previous_touch_pos - mouse_pos
+            state.camera_pos.rel_tile += d/4
+        }
+
+        state.previous_touch_pos = mouse_pos
+    }
+    case .TOUCH_ZOOM: {
+        if touch_count >= 2 {
+            touch1 := rl.GetTouchPosition(0)
+            touch2 := rl.GetTouchPosition(1)
+            dist := dist(touch1, touch2)
+
+            if state.previous_touch_dist != 0 {
+                zoom_amount := i32((state.previous_touch_dist - dist) * 0.1)
+                fmt.println("zoom: ", zoom_amount, " from: ", state.previous_touch_dist, " - ", dist)
+                tile_map.tile_side_in_pixels -= zoom_amount
+            }
+
+            state.previous_touch_dist = dist
+        }
+    }
     case .HELP: {
     }
     }
@@ -455,34 +486,55 @@ update :: proc() {
         }
     }
 
-    if !state.key_consumed {
-        for c in config {
-            triggered : bool = true
-            for trigger in c.key_triggers {
-                trigger_proc : proc "c" (rl.KeyboardKey) -> bool
-                switch trigger.action {
-                case .DOWN: {
-                    trigger_proc = rl.IsKeyDown
-                }
-                case .RELEASED: {
-                    trigger_proc = rl.IsKeyReleased
-                }
-                case .PRESSED: {
-                    trigger_proc = rl.IsKeyPressed
-                }
-                }
-                triggered = triggered && trigger_proc(trigger.binding)
+
+    if state.mobile {
+        if touch_count > state.previous_touch_count {
+            //TODO(amatej): this overrides any other active tool...
+            if token != nil {
+                fmt.println("setting MOVE TOKEN")
+                state.active_tool = .MOVE_TOKEN
+                state.tool_start_position = mouse_pos
+            } else if touch_count >= 2 {
+                state.active_tool = .TOUCH_ZOOM
+            } else if touch_count == 1 {
+                state.active_tool = .TOUCH_MOVE
             }
-            if triggered {
-                c.action(state)
-                break
+        } else if state.previous_touch_count > touch_count {
+            state.previous_touch_pos = 0
+            state.previous_touch_dist = 0
+            state.tool_start_position = nil
+            state.active_tool = .MOVE_TOKEN
+        }
+        state.previous_touch_count = touch_count
+    } else {
+        if !state.key_consumed {
+            for c in config {
+                triggered : bool = true
+                for trigger in c.key_triggers {
+                    trigger_proc : proc "c" (rl.KeyboardKey) -> bool
+                    switch trigger.action {
+                    case .DOWN: {
+                        trigger_proc = rl.IsKeyDown
+                    }
+                    case .RELEASED: {
+                        trigger_proc = rl.IsKeyReleased
+                    }
+                    case .PRESSED: {
+                        trigger_proc = rl.IsKeyPressed
+                    }
+                    }
+                    triggered = triggered && trigger_proc(trigger.binding)
+                }
+                if triggered {
+                    c.action(state)
+                    break
+                }
             }
         }
     }
 
     state.camera_pos = recanonicalize_position(tile_map, state.camera_pos)
 
-    tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMove())
     tile_map.tile_side_in_pixels = math.max(5, tile_map.tile_side_in_pixels)
     tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
