@@ -230,11 +230,12 @@ compress_tile_chunk :: proc(tile_chunk: ^TileChunk, allocator := context.temp_al
 }
 
 decompress_tile_chunk_into :: proc(ctc: ^CompressedTileChunk, tile_chunk: ^TileChunk) {
-    assert(len(tile_chunk.tiles) == 0)
     assert(len(ctc.counts) == len(ctc.tiles))
+    total_index := 0
     for i: int = 0; i < len(ctc.counts); i += 1 {
         for j: u64 = 0; j < ctc.counts[i]; j += 1 {
-            append(&tile_chunk.tiles, ctc.tiles[i])
+            tile_chunk.tiles[total_index] = ctc.tiles[i]
+            total_index += 1
         }
     }
 }
