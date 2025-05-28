@@ -70,13 +70,18 @@ screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^
 }
 
 find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, pos: rl.Vector2) -> ^Token {
+    closest_token : ^Token = nil
+    closest_dist := f32(tile_map.tile_side_in_pixels*2)
     for _, &token in state.tokens {
-        if rl.CheckCollisionPointCircle(pos, get_token_circle(tile_map, state, token)) {
-            return &token
+        center, _ := get_token_circle(tile_map, state, token)
+        dist := dist(pos, center)
+        if dist < closest_dist {
+            closest_token = &token
+            closest_dist = dist
         }
     }
 
-    return nil
+    return closest_token
 }
 
 // Snaps to grid (ignores rel_tile part)
