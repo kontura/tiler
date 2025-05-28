@@ -139,6 +139,9 @@ load_from_serialized :: proc(data: []byte) {
     serialize(&s, state)
     compressed_chunks: CompressedTileChunks
     serialize(&s, &compressed_chunks)
+    for key, _ in tile_map.tile_chunks {
+        delete(tile_map.tile_chunks[key].tiles)
+    }
     for key, &value in compressed_chunks.tile_chunks {
         tile_map.tile_chunks[key] = TileChunk{make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)}
         decompress_tile_chunk_into(&value, &(tile_map.tile_chunks[key]))
