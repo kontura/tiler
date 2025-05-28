@@ -199,8 +199,7 @@ move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^
     }
 }
 
-move_token_tool :: proc(state: ^GameState,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action, feedback: bool) {
-    token := find_token_at_screen(tile_map, state, state.tool_start_position.?)
+move_token_tool :: proc(state: ^GameState, token: ^Token,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action, feedback: bool) {
     if (token != nil) {
         mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
         action.token_history[token.id] = token.position

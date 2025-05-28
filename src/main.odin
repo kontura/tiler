@@ -297,14 +297,15 @@ update :: proc() {
         icon = .ICON_PLAYER_RECORD
     }
     case .MOVE_TOKEN: {
+        token := find_token_at_screen(tile_map, state, state.tool_start_position.?)
         if rl.IsMouseButtonDown(.LEFT) {
             append(&state.temp_actions, make_action(context.temp_allocator))
             temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-            move_token_tool(state, tile_map, mouse_pos, temp_action, true)
+            move_token_tool(state, token, tile_map, mouse_pos, temp_action, true)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                move_token_tool(state, tile_map, mouse_pos, action, false)
+                move_token_tool(state, token, tile_map, mouse_pos, action, false)
                 state.needs_sync = true
             }
         }
