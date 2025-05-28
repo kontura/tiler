@@ -121,15 +121,15 @@ serialize_to_bytes :: proc(allocator := context.temp_allocator) -> []byte {
     return s.data[:]
 }
 
-load_save :: proc() {
-    data, ok := read_entire_file("/persist/tiler_save", context.temp_allocator)
+load_save :: proc(path := "/persist/tiler_save") {
+    data, ok := read_entire_file(path, context.temp_allocator)
     if ok {
         load_from_serialized(data)
     }
 }
 
-store_save :: proc() {
-    write_entire_file("/persist/tiler_save", serialize_to_bytes())
+store_save :: proc(path := "/persist/tiler_save") {
+    write_entire_file(path, serialize_to_bytes())
 }
 
 load_from_serialized :: proc(data: []byte) {
