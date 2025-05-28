@@ -544,7 +544,14 @@ update :: proc() {
         }
         rl.DrawText(get_token_name_temp(&token), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 18, rl.WHITE)
         if (token.moved != 0) {
-            rl.DrawText(u64_to_cstring(u64(f32(token.moved) * tile_map.tile_side_in_feet)), i32(pos.x)-tile_map.tile_side_in_pixels, i32(pos.y)-tile_map.tile_side_in_pixels, 28, rl.WHITE)
+            text_size : i32 = 28
+            text_pos : [2]f32 = pos - 50
+            if state.mobile {
+                text_size = 98
+                text_pos = pos - 250
+            }
+
+            rl.DrawText(u64_to_cstring(u64(f32(token.moved) * tile_map.tile_side_in_feet)), i32(text_pos.x), i32(text_pos.y), text_size, rl.WHITE)
         }
     }
 
