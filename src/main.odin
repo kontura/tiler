@@ -236,7 +236,6 @@ update :: proc() {
         if rl.IsMouseButtonPressed(.LEFT) {
             if (state.tool_start_position == nil) {
                 state.tool_start_position = mouse_pos
-                append(&state.undo_history, Action{})
             }
         } else if rl.IsMouseButtonDown(.RIGHT) && !state.mobile {
             state.camera_pos.rel_tile -= rl.GetMouseDelta()
@@ -249,6 +248,7 @@ update :: proc() {
     case .BRUSH: {
         if selected_widget == .MAP {
             if rl.IsMouseButtonDown(.LEFT) {
+                append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 if (!(mouse_tile_pos.abs_tile in action.tile_history)) {
                     old_tile := get_tile(tile_map, mouse_tile_pos.abs_tile)
@@ -271,6 +271,7 @@ update :: proc() {
             tooltip = rectangle_tool(start_mouse_tile, end_mouse_tile, state.selected_color, tile_map, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
+                append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
                 end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
@@ -292,6 +293,7 @@ update :: proc() {
             tooltip = circle_tool(state, tile_map, mouse_pos, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
+                append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 tooltip = circle_tool(state, tile_map, mouse_pos, action)
                 state.needs_sync = true
@@ -310,6 +312,7 @@ update :: proc() {
                 move_token_tool(state, token, tile_map, mouse_pos, temp_action, true)
             } else if rl.IsMouseButtonReleased(.LEFT) {
                 if (state.tool_start_position != nil) {
+                    append(&state.undo_history, Action{})
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     move_token_tool(state, token, tile_map, mouse_pos, action, false)
                     state.needs_sync = true
@@ -334,6 +337,7 @@ update :: proc() {
             tooltip = wall_tool(state, tile_map, mouse_pos, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
+                append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 tooltip = wall_tool(state, tile_map, mouse_pos, action)
             }
@@ -405,6 +409,7 @@ update :: proc() {
                         case:
                             strings.write_byte(&builder, byte)
                         }
+                        //TODO(amatej): there was a bad free here
                         delete(token.name)
                         token.name = strings.to_string(builder)
                         state.key_consumed = true
@@ -443,6 +448,7 @@ update :: proc() {
                 move_initiative_token_tool(state, mouse_pos, nil)
             } else if rl.IsMouseButtonReleased(.LEFT) {
                 if (state.tool_start_position != nil) {
+                    append(&state.undo_history, Action{})
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     move_initiative_token_tool(state, mouse_pos, action)
                 }
