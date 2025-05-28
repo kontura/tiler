@@ -37,6 +37,7 @@ GameState :: struct {
     key_consumed: bool,
     textures: map[string]rl.Texture2D,
     needs_sync: bool,
+    mobile: bool,
 }
 
 Widget :: enum {
@@ -173,6 +174,7 @@ init :: proc(mobile := false) {
     // entity id 0 is reserved for temporary preview entity
     state.max_entity_id = 1
     state.needs_sync = true
+    state.mobile = mobile
 
     tile_map = new(TileMap)
     tile_map.chunk_shift = 8
@@ -180,8 +182,8 @@ init :: proc(mobile := false) {
     tile_map.chunk_dim = (1 << tile_map.chunk_shift)
 
     tile_map.tile_side_in_feet = 5
-    if mobile {
-        tile_map.tile_side_in_pixels = 120
+    if state.mobile {
+        tile_map.tile_side_in_pixels = 80
     } else {
         tile_map.tile_side_in_pixels = 30
     }
