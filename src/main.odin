@@ -108,17 +108,13 @@ serialize_to_bytes :: proc(allocator := context.temp_allocator) -> []byte {
     s: Serializer
     serializer_init_writer(&s, allocator=allocator)
     serialize(&s, tile_map)
-    fmt.println(len(s.data[:]))
     serialize(&s, state)
-    fmt.println(len(s.data[:]))
     compressed_chunks: CompressedTileChunks
     compressed_chunks.tile_chunks = make(map[[2]u32]CompressedTileChunk, context.temp_allocator)
     for key, &value in tile_map.tile_chunks {
         compressed_chunks.tile_chunks[key] = compress_tile_chunk(&value)
     }
-    //fmt.println(compressed_chunks)
     serialize(&s, &compressed_chunks)
-    fmt.println(len(s.data[:]))
     return s.data[:]
 }
 
