@@ -3,6 +3,7 @@ package tiler
 import "core:math"
 import "core:fmt"
 import "core:strings"
+import "core:mem"
 
 import rl "vendor:raylib"
 
