@@ -42,6 +42,7 @@ GameState :: struct {
     previous_touch_dist: f32,
     previous_touch_pos: [2]f32,
     previous_touch_count: i32,
+    initiative_tool_start: [2]i32,
 }
 
 Widget :: enum {
@@ -78,11 +79,13 @@ find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, pos: rl.Vect
     closest_token : ^Token = nil
     closest_dist := f32(tile_map.tile_side_in_pixels*2)
     for _, &token in state.tokens {
-        center, _ := get_token_circle(tile_map, state, token)
-        dist := dist(pos, center)
-        if dist < closest_dist {
-            closest_token = &token
-            closest_dist = dist
+        if token.alive {
+            center, _ := get_token_circle(tile_map, state, token)
+            dist := dist(pos, center)
+            if dist < closest_dist {
+                closest_token = &token
+                closest_dist = dist
+            }
         }
     }
 
@@ -379,11 +382,11 @@ update :: proc() {
                 key := rl.GetKeyPressed()
                 if key == .DELETE {
                     remove_token_by_id_from_initiative(state, token.id)
-                    delete_key(&state.tokens, token.id)
+                    token.alive = false
                     state.needs_sync = true
                     append(&state.undo_history, Action{})
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                    append(&action.token_deleted, token^)
+                    action.token_life[token.id] = false
                 } else {
                     if rl.IsKeyDown(.BACKSPACE) {
                         key = .BACKSPACE
@@ -432,15 +435,22 @@ update :: proc() {
                 append(&state.initiative_to_tokens[t.initiative], t.id)
                 append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                append(&action.token_created, state.max_entity_id)
+                action.token_life[t.id] = true
                 state.max_entity_id += 1
             } else {
                 c := state.selected_color
                 c.a = 90
-                state.tokens[0] = make_token(0, mouse_tile_pos, c, " ")
+                token, ok := &state.tokens[0]
+                if ok {
+                    token.alive = true
+                    token.position = mouse_tile_pos
+                    token.color = c
+                } else {
+                    state.tokens[0] = make_token(0, mouse_tile_pos, c, " ")
+                }
                 append(&state.temp_actions, make_action(context.temp_allocator))
                 temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-                append(&temp_action.token_created, 0)
+                temp_action.token_life[0] = true
             }
             icon = .ICON_PLAYER
         }
@@ -594,23 +604,25 @@ update :: proc() {
 
     // draw tokens on map
     for _, &token in state.tokens {
-        pos: rl.Vector2 = tile_map_to_screen_coord(token.position, state, tile_map)
-        if (token.texture != nil) {
-            tex_pos, scale := get_token_texture_pos_size(tile_map, state, token)
-            rl.DrawTextureEx(token.texture^, tex_pos, 0, scale, rl.WHITE)
-        } else {
-            rl.DrawCircleV(get_token_circle(tile_map, state, token), token.color.xyzw)
-        }
-        rl.DrawText(get_token_name_temp(&token), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 18, rl.WHITE)
-        if (token.moved != 0) {
-            text_size : i32 = 28
-            text_pos : [2]f32 = pos - 50
-            if state.mobile {
-                text_size = 98
-                text_pos = pos - 250
+        if token.alive {
+            pos: rl.Vector2 = tile_map_to_screen_coord(token.position, state, tile_map)
+            if (token.texture != nil) {
+                tex_pos, scale := get_token_texture_pos_size(tile_map, state, token)
+                rl.DrawTextureEx(token.texture^, tex_pos, 0, scale, rl.WHITE)
+            } else {
+                rl.DrawCircleV(get_token_circle(tile_map, state, token), token.color.xyzw)
             }
+            rl.DrawText(get_token_name_temp(&token), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 18, rl.WHITE)
+            if (token.moved != 0) {
+                text_size : i32 = 28
+                text_pos : [2]f32 = pos - 50
+                if state.mobile {
+                    text_size = 98
+                    text_pos = pos - 250
+                }
 
-            rl.DrawText(u64_to_cstring(u64(f32(token.moved) * tile_map.tile_side_in_feet)), i32(text_pos.x), i32(text_pos.y), text_size, rl.WHITE)
+                rl.DrawText(u64_to_cstring(u64(f32(token.moved) * tile_map.tile_side_in_feet)), i32(text_pos.x), i32(text_pos.y), text_size, rl.WHITE)
+            }
         }
     }
 

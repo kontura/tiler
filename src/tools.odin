@@ -179,24 +179,28 @@ find_at_initiative :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
     return 0, 0, 0
 }
 
+add_at_initiative :: proc(state: ^GameState, token_id: u64, initiative: i32, init_index: i32) {
+    if state.initiative_to_tokens[initiative] == nil {
+        state.initiative_to_tokens[initiative] = make([dynamic]u64)
+    }
+    tokens := &state.initiative_to_tokens[initiative]
+    if i32(len(tokens)) >= init_index {
+        inject_at(tokens, init_index, token_id)
+    } else {
+        append(tokens, state.selected_token)
+    }
+}
+
 move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^Action) {
     if state.selected_token == 0 {
-        _, _, state.selected_token = find_at_initiative(state, state.tool_start_position.?.y)
+        state.initiative_tool_start.x, state.initiative_tool_start.y, state.selected_token = find_at_initiative(state, state.tool_start_position.?.y)
     } else {
         end_initiative, end_index, _ := find_at_initiative(state, end_pos.y)
         init, i := remove_token_by_id_from_initiative(state, state.selected_token)
+        add_at_initiative(state, state.selected_token, end_initiative, end_index)
         if action != nil {
-            action.token_initiative_history[state.selected_token] = [2]i32{init, i}
-        }
-        remove_token_by_id_from_initiative(state, state.selected_token)
-        if state.initiative_to_tokens[end_initiative] == nil {
-            state.initiative_to_tokens[end_initiative] = make([dynamic]u64)
-        }
-        tokens := &state.initiative_to_tokens[end_initiative]
-        if i32(len(tokens)) >= end_index {
-            inject_at(tokens, end_index, state.selected_token)
-        } else {
-            append(tokens, state.selected_token)
+            action.token_initiative_history[state.selected_token] = [2]i32{state.initiative_tool_start.x - end_initiative, math.max(state.initiative_tool_start.y - end_index, 0)}
+            fmt.println("end delta: ", action.token_initiative_history[state.selected_token], " from: ", state.initiative_tool_start, " - ", end_initiative, ", ", end_index)
         }
     }
 }
@@ -204,14 +208,14 @@ move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^
 move_token_tool :: proc(state: ^GameState, token: ^Token,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action, feedback: bool) {
     if (token != nil) {
         mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
-        action.token_history[token.id] = token.position
-        set_token_position(token, mouse_tile_pos)
+        token_pos_delta : [2]i32 = {i32(token.position.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x), i32(token.position.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y)}
+        action.token_history[token.id] = token_pos_delta
         if feedback {
-            token_tile_pos : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
-            token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token_tile_pos.abs_tile)
+            token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token.position.abs_tile)
         } else {
             token.moved = 0
         }
+        add_tile_pos_delta(&token.position, token_pos_delta)
     }
 }
 

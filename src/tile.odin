@@ -239,3 +239,8 @@ decompress_tile_chunk_into :: proc(ctc: ^CompressedTileChunk, tile_chunk: ^TileC
         }
     }
 }
+
+add_tile_pos_delta :: proc(tile: ^TileMapPosition, delta: [2]i32) {
+    tile.abs_tile.x = u32(i32(tile.abs_tile.x) - delta.x)
+    tile.abs_tile.y = u32(i32(tile.abs_tile.y) - delta.y)
+}
