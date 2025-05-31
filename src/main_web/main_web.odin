@@ -365,11 +365,7 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
                 tile_map := AMitemObjId(tile_item)
 
                 x := get_map_value(doc, tile_map, "x", u64)
-
-                y_result := AMmapGet(doc, tile_map, AMstr("y"), c.NULL)
-                defer AMresultFree(y_result)
-                y_item, _ := result_to_item(y_result)
-                y := item_to_or_report(y_item, u64)
+                y := get_map_value(doc, tile_map, "y", u64)
 
                 color_result := AMmapGet(doc, tile_map, AMstr("color"), c.NULL)
                 defer AMresultFree(color_result)
