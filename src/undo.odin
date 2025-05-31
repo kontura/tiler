@@ -1,5 +1,6 @@
 package tiler
 import "core:mem"
+import "core:fmt"
 
 Action :: struct {
     tool: Tool,
@@ -42,6 +43,7 @@ clear_action :: proc(action: ^Action) {
 }
 
 undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
+    //make this into a revert, the way git does it, so add a new action with oposite values
     for abs_tile, &tile in action.tile_history {
         old_tile := get_tile(tile_map, abs_tile)
         set_tile(tile_map, abs_tile, tile_add(&old_tile, &tile))
@@ -87,6 +89,7 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
             set_tile(tile_map, abs_tile, tile_subtract(&old_tile, &tile))
         }
     }
+    fmt.println("redoing action: ", action)
     for token_id, &pos_delta in action.token_history {
         token := &state.tokens[token_id]
         add_tile_pos_delta(&token.position, pos_delta)
@@ -102,6 +105,9 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
             token, ok := &state.tokens[token_id]
             if ok {
                 token.alive = true
+            } else {
+                t := make_token(token_id, {{u32(action.token_history[token_id].x), u32(action.token_history[token_id].y)}, {0, 0}}, state.selected_color)
+                state.tokens[t.id] =  t
             }
             append(&state.initiative_to_tokens[token.initiative], token_id)
         } else {

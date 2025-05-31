@@ -436,6 +436,7 @@ update :: proc() {
                 append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 action.token_life[t.id] = true
+                action.token_history[t.id] = {i32(mouse_tile_pos.abs_tile.x), i32(mouse_tile_pos.abs_tile.y)}
                 state.max_entity_id += 1
             } else {
                 c := state.selected_color
