@@ -187,9 +187,8 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
     actions_id := result_to_objid(actions_result) or_return
     doc_actions_list_count := AMobjSize(doc, actions_id, c.NULL)
 
-    for doc_actions_list_count > len(actions) {
-        //TODO(amatej): pop doc_actions_list_count - len(actions) actions
-        doc_actions_list_count -= 1
+    if doc_actions_list_count > len(actions) {
+        panic("There is more doc actions when trying to sync them.")
     }
 
     for doc_actions_list_count < len(actions) {
