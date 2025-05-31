@@ -105,6 +105,8 @@ onmessage :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSo
         if len(payload) != 0 {
             decode_and_receive(&payload[0], uint(len(payload)), doc, peers[sender])
             update_game_state_from_doc(doc)
+        } else {
+            fmt.println("Registering: ", sender)
         }
         game.state.needs_sync = true
     }
