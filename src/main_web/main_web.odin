@@ -113,32 +113,6 @@ onmessage :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSo
     return true
 }
 
-update_only_on_change :: proc(obj: am.AMobjIdPtr, key: cstring, new: $T, loc := #caller_location) -> bool {
-    using am
-    result := AMmapGet(doc, obj, AMstr(key), c.NULL)
-    item := result_to_item(result) or_return
-    defer AMresultFree(result)
-    insert: bool = false
-    if AMitemValType(item) == .AM_VAL_TYPE_VOID {
-        insert = true
-    } else {
-        value: T
-        if (!AMitemTo(item, &value)) {
-            fmt.println("Failed to convert from item at: ", loc)
-        }
-        if value != new {
-            insert = true
-        }
-    }
-    if insert {
-        insert_result := AMmapPut(doc, obj, AMstr(key), new)
-        defer AMresultFree(insert_result)
-        verify_result(insert_result)
-    }
-
-    return true
-}
-
 update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
     using am
 
