@@ -441,9 +441,9 @@ update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
         game_undo_len += 1
     }
 
-    //for len(doc_actions) < len(game.state.undo_history) {
-    //    //TODO(amatej): undo the extra actions
-    //}
+    if len(doc_actions) < len(game.state.undo_history) {
+        game.state.needs_sync = true
+    }
 
 }
 
