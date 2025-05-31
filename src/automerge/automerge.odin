@@ -118,6 +118,7 @@ foreign _ {
         AMmapPutObject :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, obj_type: AMobjType) -> AMresultPtr ---
         AMmapPutInt :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.int64_t) -> AMresultPtr ---
         AMmapPutUint :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.uint64_t) -> AMresultPtr ---
+        AMmapPutBool :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.bool) -> AMresultPtr ---
 
         AMmapRange :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, begin: AMbyteSpan, end: AMbyteSpan, heads: AMitemsPtr) -> AMresultPtr ---
 	AMmapGet :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, heads: AMitemsPtr) -> AMresultPtr ---
@@ -133,6 +134,7 @@ foreign _ {
 	AMitemToBytes :: proc(item: AMitemPtr, value: ^AMbyteSpan) -> c.bool ---
 	AMitemToUint :: proc(item: AMitemPtr, value: ^c.uint64_t) -> c.bool ---
 	AMitemToInt :: proc(item: AMitemPtr, value: ^c.int64_t) -> c.bool ---
+	AMitemToBool :: proc(item: AMitemPtr, value: ^c.bool) -> c.bool ---
 	AMitemToCounter :: proc(item: AMitemPtr, value: ^c.int64_t) -> c.bool ---
 
         AMitemObjId :: proc(item: AMitemPtr) -> AMobjIdPtr ---
@@ -160,6 +162,7 @@ foreign _ {
 AMitemTo :: proc {
     AMitemToUint,
     AMitemToInt,
+    AMitemToBool,
     AMitemToString,
     AMitemToBytes,
 }
@@ -170,6 +173,7 @@ AMmapPut :: proc {
     AMmapPutObject,
     AMmapPutInt,
     AMmapPutUint,
+    AMmapPutBool,
 }
 
 AMmapPutString :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: string) -> AMresultPtr {
