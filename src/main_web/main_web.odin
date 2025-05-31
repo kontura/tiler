@@ -161,7 +161,6 @@ update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
 
     }
 
-    update_doc_tokens(doc, &game.state.tokens)
     update_doc_actions(doc, game.state.undo_history[:])
 }
 
@@ -253,53 +252,49 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
             }
         }
 
+        { // Put token movement deltas
+            token_history_result := AMmapPutObject(doc, action_map, AMstr("token_history"), .AM_OBJ_TYPE_LIST)
+            defer AMresultFree(token_history_result)
+            token_history := result_to_objid(token_history_result) or_return
+            for token_id, &pos_delta in action.token_history {
+                token_result := AMlistPutObject(doc, token_history, c.SIZE_MAX, true, .AM_OBJ_TYPE_MAP)
+                defer AMresultFree(token_result)
+                token_map := result_to_objid(token_result) or_return
+
+                id_result := AMmapPut(doc, token_map, AMstr("id"), u64(token_id))
+                defer AMresultFree(id_result)
+                verify_result(id_result) or_return
+
+                x_result := AMmapPut(doc, token_map, AMstr("x"), i64(pos_delta.x))
+                defer AMresultFree(x_result)
+                verify_result(x_result) or_return
+
+                y_result := AMmapPut(doc, token_map, AMstr("y"), i64(pos_delta.y))
+                defer AMresultFree(y_result)
+                verify_result(y_result) or_return
+            }
+        }
+
+        { // Put token life deltas
+            token_life_result := AMmapPutObject(doc, action_map, AMstr("token_life"), .AM_OBJ_TYPE_LIST)
+            defer AMresultFree(token_life_result)
+            token_life := result_to_objid(token_life_result) or_return
+            for token_id, alive in action.token_life {
+                token_result := AMlistPutObject(doc, token_life, c.SIZE_MAX, true, .AM_OBJ_TYPE_MAP)
+                defer AMresultFree(token_result)
+                token_map := result_to_objid(token_result) or_return
+
+                id_result := AMmapPut(doc, token_map, AMstr("id"), u64(token_id))
+                defer AMresultFree(id_result)
+                verify_result(id_result) or_return
+
+                life_result := AMmapPut(doc, token_map, AMstr("alive"), alive)
+                defer AMresultFree(life_result)
+                verify_result(life_result) or_return
+            }
+        }
+
         doc_actions_list_count += 1
-    }
-
-    return true
-}
-
-update_doc_tokens :: proc(doc: am.AMdocPtr, tokens: ^map[u64]game.Token) -> bool {
-    using am
-    tokens_result := get_or_insert(doc, AM_ROOT, "tokens", .AM_OBJ_TYPE_MAP)
-    defer AMresultFree(tokens_result)
-    tokens_id := result_to_objid(tokens_result) or_return
-
-    for _, &token in tokens {
-        id := fmt.caprint(token.id, allocator=context.temp_allocator)
-        token_result := AMmapGet(doc, tokens_id, AMstr(id), c.NULL)
-        defer AMresultFree(token_result)
-        token_item := result_to_item(token_result) or_return
-        token_id: AMobjIdPtr
-        if AMitemValType(token_item) == .AM_VAL_TYPE_VOID {
-            AMresultFree(token_result)
-            // Insert a map into the map for each token
-            token_result = AMmapPutObject(doc, tokens_id, AMstr(fmt.caprint(token.id)), .AM_OBJ_TYPE_MAP)
-            token_id = result_to_objid(token_result) or_return
-            put_map_value(doc, token_id, "id", token.id) or_return
-            color_bytes: AMbyteSpan
-            color_bytes.count = 4
-            color_bytes.src = &token.color[0]
-            put_map_value(doc, token_id, "color", color_bytes) or_return
-        } else {
-            token_id = AMitemObjId(token_item)
-        }
-
-        update_only_on_change(token_id, "name", token.name) or_return
-        update_only_on_change(token_id, "initiative", i64(token.initiative)) or_return
-        update_only_on_change(token_id, "size", i64(token.size)) or_return
-        update_only_on_change(token_id, "x", u64(token.position.abs_tile.x)) or_return
-        update_only_on_change(token_id, "y", u64(token.position.abs_tile.y)) or_return
-
-    }
-
-    for id, _ in get_tokens_from_doc(doc) {
-        _, ok := tokens[id]
-        if !ok {
-            result := AMmapDelete(doc, tokens_id, AMstr(fmt.caprint(id, allocator=context.temp_allocator)))
-            verify_result(result)
-            AMresultFree(result)
-        }
     }
 
     return true
@@ -379,13 +374,63 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
                 tile.color[1] = color.src[1]
                 tile.color[2] = color.src[2]
                 tile.color[3] = color.src[3]
+                //TODO(amatej): this map doest use temp allocator
                 game_action.tile_history[{u32(x),u32(y)}] = tile
 
                 tile_item = AMitemsNext(&tile_items, 1)
             }
-
-
         }
+
+        { // get token movement deltas
+            token_history_result: AMresultPtr = AMmapGet(doc, action_map, AMstr("token_history"), c.NULL)
+            defer AMresultFree(token_history_result)
+            token_history_item, _ := result_to_item(token_history_result)
+
+            if AMitemValType(token_history_item) != .AM_VAL_TYPE_VOID {
+                token_history_list := AMitemObjId(token_history_item)
+
+                range_tokens_result := AMlistRange(doc, token_history_list, 0, c.SIZE_MAX, c.NULL)
+                defer AMresultFree(range_tokens_result)
+                verify_result(range_tokens_result)
+                token_items: AMitems = AMresultItems(range_tokens_result)
+                token_item : AMitemPtr = AMitemsNext(&token_items, 1)
+                for token_item != c.NULL {
+                    token_map := AMitemObjId(token_item)
+
+                    id := get_map_value(doc, token_map, "id", u64)
+                    x := get_map_value(doc, token_map, "x", i64)
+                    y := get_map_value(doc, token_map, "y", i64)
+                    game_action.token_history[id] = {i32(x),i32(y)}
+                    token_item = AMitemsNext(&token_items, 1)
+                }
+            }
+        }
+
+        { // get token life deltas
+            token_life_result: AMresultPtr = AMmapGet(doc, action_map, AMstr("token_life"), c.NULL)
+            defer AMresultFree(token_life_result)
+            token_life_item, _ := result_to_item(token_life_result)
+
+            if AMitemValType(token_life_item) != .AM_VAL_TYPE_VOID {
+                token_life_list := AMitemObjId(token_life_item)
+
+                range_tokens_result := AMlistRange(doc, token_life_list, 0, c.SIZE_MAX, c.NULL)
+                defer AMresultFree(range_tokens_result)
+                verify_result(range_tokens_result)
+                token_items: AMitems = AMresultItems(range_tokens_result)
+                token_item : AMitemPtr = AMitemsNext(&token_items, 1)
+                for token_item != c.NULL {
+                    token_map := AMitemObjId(token_item)
+
+                    id := get_map_value(doc, token_map, "id", u64)
+                    alive := get_map_value(doc, token_map, "alive", bool)
+                    game_action.token_life[id] = alive
+                    token_item = AMitemsNext(&token_items, 1)
+                }
+            }
+        }
+
+
 
         append(&undo_history, game_action)
 
@@ -393,52 +438,6 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
     }
 
     return undo_history[:]
-}
-
-get_tokens_from_doc :: proc(doc: am.AMdocPtr) -> map[u64]game.Token {
-    using am
-    tokens_result: AMresultPtr = AMmapGet(doc, AM_ROOT, AMstr("tokens"), c.NULL)
-    defer AMresultFree(tokens_result)
-    tokens_id, _ := result_to_objid(tokens_result)
-
-    tokens := make(map[u64]game.Token, allocator=context.temp_allocator)
-
-    range_result := AMmapRange(doc, tokens_id, AMstr(nil), AMstr(nil), c.NULL)
-    defer AMresultFree(range_result)
-    verify_result(range_result)
-    items: AMitems = AMresultItems(range_result)
-    token_item : AMitemPtr = AMitemsNext(&items, 1)
-    for token_item != c.NULL {
-        token_map := AMitemObjId(token_item)
-
-        id := get_map_value(doc, token_map, "id", u64)
-        x := get_map_value(doc, token_map, "x", u64)
-        y := get_map_value(doc, token_map, "y", u64)
-        name := get_map_value(doc, token_map, "name", string)
-        size := get_map_value(doc, token_map, "size", i64)
-        initiative := get_map_value(doc, token_map, "initiative", i64)
-        color := get_map_value(doc, token_map, "color", AMbyteSpan)
-
-        token_pos: game.TileMapPosition
-        token_pos.abs_tile.x = u32(x)
-        token_pos.abs_tile.y = u32(y)
-
-        t: game.Token
-        t.name = name
-        t.position = token_pos
-        t.size = i32(size)
-        t.id = id
-        t.initiative = i32(initiative)
-        t.color[0] = color.src[0]
-        t.color[1] = color.src[1]
-        t.color[2] = color.src[2]
-        t.color[3] = color.src[3]
-
-        tokens[t.id] = t
-
-        token_item = AMitemsNext(&items, 1)
-    }
-    return tokens
 }
 
 update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
@@ -454,30 +453,14 @@ update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
         game.state.max_entity_id = u64(max)
     }
 
-    doc_tokens := get_tokens_from_doc(doc)
-
-    for _, doc_token in doc_tokens {
-        game.state.tokens[doc_token.id] = doc_token
-        game.remove_token_by_id_from_initiative(game.state, doc_token.id)
-        if game.state.initiative_to_tokens[i32(doc_token.initiative)] == nil {
-            game.state.initiative_to_tokens[i32(doc_token.initiative)] = make([dynamic]u64)
-        }
-        append(&game.state.initiative_to_tokens[i32(doc_token.initiative)], doc_token.id)
-    }
-    for id, _ in game.state.tokens {
-        _, ok := &doc_tokens[id]
-        if !ok {
-            delete_key(&game.state.tokens, id)
-        }
-
-    }
-
     doc_actions := get_undo_history_from_doc(doc)
     game_undo_len := len(game.state.undo_history)
 
     for len(doc_actions) > game_undo_len {
         action := doc_actions[game_undo_len]
         game.redo_action(game.state, game.tile_map, &action)
+        //TODO(amatej): I guess this could cause problems
+        //              because the action is only temp_allocated
         append(&game.state.undo_history, action)
 
         game_undo_len += 1
