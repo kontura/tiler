@@ -308,6 +308,7 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
     defer AMresultFree(undo_history_result)
     undo_history_id, _ := result_to_objid(undo_history_result)
 
+    //TODO(amatej): technically I could get only those action I don't already have
     range_result := AMlistRange(doc, undo_history_id, 0, c.SIZE_MAX, c.NULL)
     defer AMresultFree(range_result)
     verify_result(range_result)
