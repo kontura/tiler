@@ -110,51 +110,6 @@ tile_map_to_screen_coord :: proc(pos: TileMapPosition, state: ^GameState, tile_m
 state: ^GameState
 tile_map: ^TileMap
 
-// Beware the returned data are temp only by default
-serialize_to_bytes :: proc(allocator := context.temp_allocator) -> []byte {
-    s: Serializer
-    serializer_init_writer(&s, allocator=allocator)
-    serialize(&s, tile_map)
-    serialize(&s, state)
-    compressed_chunks: CompressedTileChunks
-    compressed_chunks.tile_chunks = make(map[[2]u32]CompressedTileChunk, context.temp_allocator)
-    for key, &value in tile_map.tile_chunks {
-        compressed_chunks.tile_chunks[key] = compress_tile_chunk(&value)
-    }
-    serialize(&s, &compressed_chunks)
-    return s.data[:]
-}
-
-load_save :: proc(path := "/persist/tiler_save") {
-    data, ok := read_entire_file(path, context.temp_allocator)
-    if ok {
-        load_from_serialized(data)
-    }
-}
-
-store_save :: proc(path := "/persist/tiler_save") {
-    write_entire_file(path, serialize_to_bytes())
-}
-
-load_from_serialized :: proc(data: []byte) {
-    s: Serializer
-    serializer_init_reader(&s, data)
-    serialize(&s, tile_map)
-    serialize(&s, state)
-    compressed_chunks: CompressedTileChunks
-    serialize(&s, &compressed_chunks)
-    for key, _ in tile_map.tile_chunks {
-        delete(tile_map.tile_chunks[key].tiles)
-    }
-    for key, &value in compressed_chunks.tile_chunks {
-        tile_map.tile_chunks[key] = TileChunk{make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)}
-        decompress_tile_chunk_into(&value, &(tile_map.tile_chunks[key]))
-        delete(value.tiles)
-        delete(value.counts)
-    }
-    delete(compressed_chunks.tile_chunks)
-}
-
 init :: proc(mobile := false) {
     rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "Tiler")

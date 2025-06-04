@@ -345,11 +345,11 @@ web_window_size_changed :: proc "c" (w: c.int, h: c.int) {
 @export
 load_save :: proc "c" () {
 	context = web_context
-        game.load_save()
+        //TODO(amatej): this should use automerge doc
 }
 
 @export
 store_save :: proc "c" () {
 	context = web_context
-        game.store_save()
+        //TODO(amatej): this should use automerge doc
 }
