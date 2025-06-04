@@ -694,6 +694,27 @@ update :: proc() {
         }
     }
 
+    // draw debug info
+    {
+        live_t := 0
+        for _, &t in state.tokens {
+            if t.alive {
+                live_t += 1
+            }
+        }
+        total_tokens_live := fmt.caprint("Total live tokens: ", live_t, allocator=context.temp_allocator)
+        total_tokens := fmt.caprint("Total tokens: ", len(state.tokens), allocator=context.temp_allocator)
+        rl.DrawText(total_tokens_live, 230, 30, 18, rl.GREEN)
+        rl.DrawText(total_tokens, 230, 50, 18, rl.GREEN)
+        total_actions := fmt.caprint("Total actions: ", len(state.undo_history), allocator=context.temp_allocator)
+        rl.DrawText(total_actions, 30, 30, 18, rl.GREEN)
+        for action_index := len(state.undo_history)-1; action_index >= 0; action_index -= 1 {
+            a := &state.undo_history[action_index]
+            a_text := fmt.caprint(action_index, ": ", a.tool, ", tile_history: ", len(a.tile_history), a.token_history, allocator=context.temp_allocator)
+            rl.DrawText(a_text, 30, 30+30*(i32(len(state.undo_history))-i32(action_index)), 15, a.performed ? rl.GREEN : rl.RED)
+        }
+    }
+
     if (state.draw_grid) {
         for column_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x)); column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x)); column_offset += 1 {
             cen_x : f32 = screen_center.x - tile_map.feet_to_pixels * state.camera_pos.rel_tile.x + f32(column_offset * tile_map.tile_side_in_pixels)
