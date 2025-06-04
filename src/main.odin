@@ -315,18 +315,20 @@ update :: proc() {
     case .MOVE_TOKEN: {
         if state.tool_start_position != nil {
             token := find_token_at_screen(tile_map, state, state.tool_start_position.?)
-            if rl.IsMouseButtonDown(.LEFT) {
-                append(&state.temp_actions, make_action(context.temp_allocator))
-                temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-                move_token_tool(state, token, tile_map, mouse_pos, temp_action, true)
-            } else if rl.IsMouseButtonReleased(.LEFT) {
-                if (state.tool_start_position != nil) {
-                    append(&state.undo_history, Action{})
-                    action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                    move_token_tool(state, token, tile_map, mouse_pos, action, false)
-                    action.performed = true
-                    action.tool = .MOVE_TOKEN
-                    state.needs_sync = true
+            if token != nil {
+                if rl.IsMouseButtonDown(.LEFT) {
+                    append(&state.temp_actions, make_action(context.temp_allocator))
+                    temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
+                    move_token_tool(state, token, tile_map, mouse_pos, temp_action, true)
+                } else if rl.IsMouseButtonReleased(.LEFT) {
+                    if state.tool_start_position != nil {
+                        append(&state.undo_history, Action{})
+                        action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                        move_token_tool(state, token, tile_map, mouse_pos, action, false)
+                        action.performed = true
+                        action.tool = .MOVE_TOKEN
+                        state.needs_sync = true
+                    }
                 }
             }
             icon = .ICON_TARGET_MOVE

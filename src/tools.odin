@@ -206,17 +206,15 @@ move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^
 }
 
 move_token_tool :: proc(state: ^GameState, token: ^Token,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action, feedback: bool) {
-    if (token != nil) {
-        mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
-        token_pos_delta : [2]i32 = {i32(token.position.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x), i32(token.position.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y)}
-        action.token_history[token.id] = token_pos_delta
-        if feedback {
-            token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token.position.abs_tile)
-        } else {
-            token.moved = 0
-        }
-        add_tile_pos_delta(&token.position, token_pos_delta)
+    mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
+    token_pos_delta : [2]i32 = {i32(token.position.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x), i32(token.position.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y)}
+    action.token_history[token.id] = token_pos_delta
+    if feedback {
+        token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token.position.abs_tile)
+    } else {
+        token.moved = 0
     }
+    add_tile_pos_delta(&token.position, token_pos_delta)
 }
 
 //TODO(amatej): this doesn't work when we loop to previous tile_chunk
