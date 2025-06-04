@@ -436,6 +436,7 @@ update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
         game.redo_action(game.state, game.tile_map, &action)
         //TODO(amatej): I guess this could cause problems
         //              because the action is only temp_allocated
+        action.performed = true
         append(&game.state.undo_history, action)
 
         game_undo_len += 1

@@ -259,6 +259,8 @@ update :: proc() {
                     new_tile := old_tile
                     new_tile.color = state.selected_color
                     action.tile_history[mouse_tile_pos.abs_tile] = tile_subtract(&old_tile, &new_tile)
+                    action.tool = .BRUSH
+                    action.performed = true
                     set_tile(tile_map, mouse_tile_pos.abs_tile, new_tile)
                 }
             }
@@ -283,6 +285,7 @@ update :: proc() {
                 action.start = start_mouse_tile
                 action.end = end_mouse_tile
                 action.color = state.selected_color
+                action.performed = true
                 tooltip = rectangle_tool(start_mouse_tile, end_mouse_tile, state.selected_color, tile_map, action)
                 state.needs_sync = true
             }
@@ -299,6 +302,8 @@ update :: proc() {
             if (state.tool_start_position != nil) {
                 append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                action.performed = true
+                action.tool = .CIRCLE
                 tooltip = circle_tool(state, tile_map, mouse_pos, action)
                 state.needs_sync = true
             }
@@ -319,6 +324,8 @@ update :: proc() {
                     append(&state.undo_history, Action{})
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     move_token_tool(state, token, tile_map, mouse_pos, action, false)
+                    action.performed = true
+                    action.tool = .MOVE_TOKEN
                     state.needs_sync = true
                 }
             }
@@ -343,7 +350,9 @@ update :: proc() {
             if (state.tool_start_position != nil) {
                 append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                action.tool = .WALL
                 tooltip = wall_tool(state, tile_map, mouse_pos, action)
+                action.performed = true
             }
         } else {
             highligh_current_tile_intersection = true
@@ -387,6 +396,8 @@ update :: proc() {
                     append(&state.undo_history, Action{})
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     action.token_life[token.id] = false
+                    action.tool = .EDIT_TOKEN
+                    action.performed = true
                 } else {
                     if rl.IsKeyDown(.BACKSPACE) {
                         key = .BACKSPACE
@@ -438,6 +449,8 @@ update :: proc() {
                 action.token_life[t.id] = true
                 action.token_history[t.id] = {i32(mouse_tile_pos.abs_tile.x), i32(mouse_tile_pos.abs_tile.y)}
                 state.max_entity_id += 1
+                action.tool = .EDIT_TOKEN
+                action.performed = true
             } else {
                 c := state.selected_color
                 c.a = 90
@@ -463,6 +476,8 @@ update :: proc() {
                     append(&state.undo_history, Action{})
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     move_initiative_token_tool(state, mouse_pos, action)
+                    action.tool = .EDIT_TOKEN
+                    action.performed = true
                 }
                 state.selected_token = 0
             }

@@ -16,6 +16,9 @@ Action :: struct {
     token_history: map[u64][2]i32,
     token_initiative_history: map[u64][2]i32,
     token_life: map[u64]bool,
+    // This is not synchronized, its local to each peer.
+    // Determines if this action was already perfomed.
+    performed: bool,
 }
 
 make_action :: proc(allocator: mem.Allocator) -> Action {
