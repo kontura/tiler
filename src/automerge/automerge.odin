@@ -49,54 +49,94 @@ AMobjType :: enum c.int {
 }
 
 AMvalType :: enum c.int {
-	/**
-  * An actor identifier value.
-  */
-	AM_VAL_TYPE_INT          = (1 << 10),
-	/**
-   * A mark.
-   */
-	AM_VAL_TYPE_MARK         = (1 << 11),
-	/**
-   * A null value.
-   */
-	AM_VAL_TYPE_NULL         = (1 << 12),
-	/**
-   * An object type value.
-   */
-	AM_VAL_TYPE_OBJ_TYPE     = (1 << 13),
-	/**
-   * A UTF-8 string view value.
-   */
-	AM_VAL_TYPE_STR          = (1 << 14),
-	/**
-   * A synchronization have value.
-   */
-	AM_VAL_TYPE_SYNC_HAVE    = (1 << 15),
-	/**
-   * A synchronization message value.
-   */
-	AM_VAL_TYPE_SYNC_MESSAGE = (1 << 16),
-	/**
-   * A synchronization state value.
-   */
-	AM_VAL_TYPE_SYNC_STATE   = (1 << 17),
-	/**
-   * A *nix timestamp (milliseconds) value.
-   */
-	AM_VAL_TYPE_TIMESTAMP    = (1 << 18),
-	/**
-   * A 64-bit unsigned integer value.
-   */
-	AM_VAL_TYPE_UINT         = (1 << 19),
-	/**
-   * An unknown type of value.
-   */
-	AM_VAL_TYPE_UNKNOWN      = (1 << 20),
-	/**
-   * A void.
-   */
-	AM_VAL_TYPE_VOID         = (1 << 0),
+    /**
+     * An actor identifier value.
+     */
+    AM_VAL_TYPE_ACTOR_ID = (1 << 1),
+    /**
+     * A boolean value.
+     */
+    AM_VAL_TYPE_BOOL = (1 << 2),
+    /**
+     * A view onto an array of bytes value.
+     */
+    AM_VAL_TYPE_BYTES = (1 << 3),
+    /**
+     * A change value.
+     */
+    AM_VAL_TYPE_CHANGE = (1 << 4),
+    /**
+     * A change hash value.
+     */
+    AM_VAL_TYPE_CHANGE_HASH = (1 << 5),
+    /**
+     * A CRDT counter value.
+     */
+    AM_VAL_TYPE_COUNTER = (1 << 6),
+    /**
+     * A cursor value.
+     */
+    AM_VAL_TYPE_CURSOR = (1 << 7),
+    /**
+     * The default tag, not a type signifier.
+     */
+    AM_VAL_TYPE_DEFAULT = 0,
+    /**
+     * A document value.
+     */
+    AM_VAL_TYPE_DOC = (1 << 8),
+    /**
+     * A 64-bit float value.
+     */
+    AM_VAL_TYPE_F64 = (1 << 9),
+    /**
+     * A 64-bit signed integer value.
+     */
+    AM_VAL_TYPE_INT = (1 << 10),
+    /**
+     * A mark.
+     */
+    AM_VAL_TYPE_MARK = (1 << 11),
+    /**
+     * A null value.
+     */
+    AM_VAL_TYPE_NULL = (1 << 12),
+    /**
+     * An object type value.
+     */
+    AM_VAL_TYPE_OBJ_TYPE = (1 << 13),
+    /**
+     * A UTF-8 string view value.
+     */
+    AM_VAL_TYPE_STR = (1 << 14),
+    /**
+     * A synchronization have value.
+     */
+    AM_VAL_TYPE_SYNC_HAVE = (1 << 15),
+    /**
+     * A synchronization message value.
+     */
+    AM_VAL_TYPE_SYNC_MESSAGE = (1 << 16),
+    /**
+     * A synchronization state value.
+     */
+    AM_VAL_TYPE_SYNC_STATE = (1 << 17),
+    /**
+     * A *nix timestamp (milliseconds) value.
+     */
+    AM_VAL_TYPE_TIMESTAMP = (1 << 18),
+    /**
+     * A 64-bit unsigned integer value.
+     */
+    AM_VAL_TYPE_UINT = (1 << 19),
+    /**
+     * An unknown type of value.
+     */
+    AM_VAL_TYPE_UNKNOWN = (1 << 20),
+    /**
+     * A void.
+     */
+    AM_VAL_TYPE_VOID = (1 << 0),
 }
 
 AM_ROOT :: c.NULL
@@ -159,6 +199,9 @@ foreign _ {
 
         AMmapPutCounter :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.int64_t) -> AMresultPtr ---
         AMmapIncrement :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.int64_t) -> AMresultPtr ---
+
+        AMsave :: proc(doc: AMdocPtr) -> AMresultPtr ---
+        AMload :: proc(src: [^]c.uint8_t, count: c.size_t) -> AMresultPtr ---
 
 }
 
