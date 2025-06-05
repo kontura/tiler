@@ -584,7 +584,7 @@ put_map_action :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: ^
     put_into_map(doc, map_id, "end", value.end) or_return
     put_into_map(doc, map_id, "color", value.color) or_return
 
-    put_into_map(doc, map_id, "tile_history", value.tile_history) or_return
+    //put_into_map(doc, map_id, "tile_history", value.tile_history) or_return
     put_into_map(doc, map_id, "token_history", value.token_history) or_return
     put_into_map(doc, map_id, "token_initiative_history", value.token_initiative_history) or_return
     put_into_map(doc, map_id, "token_life", value.token_life) or_return
