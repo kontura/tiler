@@ -390,7 +390,6 @@ update :: proc() {
                         case:
                             strings.write_byte(&builder, byte)
                         }
-                        //TODO(amatej): there was a bad free here
                         delete(token.name)
                         token.name = strings.to_string(builder)
                         state.key_consumed = true
