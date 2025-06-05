@@ -14,6 +14,12 @@ BUILDER_FAILED :: "Builder failed"
 
 INITIATIVE_COUNT : i32 : 50
 
+SaveStatus :: enum {
+    NONE,
+    REQUESTED,
+    DONE,
+}
+
 GameState :: struct {
     screen_width: i32,
     screen_height: i32,
@@ -43,6 +49,9 @@ GameState :: struct {
     previous_touch_pos: [2]f32,
     previous_touch_count: i32,
     initiative_tool_start: [2]i32,
+    save: SaveStatus,
+    bytes_count: uint,
+    timeout: uint,
 }
 
 Widget :: enum {
@@ -651,6 +660,15 @@ update :: proc() {
         }
     }
 
+    if state.save == .DONE {
+        msg := fmt.caprint("Saved! (byte count: ", state.bytes_count, ")", allocator=context.temp_allocator)
+        rl.DrawText(msg, 100, 100, 100, rl.BLUE)
+        if state.timeout > 0 {
+            state.timeout -= 1
+        } else {
+            state.save = .NONE
+        }
+    }
     // draw debug info
     {
         live_t := 0

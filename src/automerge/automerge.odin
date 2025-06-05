@@ -200,8 +200,12 @@ foreign _ {
         AMmapPutCounter :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.int64_t) -> AMresultPtr ---
         AMmapIncrement :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.int64_t) -> AMresultPtr ---
 
+        // There is some memory problem with this method when using emscripten
         AMsave :: proc(doc: AMdocPtr) -> AMresultPtr ---
+        AMclone :: proc(doc: AMdocPtr) -> AMresultPtr ---
+        AMsaveIncremental :: proc(doc: AMdocPtr) -> AMresultPtr ---
         AMload :: proc(src: [^]c.uint8_t, count: c.size_t) -> AMresultPtr ---
+        AMloadIncremental :: proc(doc: AMdocPtr, src: [^]c.uint8_t, count: c.size_t) -> AMresultPtr ---
 
 }
 
