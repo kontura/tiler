@@ -170,7 +170,7 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
         defer AMresultFree(put_result)
         action_map := result_to_objid(put_result) or_return
 
-        put_into_map(doc, action_map, "action", action)
+        put_into_map(doc, action_map, "action", &action)
 
         doc_actions_list_count += 1
     }

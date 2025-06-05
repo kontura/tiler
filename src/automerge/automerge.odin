@@ -570,7 +570,7 @@ get_map_tile :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, $T: typeid
 }
 
 
-put_map_action :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: game.Action, loc := #caller_location) -> bool {
+put_map_action :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: ^game.Action, loc := #caller_location) -> bool {
     map_result := AMmapPutObject(doc, obj_id, AMstr(key), .AM_OBJ_TYPE_MAP)
     defer AMresultFree(map_result)
     map_id := result_to_objid(map_result) or_return
