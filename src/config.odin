@@ -75,7 +75,7 @@ config : []Config = {
             state.active_tool = state.previous_tool.?
             state.previous_tool = nil
         }}},
-    {.ICON_HELP, {{.RIGHT_SHIFT, .DOWN}, {.SLASH, .PRESSED}}, "Active help", proc(state: ^GameState) {
+    {.ICON_HELP, {{.SLASH, .PRESSED}}, "Active help", proc(state: ^GameState) {
         if state.previous_tool == nil {
             state.previous_tool = state.active_tool
             state.active_tool = .HELP
