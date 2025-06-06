@@ -1,6 +1,7 @@
 package tiler
 import "core:mem"
 import "core:fmt"
+import "core:strings"
 
 Action :: struct {
     // SYNCED
@@ -12,6 +13,12 @@ Action :: struct {
     token_history: map[u64][2]i32,
     token_initiative_history: map[u64][2]i32,
     token_life: map[u64]bool,
+
+    // This can work for only one token
+    // But will we ever rename more tokens at once>
+    old_name: string,
+    new_name: string,
+
     // NOT SYNCED
 
     // This is not synchronized, its local to each peer.
@@ -39,6 +46,8 @@ delete_action :: proc(action: ^Action) {
     delete(action.token_history)
     delete(action.token_life)
     delete(action.token_initiative_history)
+    delete(action.old_name)
+    delete(action.new_name)
 }
 
 clear_action :: proc(action: ^Action) {
@@ -57,7 +66,11 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     for token_id, &pos_delta in action.token_history {
         token := &state.tokens[token_id]
         add_tile_pos_delta(&token.position, pos_delta*-1)
-    }
+        if action.old_name != action.new_name {
+            delete(token.name)
+            token.name = strings.clone(action.old_name)
+        }
+     }
 
     for token_id, &delta_init_pos in action.token_initiative_history {
         old_init, old_init_index := remove_token_by_id_from_initiative(state, token_id)
@@ -99,6 +112,10 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     for token_id, &pos_delta in action.token_history {
         token := &state.tokens[token_id]
         add_tile_pos_delta(&token.position, pos_delta)
+        if action.old_name != action.new_name {
+            delete(token.name)
+            token.name = strings.clone(action.new_name)
+        }
     }
     for token_id, &delta_init_pos in action.token_initiative_history {
         old_init, old_init_index := remove_token_by_id_from_initiative(state, token_id)

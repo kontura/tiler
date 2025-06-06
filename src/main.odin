@@ -390,8 +390,18 @@ update :: proc() {
                         case:
                             strings.write_byte(&builder, byte)
                         }
+
+                        append(&state.undo_history, Action{})
+                        action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                        action.tool = .EDIT_TOKEN
+                        action.performed = true
+                        action.token_history[token.id] = {0,0}
+                        action.old_name = strings.clone(token.name)
+                        action.new_name = strings.clone(strings.to_string(builder))
+
                         delete(token.name)
                         token.name = strings.to_string(builder)
+
                         state.key_consumed = true
                         lowercase_name := strings.to_lower(token.name, context.temp_allocator)
                         for key, &value in state.textures {
