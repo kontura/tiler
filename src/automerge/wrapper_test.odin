@@ -15,11 +15,21 @@ get_new_doc :: proc() -> AMdocPtr {
 // The main interface should be: put_into_map and get_from_map
 
 @(test)
-add_number_to_doc :: proc(t: ^testing.T) {
+add_unsigned_number_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", u64(99)), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", u64), 99)
+}
+
+@(test)
+add_signed_number_to_doc :: proc(t: ^testing.T) {
+    doc := get_new_doc()
+
+    num : i64 = 99
+
+    testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", num), true)
+    testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", i64), 99)
 }
 
 
