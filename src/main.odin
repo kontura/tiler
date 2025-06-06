@@ -403,12 +403,7 @@ update :: proc() {
                         token.name = strings.to_string(builder)
 
                         state.key_consumed = true
-                        lowercase_name := strings.to_lower(token.name, context.temp_allocator)
-                        for key, &value in state.textures {
-                            if strings.has_prefix(lowercase_name, key) {
-                                token.texture = &value
-                            }
-                        }
+                        set_texture_based_on_name(state, token)
                     }
                 }
             } else if rl.IsMouseButtonPressed(.LEFT) {

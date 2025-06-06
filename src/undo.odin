@@ -69,6 +69,7 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
         if action.old_name != action.new_name {
             delete(token.name)
             token.name = strings.clone(action.old_name)
+            set_texture_based_on_name(state, token)
         }
      }
 
@@ -115,6 +116,7 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
         if action.old_name != action.new_name {
             delete(token.name)
             token.name = strings.clone(action.new_name)
+            set_texture_based_on_name(state, token)
         }
     }
     for token_id, &delta_init_pos in action.token_initiative_history {

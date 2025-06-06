@@ -79,3 +79,13 @@ remove_token_by_id_from_initiative :: proc(state: ^GameState, token_id: u64) -> 
 
     return -1,-1
 }
+
+set_texture_based_on_name :: proc(state: ^GameState, token: ^Token) {
+    lowercase_name := strings.to_lower(token.name, context.temp_allocator)
+    for key, &value in state.textures {
+        if strings.has_prefix(lowercase_name, key) {
+            token.texture = &value
+        }
+    }
+
+}
