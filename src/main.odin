@@ -411,10 +411,7 @@ update :: proc() {
                 t := make_token(state.max_entity_id, mouse_tile_pos, state.selected_color)
                 state.tokens[t.id] =  t
                 state.needs_sync = true
-                if state.initiative_to_tokens[t.initiative] == nil {
-                    state.initiative_to_tokens[t.initiative] = make([dynamic]u64)
-                }
-                append(&state.initiative_to_tokens[t.initiative], t.id)
+                add_at_initiative(state, t.id, t.initiative, 0)
                 append(&state.undo_history, Action{})
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 action.token_life[t.id] = true
@@ -423,6 +420,7 @@ update :: proc() {
                 action.tool = .EDIT_TOKEN
                 action.performed = true
                 action.color = state.selected_color
+                action.token_initiative_history[t.id] = {t.initiative, 0}
             } else {
                 c := state.selected_color
                 c.a = 90
