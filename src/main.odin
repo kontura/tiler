@@ -52,6 +52,7 @@ GameState :: struct {
     save: SaveStatus,
     bytes_count: uint,
     timeout: uint,
+    debug: bool,
 }
 
 Widget :: enum {
@@ -675,7 +676,7 @@ update :: proc() {
         }
     }
     // draw debug info
-    {
+    if state.debug {
         live_t := 0
         for _, &t in state.tokens {
             if t.alive {

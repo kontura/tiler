@@ -59,6 +59,8 @@ config : []Config = {
     //TODO(amatej): make this ctrl + s or something
     {nil, {{.V, .PRESSED}}, "Save game", proc(state: ^GameState) {
         state.save = .REQUESTED}},
+    {nil, {{.D, .PRESSED}}, "Toggle debug info", proc(state: ^GameState) {
+        state.debug = !state.debug}},
     {.ICON_UNDO, {{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, "Undo last action", proc(state: ^GameState) {
         if len(state.undo_history) > 0 {
             action : ^Action = &state.undo_history[len(state.undo_history)-1]
