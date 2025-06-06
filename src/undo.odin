@@ -50,13 +50,6 @@ delete_action :: proc(action: ^Action) {
     delete(action.new_name)
 }
 
-clear_action :: proc(action: ^Action) {
-    clear(&action.tile_history)
-    clear(&action.token_history)
-    clear(&action.token_life)
-    clear(&action.token_initiative_history)
-}
-
 undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     //make this into a revert, the way git does it, so add a new action with oposite values
     for abs_tile, &tile in action.tile_history {
@@ -143,12 +136,6 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
                 token.alive = false
             }
         }
-    }
-}
-
-clear_last_action :: proc(state: ^GameState, tile_map:  ^TileMap) {
-    if (len(&state.undo_history) > 0) {
-        clear_action(&state.undo_history[len(state.undo_history)-1])
     }
 }
 
