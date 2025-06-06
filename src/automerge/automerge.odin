@@ -254,7 +254,7 @@ AMmapPutString :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value
 AMitemToString :: proc(item: AMitemPtr, value: ^string) -> c.bool {
     got: AMbyteSpan
     if (AMitemToStr(item, &got)) {
-        value^ = string(got.src[:got.count])
+        value^ = strings.clone(string(got.src[:got.count]))
         return true
     } else {
         return false
@@ -520,6 +520,7 @@ result_to_objid :: proc(result: AMresultPtr, loc := #caller_location) -> (obj_id
     return obj_id, true
 }
 
+// The returned string will be valid only as long as the AMbyteSpan is valid
 am_byte_span_to_string :: proc(span: AMbyteSpan) -> string {
     return string(span.src[:span.count])
 }
