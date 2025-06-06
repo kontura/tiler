@@ -426,6 +426,7 @@ update :: proc() {
                 state.max_entity_id += 1
                 action.tool = .EDIT_TOKEN
                 action.performed = true
+                action.color = state.selected_color
             } else {
                 c := state.selected_color
                 c.a = 90

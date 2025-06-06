@@ -129,7 +129,7 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
             if ok {
                 token.alive = true
             } else {
-                t := make_token(token_id, {{u32(action.token_history[token_id].x), u32(action.token_history[token_id].y)}, {0, 0}}, state.selected_color)
+                t := make_token(token_id, {{u32(action.token_history[token_id].x), u32(action.token_history[token_id].y)}, {0, 0}}, action.color)
                 state.tokens[t.id] =  t
             }
             append(&state.initiative_to_tokens[token.initiative], token_id)
