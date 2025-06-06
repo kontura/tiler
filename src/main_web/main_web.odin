@@ -160,8 +160,10 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
     actions_id := result_to_objid(actions_result) or_return
     doc_actions_list_count := AMobjSize(doc, actions_id, c.NULL)
 
-    if doc_actions_list_count > len(actions) {
-        panic("There is more doc actions when trying to sync them.")
+    for doc_actions_list_count > len(actions) {
+        delete_result := AMlistDelete(doc, actions_id, c.SIZE_MAX)
+        defer AMresultFree(delete_result)
+        doc_actions_list_count -= 1
     }
 
     for doc_actions_list_count < len(actions) {
@@ -233,8 +235,12 @@ update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
         game_undo_len += 1
     }
 
-    if len(doc_actions) < len(game.state.undo_history) {
-        game.state.needs_sync = true
+    for len(doc_actions) < game_undo_len {
+        action := &game.state.undo_history[len(game.state.undo_history)-1]
+        game.undo_action(game.state, game.tile_map, action)
+        game.pop_last_action(game.state, game.tile_map, &game.state.undo_history)
+
+        game_undo_len -= 1
     }
 
 }

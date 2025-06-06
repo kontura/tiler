@@ -170,6 +170,7 @@ foreign _ {
         AMlistPutObject :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, pos: c.size_t, insert: bool, obj_type: AMobjType) -> AMresultPtr ---
         AMlistGet :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, pos: c.size_t, heads: AMitemsPtr) -> AMresultPtr ---
         AMlistRange :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, begin: c.size_t, end: c.size_t, heads: AMitemsPtr) -> AMresultPtr ---
+        AMlistDelete :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, pos: c.size_t) -> AMresultPtr ---
 
 	AMresultError :: proc(result: AMresultPtr) -> AMbyteSpan ---
 
