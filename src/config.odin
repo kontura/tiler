@@ -66,6 +66,7 @@ config : []Config = {
             action : ^Action = &state.undo_history[len(state.undo_history)-1]
             undo_action(state, tile_map, action)
             pop_last_action(state, tile_map, &state.undo_history)
+            state.needs_sync = true
         }}},
     {.ICON_COLOR_PICKER, {{.LEFT_CONTROL, .PRESSED}}, "Active colorpicker", proc(state: ^GameState) {
         if state.previous_tool == nil {
