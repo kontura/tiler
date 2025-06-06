@@ -13,6 +13,7 @@ Action :: struct {
     token_history: map[u64][2]i32,
     token_initiative_history: map[u64][2]i32,
     token_life: map[u64]bool,
+    token_size: map[u64]i64,
 
     // This can work for only one token
     // But will we ever rename more tokens at once>
@@ -88,6 +89,12 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
             append(&state.initiative_to_tokens[token.initiative], token_id)
         }
     }
+    for token_id, delta_size in action.token_size {
+        token, ok := &state.tokens[token_id]
+        if ok {
+            token.size -= i32(delta_size)
+        }
+    }
 }
 
 redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
@@ -136,6 +143,12 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
             if ok {
                 token.alive = false
             }
+        }
+    }
+    for token_id, delta_size in action.token_size {
+        token, ok := &state.tokens[token_id]
+        if ok {
+            token.size += i32(delta_size)
         }
     }
 }

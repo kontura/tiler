@@ -379,11 +379,21 @@ update :: proc() {
                         case .MINUS: {
                             if token.size > 1 {
                                 token.size -= 1
+                                append(&state.undo_history, Action{})
+                                action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                                action.tool = .EDIT_TOKEN
+                                action.performed = true
+                                action.token_size[token.id] = -1
                             }
                         }
                         case .EQUAL: {
                             if token.size < 10 && (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
                                 token.size += 1
+                                append(&state.undo_history, Action{})
+                                action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                                action.tool = .EDIT_TOKEN
+                                action.performed = true
+                                action.token_size[token.id] = 1
                             }
                         }
                         case .RIGHT_SHIFT, .LEFT_SHIFT: {
