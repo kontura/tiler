@@ -3,22 +3,25 @@ import "core:mem"
 import "core:fmt"
 
 Action :: struct {
+    // SYNCED
     tool: Tool,
     start: TileMapPosition,
     end: TileMapPosition,
     color: [4]u8,
 
+    token_history: map[u64][2]i32,
+    token_initiative_history: map[u64][2]i32,
+    token_life: map[u64]bool,
+    // NOT SYNCED
+
+    // This is not synchronized, its local to each peer.
+    // Determines if this action was already perfomed.
+    performed: bool,
     // tile delta old_tile - new_tile (this could be a nice cache? because unding an action
     // stored in input format would require to redo all actions from the start, but once done
     // we could store more state in this so we don't have to always redo) Although undo is typically
     // done just once? But the starting actions we get re-done many times..
     tile_history: map[[2]u32]Tile,
-    token_history: map[u64][2]i32,
-    token_initiative_history: map[u64][2]i32,
-    token_life: map[u64]bool,
-    // This is not synchronized, its local to each peer.
-    // Determines if this action was already perfomed.
-    performed: bool,
 }
 
 make_action :: proc(allocator: mem.Allocator) -> Action {
