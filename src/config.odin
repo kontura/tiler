@@ -62,12 +62,19 @@ config : []Config = {
     {nil, {{.D, .PRESSED}}, "Toggle debug info", proc(state: ^GameState) {
         state.debug = !state.debug}},
     {.ICON_UNDO, {{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, "Undo last action", proc(state: ^GameState) {
-        if len(state.undo_history) > 0 {
-            action : ^Action = &state.undo_history[len(state.undo_history)-1]
-            undo_action(state, tile_map, action)
-            pop_last_action(state, tile_map, &state.undo_history)
-            state.needs_sync = true
-        }}},
+        #reverse for &action in state.undo_history {
+            if action.mine && !action.reverted {
+                undo_action(state, tile_map, &action)
+                action.reverted = true
+                append(&state.undo_history, action)
+                undo_action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                undo_action.undo = true
+                state.needs_sync = true
+                break
+            }
+        }
+
+        }},
     {.ICON_COLOR_PICKER, {{.LEFT_CONTROL, .PRESSED}}, "Active colorpicker", proc(state: ^GameState) {
         if state.previous_tool == nil {
             state.previous_tool = state.active_tool

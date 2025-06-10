@@ -217,7 +217,7 @@ update :: proc() {
     case .BRUSH: {
         if selected_widget == .MAP {
             if rl.IsMouseButtonDown(.LEFT) {
-                append(&state.undo_history, Action{})
+                append(&state.undo_history, make_action())
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 if (!(mouse_tile_pos.abs_tile in action.tile_history)) {
                     old_tile := get_tile(tile_map, mouse_tile_pos.abs_tile)
@@ -242,7 +242,7 @@ update :: proc() {
             tooltip = rectangle_tool(start_mouse_tile, end_mouse_tile, state.selected_color, tile_map, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
-                append(&state.undo_history, Action{})
+                append(&state.undo_history, make_action())
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
                 end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
@@ -265,7 +265,7 @@ update :: proc() {
             tooltip = circle_tool(state, tile_map, mouse_pos, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
-                append(&state.undo_history, Action{})
+                append(&state.undo_history, make_action())
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 action.performed = true
                 action.tool = .CIRCLE
@@ -287,7 +287,7 @@ update :: proc() {
                     move_token_tool(state, token, tile_map, mouse_pos, temp_action, true)
                 } else if rl.IsMouseButtonReleased(.LEFT) {
                     if state.tool_start_position != nil {
-                        append(&state.undo_history, Action{})
+                        append(&state.undo_history, make_action())
                         action : ^Action = &state.undo_history[len(state.undo_history)-1]
                         move_token_tool(state, token, tile_map, mouse_pos, action, false)
                         action.performed = true
@@ -315,7 +315,7 @@ update :: proc() {
             tooltip = wall_tool(state, tile_map, mouse_pos, temp_action)
         } else if rl.IsMouseButtonReleased(.LEFT) {
             if (state.tool_start_position != nil) {
-                append(&state.undo_history, Action{})
+                append(&state.undo_history, make_action())
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                 action.tool = .WALL
                 tooltip = wall_tool(state, tile_map, mouse_pos, action)
@@ -360,7 +360,7 @@ update :: proc() {
                     remove_token_by_id_from_initiative(state, token.id)
                     token.alive = false
                     state.needs_sync = true
-                    append(&state.undo_history, Action{})
+                    append(&state.undo_history, make_action())
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     action.token_life[token.id] = false
                     action.tool = .EDIT_TOKEN
@@ -379,7 +379,7 @@ update :: proc() {
                         case .MINUS: {
                             if token.size > 1 {
                                 token.size -= 1
-                                append(&state.undo_history, Action{})
+                                append(&state.undo_history, make_action())
                                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                                 action.tool = .EDIT_TOKEN
                                 action.performed = true
@@ -389,7 +389,7 @@ update :: proc() {
                         case .EQUAL: {
                             if token.size < 10 && (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
                                 token.size += 1
-                                append(&state.undo_history, Action{})
+                                append(&state.undo_history, make_action())
                                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
                                 action.tool = .EDIT_TOKEN
                                 action.performed = true
@@ -402,7 +402,7 @@ update :: proc() {
                             strings.write_byte(&builder, byte)
                         }
 
-                        append(&state.undo_history, Action{})
+                        append(&state.undo_history, make_action())
                         action : ^Action = &state.undo_history[len(state.undo_history)-1]
                         action.tool = .EDIT_TOKEN
                         action.performed = true
@@ -420,7 +420,7 @@ update :: proc() {
             } else if rl.IsMouseButtonPressed(.LEFT) {
                 if rl.IsKeyDown(.LEFT_SHIFT) {
                     players := [?]string{"Wesley", "AR100", "Daren", "Max", "Mardun", "Rodion"}
-                    append(&state.undo_history, Action{})
+                    append(&state.undo_history, make_action())
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     pos_offset : u32 = 0
                     for name in players {
@@ -446,7 +446,7 @@ update :: proc() {
                     state.needs_sync = true
                     add_at_initiative(state, t.id, t.initiative, 0)
                     state.max_entity_id += 1
-                    append(&state.undo_history, Action{})
+                    append(&state.undo_history, make_action())
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     action.token_life[t.id] = true
                     action.token_history[t.id] = {i32(mouse_tile_pos.abs_tile.x), i32(mouse_tile_pos.abs_tile.y)}
@@ -477,7 +477,7 @@ update :: proc() {
                 move_initiative_token_tool(state, mouse_pos, nil)
             } else if rl.IsMouseButtonReleased(.LEFT) {
                 if (state.tool_start_position != nil) {
-                    append(&state.undo_history, Action{})
+                    append(&state.undo_history, make_action())
                     action : ^Action = &state.undo_history[len(state.undo_history)-1]
                     move_initiative_token_tool(state, mouse_pos, action)
                     action.tool = .EDIT_TOKEN

@@ -10,6 +10,8 @@ Action :: struct {
     end: TileMapPosition,
     color: [4]u8,
 
+    // Whether this action should be undone (this is an undo action)
+    undo: bool,
     token_history: map[u64][2]i32,
     token_initiative_history: map[u64][2]i32,
     token_life: map[u64]bool,
@@ -22,6 +24,14 @@ Action :: struct {
 
     // NOT SYNCED
 
+    // Whether this action can be reverted.
+    // Actions that have already been reverted or are reverting
+    // actions cannot be reverted again.
+    reverted: bool,
+
+    // Whether this action was made by me, not other peers
+    mine: bool,
+
     // This is not synchronized, its local to each peer.
     // Determines if this action was already perfomed.
     performed: bool,
@@ -32,12 +42,13 @@ Action :: struct {
     tile_history: map[[2]u32]Tile,
 }
 
-make_action :: proc(allocator: mem.Allocator) -> Action {
+make_action :: proc(allocator := context.allocator) -> Action {
     action : Action
     action.tile_history.allocator = allocator
     action.token_history.allocator = allocator
     action.token_initiative_history.allocator = allocator
     action.token_life.allocator = allocator
+    action.mine = true
 
     return action
 }
@@ -105,7 +116,7 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     // It cant work for undo because we woudn't know what was under the tiles,
     // we would have to redo from the start up to the undo action
     if action.tool == .RECTANGLE {
-        rectangle_tool(action.start, action.end, action.color, tile_map, nil)
+        rectangle_tool(action.start, action.end, action.color, tile_map, action)
     } else {
         for abs_tile, &tile in action.tile_history {
             old_tile := get_tile(tile_map, abs_tile)
@@ -156,12 +167,5 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
             token.name = strings.clone(new_name)
             set_texture_based_on_name(state, token)
         }
-    }
-}
-
-pop_last_action :: proc(state: ^GameState, tile_map:  ^TileMap, actions: ^[dynamic]Action) {
-    if (len(actions) > 0) {
-        action : Action = pop(actions)
-        delete_action(&action)
     }
 }

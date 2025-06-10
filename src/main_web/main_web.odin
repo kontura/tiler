@@ -160,10 +160,8 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
     actions_id := result_to_objid(actions_result) or_return
     doc_actions_list_count := AMobjSize(doc, actions_id, c.NULL)
 
-    for doc_actions_list_count > len(actions) {
-        delete_result := AMlistDelete(doc, actions_id, c.SIZE_MAX)
-        defer AMresultFree(delete_result)
-        doc_actions_list_count -= 1
+    if doc_actions_list_count > len(actions) {
+        game.state.needs_sync = true
     }
 
     for doc_actions_list_count < len(actions) {
@@ -199,6 +197,7 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
         action_map := AMitemObjId(action_item)
 
         game_action = get_from_map(doc, action_map, "action", game.Action)
+        game_action.mine = false
 
         append(&undo_history, game_action)
 
@@ -226,7 +225,11 @@ update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
 
     for len(doc_actions) > game_undo_len {
         action := doc_actions[game_undo_len]
-        game.redo_action(game.state, game.tile_map, &action)
+        if action.undo {
+            game.undo_action(game.state, game.tile_map, &action)
+        } else {
+            game.redo_action(game.state, game.tile_map, &action)
+        }
         //TODO(amatej): I guess this could cause problems
         //              because the action is only temp_allocated
         action.performed = true
@@ -235,12 +238,8 @@ update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
         game_undo_len += 1
     }
 
-    for len(doc_actions) < game_undo_len {
-        action := &game.state.undo_history[len(game.state.undo_history)-1]
-        game.undo_action(game.state, game.tile_map, action)
-        game.pop_last_action(game.state, game.tile_map, &game.state.undo_history)
-
-        game_undo_len -= 1
+    if len(doc_actions) < game_undo_len {
+        game.state.needs_sync = true
     }
 
 }
