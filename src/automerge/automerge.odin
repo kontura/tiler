@@ -592,8 +592,8 @@ put_map_action :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: ^
     put_into_map(doc, map_id, "token_life", value.token_life) or_return
     put_into_map(doc, map_id, "token_size", value.token_size) or_return
 
-    put_into_map(doc, map_id, "old_name", value.old_name) or_return
-    put_into_map(doc, map_id, "new_name", value.new_name) or_return
+    put_into_map(doc, map_id, "old_names", value.old_names) or_return
+    put_into_map(doc, map_id, "new_names", value.new_names) or_return
 
     return true
 }
@@ -617,8 +617,8 @@ get_map_action :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, $T: type
     action.token_life = get_from_map(doc, map_id, "token_life", map[u64]bool)
     action.token_size = get_from_map(doc, map_id, "token_size", map[u64]i64)
 
-    action.old_name = get_from_map(doc, map_id, "old_name", string)
-    action.new_name = get_from_map(doc, map_id, "new_name", string)
+    action.old_names = get_from_map(doc, map_id, "old_names", map[u64]string)
+    action.new_names = get_from_map(doc, map_id, "new_names", map[u64]string)
 
     return action
 }

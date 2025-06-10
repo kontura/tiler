@@ -17,8 +17,8 @@ Action :: struct {
 
     // This can work for only one token
     // But will we ever rename more tokens at once>
-    old_name: string,
-    new_name: string,
+    old_names: map[u64]string,
+    new_names: map[u64]string,
 
     // NOT SYNCED
 
@@ -47,8 +47,8 @@ delete_action :: proc(action: ^Action) {
     delete(action.token_history)
     delete(action.token_life)
     delete(action.token_initiative_history)
-    delete(action.old_name)
-    delete(action.new_name)
+    delete(action.old_names)
+    delete(action.new_names)
 }
 
 undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
@@ -60,11 +60,6 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     for token_id, &pos_delta in action.token_history {
         token := &state.tokens[token_id]
         add_tile_pos_delta(&token.position, pos_delta*-1)
-        if action.old_name != action.new_name {
-            delete(token.name)
-            token.name = strings.clone(action.old_name)
-            set_texture_based_on_name(state, token)
-        }
      }
 
     for token_id, &delta_init_pos in action.token_initiative_history {
@@ -95,6 +90,14 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
             token.size -= i32(delta_size)
         }
     }
+    for token_id, &old_name in action.old_names {
+        token, ok := &state.tokens[token_id]
+        if action.new_names[token_id] != old_name {
+            delete(token.name)
+            token.name = strings.clone(old_name)
+            set_texture_based_on_name(state, token)
+        }
+    }
 }
 
 redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
@@ -113,11 +116,6 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     for token_id, &pos_delta in action.token_history {
         token := &state.tokens[token_id]
         add_tile_pos_delta(&token.position, pos_delta)
-        if action.old_name != action.new_name {
-            delete(token.name)
-            token.name = strings.clone(action.new_name)
-            set_texture_based_on_name(state, token)
-        }
     }
     for token_id, &delta_init_pos in action.token_initiative_history {
         old_init, old_init_index := remove_token_by_id_from_initiative(state, token_id)
@@ -149,6 +147,14 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
         token, ok := &state.tokens[token_id]
         if ok {
             token.size += i32(delta_size)
+        }
+    }
+    for token_id, &new_name in action.new_names {
+        token, ok := &state.tokens[token_id]
+        if action.old_names[token_id] != new_name {
+            delete(token.name)
+            token.name = strings.clone(new_name)
+            set_texture_based_on_name(state, token)
         }
     }
 }

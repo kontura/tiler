@@ -407,8 +407,8 @@ update :: proc() {
                         action.tool = .EDIT_TOKEN
                         action.performed = true
                         action.token_history[token.id] = {0,0}
-                        action.old_name = strings.clone(token.name)
-                        action.new_name = strings.clone(strings.to_string(builder))
+                        action.old_names[token.id] = strings.clone(token.name)
+                        action.new_names[token.id] = strings.clone(strings.to_string(builder))
 
                         delete(token.name)
                         token.name = strings.to_string(builder)
@@ -418,19 +418,43 @@ update :: proc() {
                     }
                 }
             } else if rl.IsMouseButtonPressed(.LEFT) {
-                t := make_token(state.max_entity_id, mouse_tile_pos, state.selected_color)
-                state.tokens[t.id] =  t
-                state.needs_sync = true
-                add_at_initiative(state, t.id, t.initiative, 0)
-                append(&state.undo_history, Action{})
-                action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                action.token_life[t.id] = true
-                action.token_history[t.id] = {i32(mouse_tile_pos.abs_tile.x), i32(mouse_tile_pos.abs_tile.y)}
-                state.max_entity_id += 1
-                action.tool = .EDIT_TOKEN
-                action.performed = true
-                action.color = state.selected_color
-                action.token_initiative_history[t.id] = {t.initiative, 0}
+                if rl.IsKeyDown(.LEFT_SHIFT) {
+                    players := [?]string{"Wesley", "AR100", "Daren", "Max", "Mardun", "Rodion"}
+                    append(&state.undo_history, Action{})
+                    action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                    pos_offset : u32 = 0
+                    for name in players {
+                        token_pos := mouse_tile_pos
+                        token_pos.abs_tile.y += pos_offset
+                        t := make_token(state.max_entity_id, token_pos, state.selected_color, name)
+                        state.tokens[t.id] =  t
+                        set_texture_based_on_name(state, &state.tokens[t.id])
+                        add_at_initiative(state, t.id, t.initiative, 0)
+                        state.max_entity_id += 1
+                        action.token_life[t.id] = true
+                        action.token_history[t.id] = {i32(token_pos.abs_tile.x), i32(token_pos.abs_tile.y)}
+                        action.token_initiative_history[t.id] = {t.initiative, 0}
+                        action.new_names[t.id] = strings.clone(name)
+                        pos_offset += 2
+                    }
+                    action.performed = true
+                    action.color = state.selected_color
+                    state.needs_sync = true
+                } else {
+                    t := make_token(state.max_entity_id, mouse_tile_pos, state.selected_color)
+                    state.tokens[t.id] =  t
+                    state.needs_sync = true
+                    add_at_initiative(state, t.id, t.initiative, 0)
+                    state.max_entity_id += 1
+                    append(&state.undo_history, Action{})
+                    action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                    action.token_life[t.id] = true
+                    action.token_history[t.id] = {i32(mouse_tile_pos.abs_tile.x), i32(mouse_tile_pos.abs_tile.y)}
+                    action.tool = .EDIT_TOKEN
+                    action.performed = true
+                    action.color = state.selected_color
+                    action.token_initiative_history[t.id] = {t.initiative, 0}
+                }
             } else {
                 c := state.selected_color
                 c.a = 90
