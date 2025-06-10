@@ -277,7 +277,7 @@ main_start :: proc "c" (mobile: bool) {
 
         fmt.println("Setting up websocket")
         if (emscripten_websocket_is_supported() == 1) {
-            attrs := EmscriptenWebSocketCreateAttributes{"http://socket.kontura.cc:80", nil, true}
+            attrs := EmscriptenWebSocketCreateAttributes{"https://tiler.kontura.cc/ws/", nil, true}
             ws = emscripten_websocket_new(&attrs)
             fmt.println("ws: ", ws)
             emscripten_websocket_set_onopen_callback_on_thread(ws, nil, onopen, EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
