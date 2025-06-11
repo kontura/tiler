@@ -26,23 +26,14 @@ GameState :: struct {
     camera_pos: TileMapPosition,
     selected_color: [4]u8,
     selected_alpha: f32,
-    gui_rectangles: map[Widget]rl.Rectangle,
     draw_grid: bool,
     draw_initiative: bool,
     active_tool: Tool,
     previous_tool: Maybe(Tool),
     tool_start_position: Maybe([2]f32),
     selected_token: u64,
-    max_entity_id: u64,
-    //TODO(amatej): check if the tool actually does any color change before recoding
-    //              undoing non-color changes does nothing
-    undo_history: [dynamic]Action,
-    tokens: map[u64]Token,
-    initiative_to_tokens: map[i32][dynamic]u64,
-    // Valid only for one loop
     temp_actions: [dynamic]Action,
     key_consumed: bool,
-    textures: map[string]rl.Texture2D,
     needs_sync: bool,
     mobile: bool,
     previous_touch_dist: f32,
@@ -53,6 +44,18 @@ GameState :: struct {
     bytes_count: uint,
     timeout: uint,
     debug: bool,
+
+    // permanent state
+    textures: map[string]rl.Texture2D,
+    gui_rectangles: map[Widget]rl.Rectangle,
+
+    // persistent state
+    max_entity_id: u64,
+    //TODO(amatej): check if the tool actually does any color change before recoding
+    //              undoing non-color changes does nothing
+    undo_history: [dynamic]Action,
+    tokens: map[u64]Token,
+    initiative_to_tokens: map[i32][dynamic]u64,
 }
 
 Widget :: enum {
