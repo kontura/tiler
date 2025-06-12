@@ -150,3 +150,14 @@ add_array_of_array_to_doc :: proc(t: ^testing.T) {
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", d), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", [Direction][4]u8), d)
 }
+
+// This one still failing
+@(test)
+add_fixed_string_array_to_doc :: proc(t: ^testing.T) {
+    doc := get_new_doc()
+
+    names : [2]string = {"Ahoy", "Sailor"}
+    testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", names), true)
+    testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", [2]string), names)
+}
+
