@@ -28,6 +28,7 @@
 </head>
 <body>
 	<canvas class="game_canvas" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+        <canvas id="pasteCanvas" style="display:none;"></canvas>
 	<script type="text/javascript" src="odin.js"></script>
 	<script>
 		var odinMemoryInterface = new odin.WasmMemoryInterface();
@@ -108,6 +109,45 @@
 				return document.getElementById("canvas");
 			})()
 		};
+
+                document.addEventListener("paste", function(event) {
+                  const items = event.clipboardData.items;
+                  for (let item of items) {
+                    if (item.type.indexOf("image") !== -1) {
+                      const file = item.getAsFile();
+
+                      const reader = new FileReader();
+                      reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                          const canvas = document.getElementById("pasteCanvas");
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          const ctx = canvas.getContext("2d");
+                          ctx.drawImage(img, 0, 0);
+
+                          const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                          const byteLength = imageData.data.length;
+
+                          const ptr = Module._malloc(byteLength);
+                          Module.HEAPU8.set(imageData.data, ptr);
+
+                          // Synchronous call into C++
+                          Module.ccall('paste_image',
+                            null,
+                            ['number', 'number', 'number'],
+                            [ptr, img.width, img.height]
+                          );
+
+                          Module._free(ptr);
+                        };
+                        img.src = e.target.result;
+                      };
+                      reader.readAsDataURL(file); // async part handled entirely in JS
+                    }
+                  }
+                });
+
 	</script>
 
 	<!-- Emscripten injects its javascript here -->

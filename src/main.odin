@@ -45,6 +45,10 @@ GameState :: struct {
     timeout: uint,
     debug: bool,
 
+    bg: rl.Texture2D,
+    bg_pos: TileMapPosition,
+    bg_scale: f32,
+
     // permanent state
     textures: map[string]rl.Texture2D,
     gui_rectangles: map[Widget]rl.Rectangle,
@@ -123,6 +127,20 @@ tile_map_to_screen_coord :: proc(pos: TileMapPosition, state: ^GameState, tile_m
 state: ^GameState
 tile_map: ^TileMap
 
+
+add_background :: proc(data: [^]u8, width: i32, height: i32) {
+    d := data[:width*height]
+    fmt.println(d)
+    image : rl.Image
+    image.data = data
+    image.width = width
+    image.height = height
+    image.mipmaps = 1
+    image.format = .UNCOMPRESSED_R8G8B8A8 // or appropriate format
+    fmt.println(image)
+    state.bg = rl.LoadTextureFromImage(image)
+}
+
 init :: proc(mobile := false) {
     rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "Tiler")
@@ -146,6 +164,7 @@ init :: proc(mobile := false) {
     state.max_entity_id = 1
     state.needs_sync = true
     state.mobile = mobile
+    state.bg_scale = 1
 
     tile_map = new(TileMap)
     tile_map.chunk_shift = 8
@@ -516,6 +535,37 @@ update :: proc() {
             state.previous_touch_dist = dist
         }
     }
+    case .EDIT_BG: {
+        if rl.IsKeyPressed(.MINUS) {
+            state.bg_scale -= 0.01
+            state.key_consumed = true
+        }
+        if rl.IsKeyPressed(.EQUAL) {
+            state.bg_scale += 0.01
+            state.key_consumed = true
+        }
+        if rl.IsKeyDown(.LEFT) {
+            state.bg_pos.rel_tile.x -= 0.1
+            state.bg_pos = recanonicalize_position(tile_map, state.bg_pos)
+            state.key_consumed = true
+        }
+        if rl.IsKeyDown(.RIGHT) {
+            state.bg_pos.rel_tile.x += 0.1
+            state.bg_pos = recanonicalize_position(tile_map, state.bg_pos)
+            state.key_consumed = true
+        }
+        if rl.IsKeyDown(.UP) {
+            state.bg_pos.rel_tile.y -= 0.1
+            state.bg_pos = recanonicalize_position(tile_map, state.bg_pos)
+            state.key_consumed = true
+        }
+        if rl.IsKeyDown(.DOWN) {
+            state.bg_pos.rel_tile.y += 0.1
+            state.bg_pos = recanonicalize_position(tile_map, state.bg_pos)
+            state.key_consumed = true
+        }
+        icon = .ICON_LAYERS
+    }
     case .HELP: {
     }
     }
@@ -580,6 +630,11 @@ update :: proc() {
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
 
     screen_center : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
+
+    // draw bg
+    pos: rl.Vector2 = tile_map_to_screen_coord(state.bg_pos, state, tile_map)
+    pos += state.bg_pos.rel_tile * tile_map.feet_to_pixels
+    rl.DrawTextureEx(state.bg, pos, 0, state.bg_scale * tile_map.feet_to_pixels, rl.WHITE)
 
     // draw tile map
     tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)

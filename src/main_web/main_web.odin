@@ -245,6 +245,17 @@ update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
 }
 
 @export
+paste_image :: proc "c" (data: [^]u8, width: i32, height: i32) {
+    context = runtime.default_context()
+
+    game.add_background(data, width, height)
+
+    fmt.println(data)
+    fmt.println(width)
+    fmt.println(height)
+}
+
+@export
 main_start :: proc "c" (mobile: bool) {
         using am
 	context = runtime.default_context()

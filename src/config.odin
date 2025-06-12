@@ -50,6 +50,8 @@ config : []Config = {
         state.active_tool = .WALL}},
     {.ICON_PLAYER, {{.S, .PRESSED}}, "Edit tokens tool", proc(state: ^GameState) {
         state.active_tool = .EDIT_TOKEN}},
+    {.ICON_LAYERS, {{.B, .PRESSED}}, "Edit background tool", proc(state: ^GameState) {
+        state.active_tool = .EDIT_BG}},
     {.ICON_TARGET_MOVE, {{.M, .PRESSED}}, "Move tokens tool", proc(state: ^GameState) {
         state.active_tool = .MOVE_TOKEN}},
     {nil, {{.I, .PRESSED}}, "Toggle initiative drawing", proc(state: ^GameState) {

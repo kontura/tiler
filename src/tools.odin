@@ -16,6 +16,7 @@ Tool :: enum {
     HELP,
     TOUCH_MOVE,
     TOUCH_ZOOM,
+    EDIT_BG,
 }
 
 dist :: proc(p1: [2]$T, p2: [2]T) -> f32 {
