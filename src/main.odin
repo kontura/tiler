@@ -171,7 +171,7 @@ init :: proc(mobile := false) {
 
 update :: proc() {
     rl.BeginDrawing()
-    rl.ClearBackground(rl.BLACK)
+    rl.ClearBackground({77, 77, 77, 255})
 
     state.screen_height = rl.GetScreenHeight()
     state.screen_width = rl.GetScreenWidth()
@@ -603,9 +603,11 @@ update :: proc() {
             // Calculate tile position on screen
             cen_x : f32 = screen_center.x - tile_map.feet_to_pixels * state.camera_pos.rel_tile.x + f32(column_offset * tile_map.tile_side_in_pixels)
             min_x : f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-            rl.DrawRectangleV({min_x, min_y},
-                             {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
-                             current_tile_value.color.xyzw)
+            if current_tile_value.color != {77, 77, 77, 255} {
+                rl.DrawRectangleV({min_x, min_y},
+                                 {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
+                                 current_tile_value.color.xyzw)
+            }
 
             if Direction.TOP in current_tile_value.walls {
                 //TODO(amatej): use DrawLineEx if we want to do diagonals
