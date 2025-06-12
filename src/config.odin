@@ -56,8 +56,7 @@ config : []Config = {
         state.draw_initiative = !state.draw_initiative}},
     {nil, {{.G, .PRESSED}}, "Toggle grid drawing", proc(state: ^GameState) {
         state.draw_grid = !state.draw_grid}},
-    //TODO(amatej): make this ctrl + s or something
-    {nil, {{.V, .PRESSED}}, "Save game", proc(state: ^GameState) {
+    {.ICON_FILE_SAVE, {{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, "Save game", proc(state: ^GameState) {
         state.save = .REQUESTED}},
     {nil, {{.D, .PRESSED}}, "Toggle debug info", proc(state: ^GameState) {
         state.debug = !state.debug}},
