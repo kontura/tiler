@@ -20,16 +20,31 @@ web_context: runtime.Context
 
 @(default_calling_convention = "c")
 foreign {
-	mount_idbfs  :: proc() ---
+        mount_idbfs  :: proc() ---
+        test_webrtc  :: proc() ---
+        connect_signaling_websocket  :: proc() ---
+        send_binary_to_signaling_websocket :: proc(data: rawptr, len: u32) ---
 }
 
-ws: EMSCRIPTEN_WEBSOCKET_T
 doc: am.AMdocPtr
 doc_result: am.AMresultPtr
 socket_ready: bool = false
 my_allocator: mem.Allocator
 peers: map[string]am.AMsyncStatePtr
 my_id: [3]u8
+
+@export
+build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
+    context = web_context
+    register := build_binary_message(nil, nil)
+    out_len^ = u32(len(register))
+    out_data^ = &register[0]
+}
+
+@export
+set_socket_ready :: proc "c" () {
+    socket_ready = true
+}
 
 build_binary_message :: proc(target: []u8, payload: []u8) -> []u8{
     msg:= make([dynamic]u8, allocator=context.temp_allocator)
@@ -55,62 +70,38 @@ parse_binary_message :: proc(msg: []u8) -> (sender, target, payload: []u8) {
     return
 }
 
-onopen :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSocketOpenEvent, userData: rawptr ) -> c.bool {
-    context = runtime.default_context()
-    context.allocator = my_allocator
-    fmt.println("open")
-    register := build_binary_message(nil, nil)
-    emscripten_websocket_send_binary(ws, &register[0], u32(len(register)))
-    socket_ready = true
-    return true
-}
-onerror :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSocketOpenEvent, userData: rawptr ) -> c.bool {
-    context = runtime.default_context()
-    context.allocator = my_allocator
-    fmt.println("error")
-    return true
-}
-onclose :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSocketOpenEvent, userData: rawptr ) -> c.bool {
-    context = runtime.default_context()
-    context.allocator = my_allocator
-    fmt.println("close")
-    return true
-}
-onmessage :: proc "c" (eventType: c.int, #by_ptr websocketEvent: EmscriptenWebSocketMessageEvent, userData: rawptr ) -> c.bool {
+@export
+process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     using am
     context = runtime.default_context()
     context.allocator = my_allocator
-    if websocketEvent.isText {
-        assert(false)
-    } else {
-        sender_bytes, target, payload := parse_binary_message(websocketEvent.data[:websocketEvent.numBytes])
-        sender := string(sender_bytes)
-        sender_already_registered := sender in peers
-        if !sender_already_registered {
-            sync_state_result := AMsyncStateInit()
-            //TODO(amatej): they will need to be globally managed
-            item, _ := result_to_item(sync_state_result)
-            peers[strings.clone(sender)] = AMsyncStatePtr{}
-            AMitemToSyncState(item, &peers[sender])
-        }
 
-        if !bytes.equal(target, my_id[:]) && len(target) != 0 {
-            fmt.println("This message is not for me: ", target, " (target) x ", my_id[:], " (me)")
-            assert(false)
-        }
-        if bytes.equal(sender_bytes, my_id[:]) {
-            fmt.println("This message is from me: ", target, " (target) x ", my_id[:], " (me)")
-            assert(false)
-        }
-        if len(payload) != 0 {
-            decode_and_receive(&payload[0], uint(len(payload)), doc, peers[sender])
-            update_game_state_from_doc(doc)
-        } else {
-            fmt.println("Registering: ", sender)
-        }
-        game.state.needs_sync = true
+    sender_bytes, target, payload := parse_binary_message(data[:data_len])
+    sender := string(sender_bytes)
+    sender_already_registered := sender in peers
+    if !sender_already_registered {
+        sync_state_result := AMsyncStateInit()
+        //TODO(amatej): they will need to be globally managed
+        item, _ := result_to_item(sync_state_result)
+        peers[strings.clone(sender)] = AMsyncStatePtr{}
+        AMitemToSyncState(item, &peers[sender])
     }
-    return true
+
+    if !bytes.equal(target, my_id[:]) && len(target) != 0 {
+        fmt.println("This message is not for me: ", target, " (target) x ", my_id[:], " (me)")
+        assert(false)
+    }
+    if bytes.equal(sender_bytes, my_id[:]) {
+        fmt.println("This message is from me: ", target, " (target) x ", my_id[:], " (me)")
+        assert(false)
+    }
+    if len(payload) != 0 {
+        decode_and_receive(&payload[0], uint(len(payload)), doc, peers[sender])
+        update_game_state_from_doc(doc)
+    } else {
+        fmt.println("Registering: ", sender)
+    }
+    game.state.needs_sync = true
 }
 
 update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
@@ -285,16 +276,8 @@ main_start :: proc "c" (mobile: bool) {
             assert(false)
         }
 
-        fmt.println("Setting up websocket")
-        if (emscripten_websocket_is_supported() == 1) {
-            attrs := EmscriptenWebSocketCreateAttributes{"https://tiler.kontura.cc/ws/", nil, true}
-            ws = emscripten_websocket_new(&attrs)
-            fmt.println("ws: ", ws)
-            emscripten_websocket_set_onopen_callback_on_thread(ws, nil, onopen, EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
-            emscripten_websocket_set_onclose_callback_on_thread(ws, nil, onclose, EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
-            emscripten_websocket_set_onmessage_callback_on_thread(ws, nil, onmessage, EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
-            emscripten_websocket_set_onerror_callback_on_thread(ws, nil, onerror, EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
-        }
+        fmt.println("Setting up signaling websocket")
+        connect_signaling_websocket()
 
         mount_idbfs()
 	game.init(mobile)
@@ -327,7 +310,7 @@ main_update :: proc "c" () -> bool {
                                     assert(false)
                                 }
                                 binary := build_binary_message(transmute([]u8)peer, msg_bytes.src[:msg_bytes.count])
-                                emscripten_websocket_send_binary(ws, &binary[0], u32(len(binary)))
+                                send_binary_to_signaling_websocket(&binary[0], u32(len(binary)))
 
                         case .AM_VAL_TYPE_VOID:
                             finished = true
