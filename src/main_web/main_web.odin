@@ -21,17 +21,41 @@ web_context: runtime.Context
 @(default_calling_convention = "c")
 foreign {
         mount_idbfs  :: proc() ---
-        test_webrtc  :: proc() ---
+        make_webrtc_offer  :: proc(peer_ptr: rawptr, peer_len: u32) ---
+        accept_webrtc_offer :: proc(peer_ptr: rawptr, peer_len: u32, sdp_data: rawptr, sdp_len: u32) ---
+        accept_webrtc_answer :: proc(peer_ptr: rawptr, peer_len: u32, answer_data: rawptr, answer_len: u32) ---
+        add_peer_ice :: proc(peer_ptr: rawptr, peer_len: u32, msg_data: rawptr, msg_len: u32) ---
         connect_signaling_websocket  :: proc() ---
-        send_binary_to_signaling_websocket :: proc(data: rawptr, len: u32) ---
+        send_binary_to_peer :: proc(peer_ptr: rawptr, peer_len: u32, data: rawptr, len: u32) ---
 }
 
 doc: am.AMdocPtr
 doc_result: am.AMresultPtr
 socket_ready: bool = false
 my_allocator: mem.Allocator
-peers: map[string]am.AMsyncStatePtr
+peers: map[string]PeerState
 my_id: [3]u8
+
+PeerState :: struct {
+    am_sync_state: am.AMsyncStatePtr,
+    webrtc: WEBRTC_STATE,
+}
+
+WEBRTC_STATE :: enum u8 {
+    WAITING,
+    OFFERED,
+    ANSWERED,
+    ICE,
+    CONNECTED,
+}
+
+@export
+build_binary_msg_c :: proc "c" (peer_len: u32, peer_data: [^]u8, msg_len: u32, msg_data: [^]u8, out_len: ^u32, out_data: ^rawptr) {
+    context = web_context
+    msg := build_binary_message(2, peer_data[:peer_len], msg_data[:msg_len])
+    out_len^ = u32(len(msg))
+    out_data^ = &msg[0]
+}
 
 @export
 build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
@@ -44,6 +68,13 @@ build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
 @export
 set_socket_ready :: proc "c" () {
     socket_ready = true
+}
+
+@export
+set_peer_rtc_connected :: proc "c" (peer_len: u32, peer_data: [^]u8) {
+    peer := string(peer_data[:peer_len])
+    peer_state := &peers[peer]
+    peer_state.webrtc = .CONNECTED
 }
 
 build_binary_message :: proc(type: u8, target: []u8, payload: []u8) -> []u8{
@@ -84,8 +115,9 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         sync_state_result := AMsyncStateInit()
         //TODO(amatej): they will need to be globally managed
         item, _ := result_to_item(sync_state_result)
-        peers[strings.clone(sender)] = AMsyncStatePtr{}
-        AMitemToSyncState(item, &peers[sender])
+        peers[strings.clone(sender)] = {AMsyncStatePtr{}, .WAITING}
+        peer_state := &peers[sender]
+        AMitemToSyncState(item, &peer_state.am_sync_state)
     }
 
     if !bytes.equal(target, my_id[:]) && len(target) != 0 {
@@ -96,13 +128,31 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         fmt.println("This message is from me: ", target, " (target) x ", my_id[:], " (me)")
         assert(false)
     }
-    if len(payload) != 0 {
-        decode_and_receive(&payload[0], uint(len(payload)), doc, peers[sender])
-        update_game_state_from_doc(doc)
-    } else {
-        fmt.println("Registering: ", sender)
+
+    peer_state := &peers[sender]
+
+    if type == 1 {
+        if len(payload) != 0 {
+            decode_and_receive(&payload[0], uint(len(payload)), doc, peer_state.am_sync_state)
+            update_game_state_from_doc(doc)
+        } else {
+            fmt.println("Registering: ", sender)
+            make_webrtc_offer(&sender_bytes[0], u32(len(sender_bytes)))
+            peer_state.webrtc = .OFFERED
+        }
+        game.state.needs_sync = true
+    } else if type == 2 {
+        if peer_state.webrtc == .WAITING {
+            accept_webrtc_offer(&sender_bytes[0], u32(len(sender_bytes)), &payload[0], u32(len(payload)))
+            peer_state.webrtc = .ICE
+        } else if peer_state.webrtc == .OFFERED {
+            accept_webrtc_answer(&sender_bytes[0], u32(len(sender_bytes)), &payload[0], u32(len(payload)))
+            peer_state.webrtc = .ICE
+        } else if peer_state.webrtc == .ICE {
+            add_peer_ice(&sender_bytes[0], u32(len(sender_bytes)), &payload[0], u32(len(payload)))
+        }
+        return
     }
-    game.state.needs_sync = true
 }
 
 update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
@@ -292,10 +342,10 @@ main_update :: proc "c" () -> bool {
         if game.state.needs_sync {
             update_doc_from_game_state(doc)
             if socket_ready {
-                for peer, &sync_state in peers {
+                for peer, &peer_state in peers {
                     finished : bool = false
                     for !finished {
-                        msg_result := AMgenerateSyncMessage(doc, sync_state)
+                        msg_result := AMgenerateSyncMessage(doc, peer_state.am_sync_state)
                         defer AMresultFree(msg_result)
                         msg_item := result_to_item(msg_result) or_return
 
@@ -310,8 +360,9 @@ main_update :: proc "c" () -> bool {
                                 if !AMitemToBytes(encode_item, &msg_bytes) {
                                     assert(false)
                                 }
-                                binary := build_binary_message(transmute([]u8)peer, msg_bytes.src[:msg_bytes.count])
-                                send_binary_to_signaling_websocket(&binary[0], u32(len(binary)))
+                                peer_bytes := transmute([]u8)peer
+                                binary := build_binary_message(1, peer_bytes, msg_bytes.src[:msg_bytes.count])
+                                send_binary_to_peer(&peer_bytes[0], u32(len(peer_bytes)), &binary[0], u32(len(binary)))
 
                         case .AM_VAL_TYPE_VOID:
                             finished = true
