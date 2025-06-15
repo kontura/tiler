@@ -132,6 +132,7 @@ addToLibrary({
         const answer_array = new Uint8Array(Module.HEAPU8.buffer, answer_data, answer_len);
         const answer_string = decoder.decode(answer_array);
         const answer = JSON.parse(answer_string);
+        console.log("ANSWER: ", answer)
         const remoteDesc = new RTCSessionDescription(answer);
         Module[peer].rtc.setRemoteDescription(remoteDesc)
     },
