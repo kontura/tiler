@@ -30,6 +30,12 @@
 	<canvas class="game_canvas" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
         <canvas id="pasteCanvas" style="display:none;"></canvas>
 	<script type="text/javascript" src="odin.js"></script>
+
+        <!--
+        <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+        <script>eruda.init(); eruda.show();</script>
+        --!>
+
 	<script>
 		var odinMemoryInterface = new odin.WasmMemoryInterface();
 		odinMemoryInterface.setIntSize(4);
