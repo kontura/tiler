@@ -512,7 +512,6 @@ update :: proc() {
         }
     }
     case .TOUCH_MOVE: {
-        fmt.println(state.previous_touch_pos)
         if state.previous_touch_pos != 0 {
             d := state.previous_touch_pos - mouse_pos
             state.camera_pos.rel_tile += d/4
@@ -528,7 +527,6 @@ update :: proc() {
 
             if state.previous_touch_dist != 0 {
                 zoom_amount := i32((state.previous_touch_dist - dist) * 0.1)
-                fmt.println("zoom: ", zoom_amount, " from: ", state.previous_touch_dist, " - ", dist)
                 tile_map.tile_side_in_pixels -= zoom_amount
             }
 
@@ -581,7 +579,6 @@ update :: proc() {
         if touch_count > state.previous_touch_count {
             //TODO(amatej): this overrides any other active tool...
             if token != nil {
-                fmt.println("setting MOVE TOKEN")
                 state.active_tool = .MOVE_TOKEN
                 state.tool_start_position = mouse_pos
             } else if touch_count >= 2 {
