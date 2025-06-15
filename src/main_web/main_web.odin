@@ -36,7 +36,7 @@ my_id: [3]u8
 @export
 build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
     context = web_context
-    register := build_binary_message(nil, nil)
+    register := build_binary_message(1, nil, nil)
     out_len^ = u32(len(register))
     out_data^ = &register[0]
 }
@@ -46,9 +46,9 @@ set_socket_ready :: proc "c" () {
     socket_ready = true
 }
 
-build_binary_message :: proc(target: []u8, payload: []u8) -> []u8{
+build_binary_message :: proc(type: u8, target: []u8, payload: []u8) -> []u8{
     msg:= make([dynamic]u8, allocator=context.temp_allocator)
-    append(&msg, 1)
+    append(&msg, type)
     append(&msg, 3)
     append(&msg, my_id[0])
     append(&msg, my_id[1])
@@ -59,9 +59,10 @@ build_binary_message :: proc(target: []u8, payload: []u8) -> []u8{
     return msg[:]
 }
 
-parse_binary_message :: proc(msg: []u8) -> (sender, target, payload: []u8) {
+parse_binary_message :: proc(msg: []u8) -> (type: u8, sender, target, payload: []u8) {
     // 0 1 2 3 4 5 6 7 8 9
     // 1 3 a b c 3 d e f x x x
+    type = msg[0]
     sender_len := msg[1]
     sender = msg[2:2+sender_len]
     target_len := msg[2+sender_len]
@@ -76,7 +77,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     context = runtime.default_context()
     context.allocator = my_allocator
 
-    sender_bytes, target, payload := parse_binary_message(data[:data_len])
+    type, sender_bytes, target, payload := parse_binary_message(data[:data_len])
     sender := string(sender_bytes)
     sender_already_registered := sender in peers
     if !sender_already_registered {
