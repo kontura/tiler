@@ -188,6 +188,18 @@ init :: proc(mobile := false) {
     }
 }
 
+draw_connections :: proc(my_id: string, socket_ready: bool, peers: map[string]bool) {
+    offset : i32 = 30
+    id := fmt.caprint("my_id: ", my_id, allocator=context.temp_allocator)
+    rl.DrawText(id, state.screen_width - 230, offset, 18, rl.BLUE)
+    offset += 30
+    rl.DrawText("Signaling status", state.screen_width - 230, offset, 18, socket_ready ? rl.GREEN : rl.RED)
+    for peer, peer_status in peers {
+        offset += 30
+        rl.DrawText(strings.clone_to_cstring(peer, context.temp_allocator), state.screen_width - 230, offset, 18, peer_status ? rl.GREEN : rl.RED)
+    }
+}
+
 update :: proc() {
     rl.BeginDrawing()
     rl.ClearBackground({77, 77, 77, 255})

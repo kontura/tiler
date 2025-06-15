@@ -339,6 +339,15 @@ main_update :: proc "c" () -> bool {
         using am
 	context = web_context
 	game.update()
+
+        if game.state.debug {
+            p := make(map[string]bool, allocator=context.temp_allocator)
+            for peer, &peer_state in peers {
+                p[peer] = peer_state.webrtc == .CONNECTED ? true : false
+            }
+            game.draw_connections(string(my_id[:]), socket_ready, p)
+        }
+
         if game.state.needs_sync {
             update_doc_from_game_state(doc)
             if socket_ready {
