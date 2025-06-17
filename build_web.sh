@@ -10,6 +10,8 @@ mkdir -p $OUT_DIR
 export EMSDK_QUIET=1
 [[ -f "$EMSCRIPTEN_SDK_DIR/emsdk_env.sh" ]] && . "$EMSCRIPTEN_SDK_DIR/emsdk_env.sh"
 
+ODIN_BIN=odin
+
 # Note RAYLIB_WASM_LIB=env.o -- env.o is an internal WASM object file. You can
 # see how RAYLIB_WASM_LIB is used inside <odin>/vendor/raylib/raylib.odin.
 #
@@ -17,9 +19,9 @@ export EMSDK_QUIET=1
 # up in env.o
 #
 # Note that there is a rayGUI equivalent: -define:RAYGUI_WASM_LIB=env.o
-odin build src/main_web -target:js_wasm32 -build-mode:obj -define:RAYLIB_WASM_LIB=env.o -define:RAYGUI_WASM_LIB=env.o -strict-style -out:$OUT_DIR/game
+$ODIN_BIN build src/main_web -target:js_wasm32 -build-mode:obj -define:RAYLIB_WASM_LIB=env.o -define:RAYGUI_WASM_LIB=env.o -strict-style -out:$OUT_DIR/game
 
-ODIN_PATH=$(odin root)
+ODIN_PATH=$($ODIN_BIN root)
 
 cp $ODIN_PATH/core/sys/wasm/js/odin.js $OUT_DIR
 
