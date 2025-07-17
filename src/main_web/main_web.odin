@@ -178,6 +178,10 @@ update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
     }
 
     update_doc_actions(doc, game.state.undo_history[:])
+
+    commit_result := AMcommit(doc, AMstr("Update"), (^i64)(c.NULL))
+    verify_result(commit_result)
+    AMresultFree(commit_result)
 }
 
 get_or_insert :: proc(doc: am.AMdocPtr, obj_id: am.AMobjIdPtr, key: cstring, type: am.AMobjType) -> am.AMresultPtr {
