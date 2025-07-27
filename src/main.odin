@@ -44,6 +44,8 @@ GameState :: struct {
     bytes_count: uint,
     timeout: uint,
     debug: bool,
+    light_source: [2]f32,
+    shadow_color: [4]u8,
 
     bg: rl.Texture2D,
     bg_pos: TileMapPosition,
@@ -165,6 +167,8 @@ init :: proc(mobile := false) {
     state.needs_sync = true
     state.mobile = mobile
     state.bg_scale = 1
+    state.light_source = {0.06, 0.09}
+    state.shadow_color = {0, 0, 0, 65}
 
     tile_map = new(TileMap)
     tile_map.chunk_shift = 8
@@ -695,11 +699,19 @@ update :: proc() {
     for _, &token in state.tokens {
         if token.alive {
             pos: rl.Vector2 = tile_map_to_screen_coord(token.position, state, tile_map)
+            token_pos, token_radius := get_token_circle(tile_map, state, token)
+            // Draw shadows only for real tokens, skip temp 0 token
+            if token.id != 0 {
+                token_base_from : [4]u8 = {0, 0, 0, 30}
+                token_base_to : [4]u8 = {0, 0, 0, 0}
+                rl.DrawCircleGradient(i32(token_pos.x), i32(token_pos.y), token_radius + 0.2*f32(tile_map.tile_side_in_pixels), token_base_from.xyzw, token_base_to.xyzw)
+                rl.DrawCircleV(token_pos + state.light_source * f32(tile_map.tile_side_in_pixels), token_radius, state.shadow_color.xyzw)
+            }
             if (token.texture != nil) {
                 tex_pos, scale := get_token_texture_pos_size(tile_map, state, token)
                 rl.DrawTextureEx(token.texture^, tex_pos, 0, scale, rl.WHITE)
             } else {
-                rl.DrawCircleV(get_token_circle(tile_map, state, token), token.color.xyzw)
+                rl.DrawCircleV(token_pos, token_radius, token.color.xyzw)
             }
             rl.DrawText(get_token_name_temp(&token), i32(pos.x)-tile_map.tile_side_in_pixels/2, i32(pos.y)+tile_map.tile_side_in_pixels/2, 18, rl.WHITE)
             if (token.moved != 0) {
