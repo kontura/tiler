@@ -463,6 +463,7 @@ update :: proc() {
                     pos_offset : u32 = 0
                     for name in players {
                         token_pos := mouse_tile_pos
+                        token_pos.rel_tile = {0,0}
                         token_pos.abs_tile.y += pos_offset
                         t := make_token(state.max_entity_id, token_pos, state.selected_color, name)
                         state.tokens[t.id] =  t
@@ -479,7 +480,9 @@ update :: proc() {
                     action.color = state.selected_color
                     state.needs_sync = true
                 } else {
-                    t := make_token(state.max_entity_id, mouse_tile_pos, state.selected_color)
+                    token_pos := mouse_tile_pos
+                    token_pos.rel_tile = {0,0}
+                    t := make_token(state.max_entity_id, token_pos, state.selected_color)
                     state.tokens[t.id] =  t
                     state.needs_sync = true
                     add_at_initiative(state, t.id, t.initiative, 0)
