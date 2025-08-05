@@ -589,6 +589,7 @@ put_map_action :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: ^
     put_into_map(doc, map_id, "start", value.start) or_return
     put_into_map(doc, map_id, "end", value.end) or_return
     put_into_map(doc, map_id, "color", value.color) or_return
+    put_into_map(doc, map_id, "radius", value.radius) or_return
 
     put_into_map(doc, map_id, "undo", value.undo) or_return
 
@@ -619,6 +620,7 @@ get_map_action :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, $T: type
     action.start = get_from_map(doc, map_id, "start", game.TileMapPosition)
     action.end = get_from_map(doc, map_id, "end", game.TileMapPosition)
     action.color = get_from_map(doc, map_id, "color", [4]u8)
+    action.radius = get_from_map(doc, map_id, "radius", f64)
 
     action.undo = get_from_map(doc, map_id, "undo", bool)
 

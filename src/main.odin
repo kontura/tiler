@@ -373,8 +373,6 @@ update :: proc() {
             if (state.tool_start_position != nil) {
                 append(&state.undo_history, make_action())
                 action : ^Action = &state.undo_history[len(state.undo_history)-1]
-                action.performed = true
-                action.tool = .CIRCLE
                 tooltip = circle_tool(state, tile_map, mouse_pos, action)
                 state.needs_sync = true
             }

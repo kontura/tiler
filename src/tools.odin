@@ -104,7 +104,13 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
 
     max_dist_in_feet := tile_distance(tile_map, start_mouse_tile, current_mouse_tile)
 
-    draw_tile_circle(start_mouse_tile, max_dist_in_feet, state.selected_color, action)
+    action.tool = .CIRCLE
+    action.start = start_mouse_tile
+    action.color = state.selected_color
+    action.radius = auto_cast max_dist_in_feet
+    action.performed = true
+
+    draw_tile_circle(tile_map, start_mouse_tile, max_dist_in_feet, state.selected_color, action)
 
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator=context.temp_allocator))
@@ -112,7 +118,7 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
 }
 
 // radius is in feet
-draw_tile_circle :: proc(center: TileMapPosition, radius: f32, color: [4]u8, action: ^Action) {
+draw_tile_circle :: proc(tile_map: ^TileMap, center: TileMapPosition, radius: f32, color: [4]u8, action: ^Action) {
     max_dist_up := u32(math.ceil_f32(radius/tile_map.tile_side_in_feet)) + 2
 
     start_tile : [2]u32 = {center.abs_tile.x - max_dist_up, center.abs_tile.y - max_dist_up}
@@ -238,7 +244,7 @@ move_token_tool :: proc(state: ^GameState, token: ^Token,  tile_map: ^TileMap, e
             // Grow the raidus by the size of the token (-1 because size 1 is the default)
             radius += (f32(token.size - 1) * half)
         }
-        draw_tile_circle(pos, radius, GREEN_HIGHLIGH, temp_action)
+        draw_tile_circle(tile_map, pos, radius, GREEN_HIGHLIGH, temp_action)
         token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token.position.abs_tile, action)
     } else {
         token.moved = 0

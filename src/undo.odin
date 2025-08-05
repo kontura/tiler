@@ -9,6 +9,7 @@ Action :: struct {
     start: TileMapPosition,
     end: TileMapPosition,
     color: [4]u8,
+    radius: f64,
 
     // Whether this action should be undone (this is an undo action)
     undo: bool,
@@ -117,6 +118,8 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     // we would have to redo from the start up to the undo action
     if action.tool == .RECTANGLE {
         rectangle_tool(action.start, action.end, action.color, tile_map, action)
+    } else if action.tool == .CIRCLE {
+        draw_tile_circle(tile_map, action.start, auto_cast action.radius, action.color, action)
     } else {
         for abs_tile, &tile in action.tile_history {
             old_tile := get_tile(tile_map, abs_tile)
