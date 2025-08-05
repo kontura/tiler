@@ -109,4 +109,8 @@ config : []Config = {
             state.active_tool = state.previous_tool.?
             state.previous_tool = nil
         }}},
+    {.ICON_CURSOR_SCALE_LEFT, {{.L, .PRESSED}}, "Light source tool", proc(state: ^GameState) {
+        state.active_tool = .LIGHT_SOURCE}},
+    {.ICON_CURSOR_POINTER, {{.O, .PRESSED}}, "Cone tool", proc(state: ^GameState) {
+        state.active_tool = .CONE}},
 }

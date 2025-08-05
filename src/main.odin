@@ -4,6 +4,8 @@ import "core:math"
 import "core:fmt"
 import "core:strings"
 import "core:mem"
+import "core:math/rand"
+import "core:time"
 
 import rl "vendor:raylib"
 
@@ -11,6 +13,7 @@ INIT_SCREEN_WIDTH: i32 : 1280
 INIT_SCREEN_HEIGHT: i32 : 720
 
 BUILDER_FAILED :: "Builder failed"
+EMPTY_COLOR : [4]u8 : {77, 77, 77, 255}
 
 INITIATIVE_COUNT : i32 : 50
 
@@ -72,6 +75,23 @@ Widget :: enum {
     INITIATIVE,
 }
 
+draw_quad :: proc(v1, v2, v3, v4: [2]f32, color: [4]u8) {
+    area := (v2.x - v1.x) * (v3.y - v1.y) - (v3.x - v1.x) * (v2.y - v1.y)
+    if area > 0 {
+        rl.DrawTriangle(v3, v2, v1, color.xyzw)
+    } else {
+        rl.DrawTriangle(v3, v1, v2, color.xyzw)
+    }
+
+    area = (v3.x - v2.x) * (v4.y - v2.y) - (v4.x - v2.x) * (v3.y - v2.y)
+    if area > 0 {
+        rl.DrawTriangle(v2, v4, v3, color.xyzw)
+    } else {
+        rl.DrawTriangle(v2, v3, v4, color.xyzw)
+    }
+
+}
+
 u64_to_cstring :: proc(num: u64) -> cstring{
     builder := strings.builder_make(context.temp_allocator)
     strings.write_u64(&builder, num)
@@ -126,6 +146,22 @@ tile_map_to_screen_coord :: proc(pos: TileMapPosition, state: ^GameState, tile_m
     return res
 }
 
+tile_map_to_screen_coord_full :: proc(pos: TileMapPosition, state: ^GameState, tile_map: ^TileMap) -> rl.Vector2 {
+    res : rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
+
+    delta: [2]i32 = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
+    delta -= {i32(state.camera_pos.abs_tile.x), i32(state.camera_pos.abs_tile.y)}
+
+    res.x += f32(delta.x * tile_map.tile_side_in_pixels)
+    res.y += f32(delta.y * tile_map.tile_side_in_pixels)
+
+    res -= state.camera_pos.rel_tile * tile_map.feet_to_pixels
+
+    res += pos.rel_tile * tile_map.feet_to_pixels
+
+    return res
+}
+
 state: ^GameState
 tile_map: ^TileMap
 
@@ -161,6 +197,11 @@ init :: proc(mobile := false) {
     state.draw_initiative = true
     state.active_tool = Tool.MOVE_TOKEN
     state.selected_color.a = 255
+
+    rand.reset(u64(time.time_to_unix(time.now())))
+    state.selected_color.r = u8(rand.int_max(255))
+    state.selected_color.g = u8(rand.int_max(255))
+    state.selected_color.b = u8(rand.int_max(255))
     state.selected_alpha = 1
     // entity id 0 is reserved for temporary preview entity
     state.max_entity_id = 1
@@ -206,7 +247,7 @@ draw_connections :: proc(my_id: string, socket_ready: bool, peers: map[string]bo
 
 update :: proc() {
     rl.BeginDrawing()
-    rl.ClearBackground({77, 77, 77, 255})
+    rl.ClearBackground(EMPTY_COLOR.xyzw)
 
     state.screen_height = rl.GetScreenHeight()
     state.screen_width = rl.GetScreenWidth()
@@ -252,6 +293,14 @@ update :: proc() {
     touch_count := rl.GetTouchPointCount()
 
     switch state.active_tool {
+    case .LIGHT_SOURCE: {
+        if selected_widget == .MAP {
+            if rl.IsMouseButtonDown(.LEFT) {
+                state.light_source = (state.tool_start_position.? - mouse_pos)/100
+            }
+        }
+        icon = .ICON_CURSOR_SCALE_LEFT
+    }
     case .BRUSH: {
         if selected_widget == .MAP {
             if rl.IsMouseButtonDown(.LEFT) {
@@ -270,6 +319,25 @@ update :: proc() {
         }
         icon = .ICON_PENCIL
         highligh_current_tile = true
+    }
+    case .CONE: {
+        if rl.IsMouseButtonDown(.LEFT) {
+            append(&state.temp_actions, make_action(context.temp_allocator))
+            temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
+            tooltip = cone_tool(state, tile_map, mouse_pos, temp_action)
+        } else if rl.IsMouseButtonReleased(.LEFT) {
+            if (state.tool_start_position != nil) {
+                append(&state.undo_history, make_action())
+                action : ^Action = &state.undo_history[len(state.undo_history)-1]
+                action.performed = true
+                action.tool = .CONE
+                tooltip = cone_tool(state, tile_map, mouse_pos, action)
+                state.needs_sync = true
+            }
+        } else {
+            highligh_current_tile_intersection = true
+        }
+        icon = .ICON_CURSOR_POINTER
     }
     case .RECTANGLE: {
         if rl.IsMouseButtonDown(.LEFT) {
@@ -681,15 +749,61 @@ update :: proc() {
             }
 
             if Direction.TOP in current_tile_value.walls {
-                //TODO(amatej): use DrawLineEx if we want to do diagonals
-                rl.DrawRectangleV({min_x, min_y},
-                                 {f32(tile_map.tile_side_in_pixels), f32(2)},
-                                 current_tile_value.wall_colors[Direction.TOP].xyzw)
+                if current_tile_value.wall_colors[Direction.TOP].w != 0 {
+                    //TODO(amatej): use DrawLineEx if we want to do diagonals
+                    rl.DrawRectangleV({min_x, min_y},
+                                     {f32(tile_map.tile_side_in_pixels), f32(2)},
+                                     current_tile_value.wall_colors[Direction.TOP].xyzw)
+                }
             }
+            if current_tile_value.wall_colors[Direction.LEFT].w != 0 {
             if Direction.LEFT in current_tile_value.walls {
-                rl.DrawRectangleV({min_x, min_y},
-                                 {f32(2), f32(tile_map.tile_side_in_pixels)},
-                                 current_tile_value.wall_colors[Direction.LEFT].xyzw)
+                    rl.DrawRectangleV({min_x, min_y},
+                                     {f32(2), f32(tile_map.tile_side_in_pixels)},
+                                     current_tile_value.wall_colors[Direction.LEFT].xyzw)
+                }
+            }
+        }
+
+        if (state.draw_grid) {
+            rl.DrawLineV({0, min_y}, {f32(state.screen_width), min_y}, {0,0,0,20})
+        }
+    }
+
+    // Draw wall shadows, has to be done after all TILEs are drawn, because the shadows can
+    // extend beyond its TILE
+    for row_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y)); row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y)); row_offset += 1 {
+        cen_y : f32 = screen_center.y - tile_map.feet_to_pixels * state.camera_pos.rel_tile.y + f32(row_offset * tile_map.tile_side_in_pixels)
+        min_y : f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
+
+        for column_offset : i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x)); column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x)); column_offset += 1 {
+            current_tile: [2]u32
+            current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset)
+            current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
+            current_tile_value : Tile = get_tile(tile_map, current_tile)
+
+            // Calculate tile position on screen
+            cen_x : f32 = screen_center.x - tile_map.feet_to_pixels * state.camera_pos.rel_tile.x + f32(column_offset * tile_map.tile_side_in_pixels)
+            min_x : f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
+
+            shadow := state.light_source * f32(tile_map.tile_side_in_pixels) * 3
+            if Direction.TOP in current_tile_value.walls {
+                if current_tile_value.wall_colors[Direction.TOP].w != 0 {
+            draw_quad({min_x, min_y},
+                              {min_x + f32(tile_map.tile_side_in_pixels), min_y},
+                              {min_x, min_y} + shadow,
+                              {min_x + f32(tile_map.tile_side_in_pixels), min_y} + shadow,
+                              state.shadow_color)
+                }
+            }
+            if current_tile_value.wall_colors[Direction.LEFT].w != 0 {
+            if Direction.LEFT in current_tile_value.walls {
+                    draw_quad({min_x, min_y},
+                              {min_x, min_y} + shadow,
+                              {min_x, min_y + f32(tile_map.tile_side_in_pixels)},
+                              {min_x, min_y + f32(tile_map.tile_side_in_pixels)} + shadow,
+                              state.shadow_color)
+                }
             }
         }
 
