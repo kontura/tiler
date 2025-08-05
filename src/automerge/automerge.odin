@@ -161,6 +161,7 @@ foreign _ {
         AMmapPutObject :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, obj_type: AMobjType) -> AMresultPtr ---
         AMmapPutInt :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.int64_t) -> AMresultPtr ---
         AMmapPutUint :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.uint64_t) -> AMresultPtr ---
+        AMmapPutF64 :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.double) -> AMresultPtr ---
         AMmapPutBool :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: AMbyteSpan, value: c.bool) -> AMresultPtr ---
 
         AMmapRange :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, begin: AMbyteSpan, end: AMbyteSpan, heads: AMitemsPtr) -> AMresultPtr ---
@@ -180,6 +181,7 @@ foreign _ {
 	AMitemToInt :: proc(item: AMitemPtr, value: ^c.int64_t) -> c.bool ---
 	AMitemToBool :: proc(item: AMitemPtr, value: ^c.bool) -> c.bool ---
 	AMitemToCounter :: proc(item: AMitemPtr, value: ^c.int64_t) -> c.bool ---
+	AMitemToF64 :: proc(item: AMitemPtr, value: ^c.double) -> c.bool ---
 
         AMitemObjId :: proc(item: AMitemPtr) -> AMobjIdPtr ---
         AMitemsNext :: proc(items: AMitemsPtr, n: c.ptrdiff_t) -> AMitemsPtr ---
@@ -218,6 +220,7 @@ AMitemTo :: proc {
     AMitemToBool,
     AMitemToString,
     AMitemToBytes,
+    AMitemToF64,
     AMitemToOdinBytes,
 }
 
@@ -228,6 +231,7 @@ AMmapPut :: proc {
     AMmapPutObject,
     AMmapPutInt,
     AMmapPutUint,
+    AMmapPutF64,
     AMmapPutBool,
     AMmapPutEnum,
 }
@@ -357,7 +361,7 @@ put_map_bit_set :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: 
 }
 
 put_map_value :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: $T, loc := #caller_location) -> bool
-where intrinsics.type_is_integer(T) || intrinsics.type_is_string(T) || intrinsics.type_is_enum(T) || intrinsics.type_is_boolean(T) {
+where intrinsics.type_is_integer(T) || intrinsics.type_is_float(T) || intrinsics.type_is_string(T) || intrinsics.type_is_enum(T) || intrinsics.type_is_boolean(T) {
     result := AMmapPut(doc, obj_id, AMstr(key), T(value))
     defer AMresultFree(result)
     verify_result(result, loc) or_return
@@ -473,7 +477,7 @@ get_map_bitset :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, $T: type
 }
 
 get_map_value :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, $T: typeid, loc := #caller_location) -> T
-    where intrinsics.type_is_integer(T) || intrinsics.type_is_boolean(T) || T == AMbyteSpan || intrinsics.type_is_string(T) || intrinsics.type_is_enum(T) {
+    where intrinsics.type_is_integer(T) || intrinsics.type_is_boolean(T) || intrinsics.type_is_float(T) || T == AMbyteSpan || intrinsics.type_is_string(T) || intrinsics.type_is_enum(T) {
     result := AMmapGet(doc, obj_id, AMstr(key), c.NULL)
     defer AMresultFree(result)
     item, _ := result_to_item(result, loc)
