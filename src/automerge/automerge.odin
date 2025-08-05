@@ -593,7 +593,9 @@ put_map_action :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: ^
 
     put_into_map(doc, map_id, "undo", value.undo) or_return
 
-    if value.undo {
+    // BRUSH tool has to sync tile_history because there is no
+    // way to describe its effect more concisely.
+    if value.undo || value.tool == .BRUSH {
         put_into_map(doc, map_id, "tile_history", value.tile_history) or_return
     }
 
