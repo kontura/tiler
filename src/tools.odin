@@ -304,79 +304,100 @@ DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32, temp
 }
 
 cone_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
-    //TODO(amatej): allow incrementing only by 5 feet, also do that for circle tool?
+    // First snap starting point to grid
     start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
     half := tile_map.tile_side_in_feet/2
     start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? half : -half
     start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? half : -half
-    screen_start_snapped := tile_map_to_screen_coord_full(start_mouse_tile, state, tile_map)
+    start_snapped_screen := tile_map_to_screen_coord_full(start_mouse_tile, state, tile_map)
 
-    axis_vec := screen_start_snapped - current_pos
-    left_vec : [2]f32 = {-axis_vec.y, axis_vec.x}
-    right_vec : [2]f32 = {axis_vec.y, -axis_vec.x}
-    left_vec = rl.Vector2Normalize(left_vec)
-    right_vec = rl.Vector2Normalize(right_vec)
-    half_dist := dist(screen_start_snapped, current_pos)/2
+    unit_vec := rl.Vector2Normalize(current_pos - start_snapped_screen)
+    max_dist := dist(start_snapped_screen, current_pos) * tile_map.pixels_to_feet
+    rounded_dist_in_feet := math.round_f32(max_dist / 5) * 5
+    current_pos := start_snapped_screen + unit_vec * (rounded_dist_in_feet * tile_map.feet_to_pixels)
 
-    left_vec = left_vec * half_dist
-    right_vec = right_vec * half_dist
+    end_pos_tile : TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
 
-    left_point := left_vec + current_pos
-    right_point := right_vec + current_pos
+    max_dist_in_feet := tile_distance(tile_map, start_mouse_tile, end_pos_tile)
 
-    rl.DrawLineV(screen_start_snapped, left_point, {0, 0, 0, 255})
-    rl.DrawLineV(screen_start_snapped, right_point, {0, 0, 0, 255})
-    rl.DrawLineV(right_point, left_point, {0, 0, 0, 255})
+    draw_cone_tiles(tile_map, start_mouse_tile, end_pos_tile, state.selected_color, action)
 
-    //p1 := screen_start_snapped
-    //p2 := left_point
-    //p3 := right_point
+    action.tool = .CONE
+    action.start = start_mouse_tile
+    action.end = end_pos_tile
+    action.color = state.selected_color
+    action.performed = true
 
-    // Compute bounding box
-    //min_x := math.floor_f32(math.min(p1.x, p2.x, p3.x))
-    //max_x := math.ceil_f32(math.max(p1.x, p2.x, p3.x))
-    //min_y := math.floor_f32(math.min(p1.y, p2.y, p3.y))
-    //max_y := math.ceil_f32(math.max(p1.y, p2.y, p3.y))
-
-
-    //seen: map[[2]u32] bool
-    //seen.allocator = context.temp_allocator
-
-    //TODO(amatej): this iterates over pixels, its not great
-    //for y : f32 = min_y; y <= max_y; y += 1 { //f32(tile_map.tile_side_in_pixels - 1) {
-    //    for x : f32 = min_x; x <= max_x; x += 1 { //f32(tile_map.tile_side_in_pixels - 1) {
-    //        tile_pos : TileMapPosition = screen_coord_to_tile_map({x, y}, state, tile_map)
-    //        _, ok := &seen[tile_pos.abs_tile]
-    //        if ok {
-    //            continue
-    //        }
-
-    //        seen[tile_pos.abs_tile] = true
-    //        // Compute barycentric coordinates
-    //        denom := ((p2.y - p3.y)*(p1.x - p3.x) + (p3.x - p2.x)*(p1.y - p3.y))
-    //        if denom == 0 {
-    //            continue  // degenerate triangle
-    //        }
-    //        a := ((p2.y - p3.y)*(x - p3.x) + (p3.x - p2.x)*(y - p3.y)) / denom
-    //        b := ((p3.y - p1.y)*(x - p3.x) + (p1.x - p3.x)*(y - p3.y)) / denom
-    //        c := 1 - a - b
-    //        if a >= 0 && b >= 0 && c >= 0 {
-    //            old_tile := get_tile(tile_map, tile_pos.abs_tile)
-    //            new_tile := tile_make_color_walls_colors(color_over(state.selected_color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
-    //            if action != nil{
-    //                action.tile_history[tile_pos.abs_tile] = tile_subtract(&old_tile, &new_tile)
-    //            }
-    //            set_tile(tile_map, tile_pos.abs_tile, new_tile)
-    //        }
-
-    //    }
-    //}
-
-    current_mouse_tile : TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
-    max_dist_in_feet := tile_distance(tile_map, start_mouse_tile, current_mouse_tile)
 
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator=context.temp_allocator))
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
+
+draw_cone_tiles :: proc(tile_map: ^TileMap, start: TileMapPosition, end: TileMapPosition, color: [4]u8, action: ^Action) {
+    screen_start_snapped := tile_map_to_screen_coord_full(start, state, tile_map)
+    end_screen := tile_map_to_screen_coord_full(end, state, tile_map)
+
+    axis_vec := screen_start_snapped - end_screen
+    left_vec : [2]f32 = {-axis_vec.y, axis_vec.x}
+    right_vec : [2]f32 = {axis_vec.y, -axis_vec.x}
+    left_vec = rl.Vector2Normalize(left_vec)
+    right_vec = rl.Vector2Normalize(right_vec)
+    half_dist := dist(screen_start_snapped, end_screen)/2
+
+    left_vec = left_vec * half_dist
+    right_vec = right_vec * half_dist
+
+    left_point := left_vec + end_screen
+    right_point := right_vec + end_screen
+
+    // Draw line outline
+    //rl.DrawLineV(screen_start_snapped, left_point, {0, 0, 0, 255})
+    //rl.DrawLineV(screen_start_snapped, right_point, {0, 0, 0, 255})
+    //rl.DrawLineV(right_point, left_point, {0, 0, 0, 255})
+
+    p1 := screen_start_snapped
+    p2 := left_point
+    p3 := right_point
+
+    // Compute bounding box
+    min_x := math.floor_f32(math.min(p1.x, p2.x, p3.x))
+    max_x := math.ceil_f32(math.max(p1.x, p2.x, p3.x))
+    min_y := math.floor_f32(math.min(p1.y, p2.y, p3.y))
+    max_y := math.ceil_f32(math.max(p1.y, p2.y, p3.y))
+
+
+    seen: map[[2]u32] bool
+    seen.allocator = context.temp_allocator
+
+    //TODO(amatej): this iterates over pixels, its not great
+    for y : f32 = min_y; y <= max_y; y += f32(tile_map.tile_side_in_pixels - 1) {
+        for x : f32 = min_x; x <= max_x; x += f32(tile_map.tile_side_in_pixels - 1) {
+            tile_pos : TileMapPosition = screen_coord_to_tile_map({x, y}, state, tile_map)
+            pos_snapped := tile_map_to_screen_coord(tile_pos, state, tile_map)
+            _, ok := &seen[tile_pos.abs_tile]
+            if ok {
+                continue
+            }
+
+            seen[tile_pos.abs_tile] = true
+            // Compute barycentric coordinates
+            denom := ((p2.y - p3.y)*(p1.x - p3.x) + (p3.x - p2.x)*(p1.y - p3.y))
+            if denom == 0 {
+                continue  // degenerate triangle
+            }
+            a := ((p2.y - p3.y)*(pos_snapped.x - p3.x) + (p3.x - p2.x)*(pos_snapped.y - p3.y)) / denom
+            b := ((p3.y - p1.y)*(pos_snapped.x - p3.x) + (p1.x - p3.x)*(pos_snapped.y - p3.y)) / denom
+            c := 1 - a - b
+            if a >= 0 && b >= 0 && c >= 0 {
+                old_tile := get_tile(tile_map, tile_pos.abs_tile)
+                new_tile := tile_make_color_walls_colors(color_over(color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
+                if action != nil{
+                    action.tile_history[tile_pos.abs_tile] = tile_subtract(&old_tile, &new_tile)
+                }
+                set_tile(tile_map, tile_pos.abs_tile, new_tile)
+            }
+        }
+    }
+}

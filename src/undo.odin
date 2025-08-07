@@ -120,6 +120,8 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
         rectangle_tool(action.start, action.end, action.color, tile_map, action)
     } else if action.tool == .CIRCLE {
         draw_tile_circle(tile_map, action.start, auto_cast action.radius, action.color, action)
+    } else if action.tool == .CONE {
+        draw_cone_tiles(tile_map, action.start, action.end, action.color, action)
     } else {
         for abs_tile, &tile in action.tile_history {
             old_tile := get_tile(tile_map, abs_tile)
