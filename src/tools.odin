@@ -234,6 +234,8 @@ move_token_tool :: proc(state: ^GameState, token: ^Token,  tile_map: ^TileMap, e
     mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
     token_pos_delta : [2]i32 = {i32(token.position.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x), i32(token.position.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y)}
     action.token_history[token.id] = token_pos_delta
+    action.start = token.position
+    action.end = mouse_tile_pos
     if feedback {
         temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
         assert(token.position.rel_tile == {0,0})

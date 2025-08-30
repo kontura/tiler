@@ -131,7 +131,9 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     fmt.println("redoing action: ", action)
     for token_id, &pos_delta in action.token_history {
         token := &state.tokens[token_id]
-        add_tile_pos_delta(&token.position, pos_delta)
+        if token.position == action.start {
+            add_tile_pos_delta(&token.position, pos_delta)
+        }
     }
     for token_id, &delta_init_pos in action.token_initiative_history {
         old_init, old_init_index := remove_token_by_id_from_initiative(state, token_id)
