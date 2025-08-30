@@ -910,13 +910,17 @@ update :: proc() {
             if t.alive {
                 live_t += 1
             }
+            token_text := fmt.caprint(get_token_name_temp(&t), ": ", t.position, allocator=context.temp_allocator)
+            rl.DrawText(token_text, 430, 60+30*(i32(live_t)), 15, rl.BLUE)
         }
         total_tokens_live := fmt.caprint("Total live tokens: ", live_t, allocator=context.temp_allocator)
         total_tokens := fmt.caprint("Total tokens: ", len(state.tokens), allocator=context.temp_allocator)
-        rl.DrawText(total_tokens_live, 230, 30, 18, rl.GREEN)
-        rl.DrawText(total_tokens, 230, 50, 18, rl.GREEN)
+        rl.DrawText(total_tokens_live, 430, 30, 18, rl.BLUE)
+        rl.DrawText(total_tokens, 430, 50, 18, rl.BLUE)
         total_actions := fmt.caprint("Total actions: ", len(state.undo_history), allocator=context.temp_allocator)
         rl.DrawText(total_actions, 30, 30, 18, rl.GREEN)
+        max_id := fmt.caprint("Max entity id: ", state.max_entity_id, allocator=context.temp_allocator)
+        rl.DrawText(max_id, 630, 30, 18, rl.GREEN)
         for action_index := len(state.undo_history)-1; action_index >= 0; action_index -= 1 {
             a := &state.undo_history[action_index]
             a_text := fmt.caprint(action_index, ": ", a.tool, ", tile_history: ", len(a.tile_history), a.token_history, allocator=context.temp_allocator)
