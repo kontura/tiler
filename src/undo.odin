@@ -132,8 +132,8 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
     }
     fmt.println("redoing action: ", action)
     for token_id, &pos_delta in action.token_history {
-        token := &state.tokens[token_id]
-        if token.position == action.start {
+        token, ok := &state.tokens[token_id]
+        if ok && token.position == action.start {
             add_tile_pos_delta(&token.position, pos_delta)
         }
     }
