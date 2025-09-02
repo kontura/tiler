@@ -150,12 +150,12 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
             token, ok := &state.tokens[token_id]
             if ok {
                 token.alive = true
+                append(&state.initiative_to_tokens[token.initiative], token_id)
             } else {
                 t := make_token(token_id, {{u32(action.token_history[token_id].x), u32(action.token_history[token_id].y)}, {0, 0}}, action.color)
                 add_at_initiative(state, t.id, action.token_initiative_history[token_id].x, action.token_initiative_history[token_id].y)
-                state.tokens[t.id] =  t
+                state.tokens[t.id] = t
             }
-            append(&state.initiative_to_tokens[token.initiative], token_id)
         } else {
             // life is false == token was deleted
             remove_token_by_id_from_initiative(state, token_id)
