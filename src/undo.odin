@@ -75,9 +75,11 @@ undo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
      }
 
     for token_id, &delta_init_pos in action.token_initiative_history {
-        old_init, old_init_index := remove_token_by_id_from_initiative(state, token_id)
-        new_init_pos := [2]i32{old_init, old_init_index} + delta_init_pos
-        add_at_initiative(state, token_id, new_init_pos.x, new_init_pos.y)
+        old_init, old_init_index, ok := remove_token_by_id_from_initiative(state, token_id)
+        if ok {
+            new_init_pos := [2]i32{old_init, old_init_index} + delta_init_pos
+            add_at_initiative(state, token_id, new_init_pos.x, new_init_pos.y)
+        }
     }
     for token_id, life in action.token_life {
         if life {
@@ -136,9 +138,11 @@ redo_action :: proc(state: ^GameState, tile_map:  ^TileMap, action: ^Action) {
         }
     }
     for token_id, &delta_init_pos in action.token_initiative_history {
-        old_init, old_init_index := remove_token_by_id_from_initiative(state, token_id)
-        new_init_pos := [2]i32{old_init, old_init_index} - delta_init_pos
-        add_at_initiative(state, token_id, new_init_pos.x, new_init_pos.y)
+        old_init, old_init_index, ok := remove_token_by_id_from_initiative(state, token_id)
+        if ok {
+            new_init_pos := [2]i32{old_init, old_init_index} - delta_init_pos
+            add_at_initiative(state, token_id, new_init_pos.x, new_init_pos.y)
+        }
     }
     for token_id, life in action.token_life {
         if life {

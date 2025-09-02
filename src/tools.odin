@@ -221,7 +221,7 @@ move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^
         state.initiative_tool_start.x, state.initiative_tool_start.y, state.selected_token = find_at_initiative(state, state.tool_start_position.?.y)
     } else {
         end_initiative, end_index, _ := find_at_initiative(state, end_pos.y)
-        init, i := remove_token_by_id_from_initiative(state, state.selected_token)
+        remove_token_by_id_from_initiative(state, state.selected_token)
         add_at_initiative(state, state.selected_token, end_initiative, end_index)
         if action != nil {
             action.token_initiative_history[state.selected_token] = [2]i32{state.initiative_tool_start.x - end_initiative, math.max(state.initiative_tool_start.y - end_index, 0)}
