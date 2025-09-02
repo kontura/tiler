@@ -134,7 +134,6 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     if type == 1 {
         if len(payload) != 0 {
             decode_and_receive(&payload[0], uint(len(payload)), doc, peer_state.am_sync_state)
-            update_game_state_from_doc(doc)
         } else {
             fmt.println("Registering: ", sender)
             make_webrtc_offer(&sender_bytes[0], u32(len(sender_bytes)))
@@ -174,7 +173,6 @@ update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
             AMmapIncrement(doc, AM_ROOT, AMstr("max_entity_id"), 1)
             max += 1
         }
-
     }
 
     update_doc_actions(doc, game.state.undo_history[:])
@@ -379,6 +377,7 @@ main_update :: proc "c" () -> bool {
 
                         case .AM_VAL_TYPE_VOID:
                             finished = true
+                            update_game_state_from_doc(doc)
                         case:
                             assert(false)
                         }
