@@ -76,15 +76,9 @@ config : []Config = {
         }
         }},
     {.ICON_REDO, {{.A, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, "Redo all actions", proc(state: ^GameState) {
-        clear(&state.tokens)
-        for _, &token_ids in state.initiative_to_tokens {
-            clear(&token_ids)
-        }
-        clear(&state.initiative_to_tokens)
-        for key, &arr in tile_map.tile_chunks {
-            clear(&arr.tiles)
-        }
-        clear(&tile_map.tile_chunks)
+        tokens_clear(state)
+        tilemap_clear(tile_map)
+
         for &action in state.undo_history {
             redo_action(state, tile_map, &action)
         }

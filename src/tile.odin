@@ -148,6 +148,13 @@ tile_make :: proc{
     tile_make_color,
 }
 
+tilemap_clear :: proc(tile_map : ^TileMap) {
+    for key, _ in tile_map.tile_chunks {
+        delete(tile_map.tile_chunks[key].tiles)
+    }
+    clear(&tile_map.tile_chunks)
+}
+
 tile_make_color :: proc(color: [4]u8) -> Tile {
     t: Tile = {}
     t.color = color

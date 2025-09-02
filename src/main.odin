@@ -980,6 +980,17 @@ update :: proc() {
     free_all(context.temp_allocator)
 }
 
+tokens_clear :: proc(state : ^GameState) {
+    for _, &token_ids in state.initiative_to_tokens {
+        delete(token_ids)
+    }
+    clear(&state.initiative_to_tokens)
+    for _, &token in state.tokens {
+        delete_token(&token)
+    }
+    clear(&state.tokens)
+}
+
 shutdown :: proc() {
     rl.CloseWindow()
     for name, _ in state.textures {
@@ -987,21 +998,17 @@ shutdown :: proc() {
     }
     delete(state.textures)
     delete(state.gui_rectangles)
-    for _, &token_ids in state.initiative_to_tokens {
-        delete(token_ids)
-    }
+
+    tokens_clear(state)
     delete(state.initiative_to_tokens)
-    for _, &token in state.tokens {
-        delete_token(&token)
-    }
     delete(state.tokens)
+
     for _, index in state.undo_history {
         delete_action(&state.undo_history[index])
     }
     delete(state.undo_history)
-    for key, _ in tile_map.tile_chunks {
-        delete(tile_map.tile_chunks[key].tiles)
-    }
+
+    tilemap_clear(tile_map)
     delete(tile_map.tile_chunks)
 
     free(state)
