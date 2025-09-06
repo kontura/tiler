@@ -1,6 +1,6 @@
 package automerge
-import "core:testing"
 import "core:fmt"
+import "core:testing"
 
 get_new_doc :: proc() -> AMdocPtr {
     doc_result := AMcreate(nil)
@@ -26,7 +26,7 @@ add_unsigned_number_to_doc :: proc(t: ^testing.T) {
 add_signed_number_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
-    num : i64 = 99
+    num: i64 = 99
 
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", num), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", i64), 99)
@@ -45,7 +45,7 @@ add_string_to_doc :: proc(t: ^testing.T) {
 add_fixed_byte_array_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
-    color : [4]u8 = {255, 0, 255, 0}
+    color: [4]u8 = {255, 0, 255, 0}
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", color), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", [4]u8), color)
 }
@@ -54,7 +54,7 @@ add_fixed_byte_array_to_doc :: proc(t: ^testing.T) {
 add_fixed_num_array_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
-    arr : [4]i32 = {3, -33, 9999, 1}
+    arr: [4]i32 = {3, -33, 9999, 1}
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", arr), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", [4]i32), arr)
 }
@@ -65,9 +65,9 @@ add_enum_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
     ENUM_VAL :: enum {
-            ONE = 0,
-            TWO,
-            THREE,
+        ONE = 0,
+        TWO,
+        THREE,
     }
 
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", ENUM_VAL.THREE), true)
@@ -78,10 +78,13 @@ add_enum_to_doc :: proc(t: ^testing.T) {
 add_bitset_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
-    Direction :: enum{TOP, LEFT}
+    Direction :: enum {
+        TOP,
+        LEFT,
+    }
     WallSet :: bit_set[Direction]
 
-    walls : WallSet = {Direction.LEFT, Direction.TOP}
+    walls: WallSet = {Direction.LEFT, Direction.TOP}
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", walls), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", WallSet), walls)
 
@@ -98,7 +101,7 @@ add_bitset_to_doc :: proc(t: ^testing.T) {
 add_basic_map_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
-    m := make(map[u64]i64, allocator=context.temp_allocator)
+    m := make(map[u64]i64, allocator = context.temp_allocator)
     m[5] = -9
 
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", m), true)
@@ -111,7 +114,7 @@ add_basic_map_to_doc :: proc(t: ^testing.T) {
 add_map_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
-    m := make(map[u64][2]i32, allocator=context.temp_allocator)
+    m := make(map[u64][2]i32, allocator = context.temp_allocator)
     m[5] = {-9, 3}
     m[1] = {1, 8}
 
@@ -127,8 +130,11 @@ add_map_to_doc :: proc(t: ^testing.T) {
 add_array_of_array_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
-    Direction :: enum{TOP, LEFT}
-    a : [Direction][4]u8
+    Direction :: enum {
+        TOP,
+        LEFT,
+    }
+    a: [Direction][4]u8
     a[.TOP] = {255, 55, 77, 22}
     a[.LEFT] = {11, 99, 9, 0}
 
@@ -136,16 +142,16 @@ add_array_of_array_to_doc :: proc(t: ^testing.T) {
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", [Direction][4]u8), a)
 
 
-    b : [Direction][4]u8
+    b: [Direction][4]u8
     b[.LEFT] = {255, 55, 77, 22}
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", b), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", [Direction][4]u8), b)
 
-    c : [Direction][4]u8
+    c: [Direction][4]u8
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", c), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", [Direction][4]u8), c)
 
-    d : [Direction][4]u8
+    d: [Direction][4]u8
     d[.TOP] = {1, 55, 77, 22}
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", d), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", [Direction][4]u8), d)
@@ -156,8 +162,7 @@ add_array_of_array_to_doc :: proc(t: ^testing.T) {
 add_fixed_string_array_to_doc :: proc(t: ^testing.T) {
     doc := get_new_doc()
 
-    names : [2]string = {"Ahoy", "Sailor"}
+    names: [2]string = {"Ahoy", "Sailor"}
     testing.expect_value(t, put_into_map(doc, AM_ROOT, "key", names), true)
     testing.expect_value(t, get_from_map(doc, AM_ROOT, "key", [2]string), names)
 }
-

@@ -1,12 +1,12 @@
 package tiler
 
-import "core:math"
 import "core:fmt"
+import "core:math"
 import "core:strings"
 import rl "vendor:raylib"
 
-GREEN_HIGHLIGH : [4]u8 : {0, 255, 0, 30}
-GREEN_HIGHLIGH_PATH : [4]u8 : {30, 105, 30, 230}
+GREEN_HIGHLIGH: [4]u8 : {0, 255, 0, 30}
+GREEN_HIGHLIGH_PATH: [4]u8 : {30, 105, 30, 230}
 
 Tool :: enum {
     BRUSH,
@@ -49,9 +49,9 @@ color_over :: proc(c1: [4]u8, c2: [4]u8) -> [4]u8 {
     return rl.ColorFromNormalized(res).xyzw
 }
 
-wall_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
-    drawn : f32 = 0
-    start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
+wall_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
+    drawn: f32 = 0
+    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
     // convert to crossing possition:
     // The very top left (first) crossing i 0,0
     // 0,0, +---+---+--+
@@ -59,48 +59,55 @@ wall_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, a
     //      +---+---+--+
     //      |   |   |  |
     //      +---+---+--+
-    start_crossing_pos : [2]u32 = tile_pos_to_crossing_pos(start_mouse_tile)
+    start_crossing_pos: [2]u32 = tile_pos_to_crossing_pos(start_mouse_tile)
 
-    end_mouse_tile : TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
-    end_crossing_pos : [2]u32 = tile_pos_to_crossing_pos(end_mouse_tile)
+    end_mouse_tile: TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
+    end_crossing_pos: [2]u32 = tile_pos_to_crossing_pos(end_mouse_tile)
 
-    start: [2]u32 = {math.min(start_crossing_pos.x, end_crossing_pos.x), math.min(start_crossing_pos.y, end_crossing_pos.y)}
-    end: [2]u32 = {math.max(start_crossing_pos.x, end_crossing_pos.x), math.max(start_crossing_pos.y, end_crossing_pos.y)}
+    start: [2]u32 = {
+        math.min(start_crossing_pos.x, end_crossing_pos.x),
+        math.min(start_crossing_pos.y, end_crossing_pos.y),
+    }
+    end: [2]u32 = {
+        math.max(start_crossing_pos.x, end_crossing_pos.x),
+        math.max(start_crossing_pos.y, end_crossing_pos.y),
+    }
 
-    if abs(i32(start_crossing_pos.x) - i32(end_crossing_pos.x)) > abs(i32(start_crossing_pos.y) - i32(end_crossing_pos.y)) {
-        y : u32 = start_crossing_pos.y
+    if abs(i32(start_crossing_pos.x) - i32(end_crossing_pos.x)) >
+       abs(i32(start_crossing_pos.y) - i32(end_crossing_pos.y)) {
+        y: u32 = start_crossing_pos.y
         drawn = f32(end.x - start.x)
-        for x : u32 = start.x; x < end.x; x += 1 {
+        for x: u32 = start.x; x < end.x; x += 1 {
             old_tile := get_tile(tile_map, {x, y})
             new_tile := old_tile
             new_tile.walls += {Direction.TOP}
             new_tile.wall_colors[Direction.TOP] = state.selected_color
-            action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+            action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
             set_tile(tile_map, {x, y}, new_tile)
         }
     } else {
-        x : u32 = start_crossing_pos.x
+        x: u32 = start_crossing_pos.x
         drawn = f32(end.y - start.y)
-        for y : u32 = start.y; y < end.y; y += 1 {
+        for y: u32 = start.y; y < end.y; y += 1 {
             old_tile := get_tile(tile_map, {x, y})
             new_tile := old_tile
             new_tile.walls += {Direction.LEFT}
             new_tile.wall_colors[Direction.LEFT] = state.selected_color
-            action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+            action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
             set_tile(tile_map, {x, y}, new_tile)
         }
     }
 
     builder := strings.builder_make(context.temp_allocator)
-    strings.write_string(&builder, fmt.aprintf("%.1f", drawn * 5, allocator=context.temp_allocator))
+    strings.write_string(&builder, fmt.aprintf("%.1f", drawn * 5, allocator = context.temp_allocator))
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
 //TODO(amatej): circle tool doesn't work after looping tile_chunks
-circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
-    start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
+circle_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
+    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
 
-    half := tile_map.tile_side_in_feet/2
+    half := tile_map.tile_side_in_feet / 2
     start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? half : -half
     start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? half : -half
     start_snapped_screen := tile_map_to_screen_coord_full(start_mouse_tile, state, tile_map)
@@ -111,7 +118,7 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
     rounded_dist_in_feet := math.round_f32(max_dist / 5) * 5
     current_pos := start_snapped_screen + unit_vec * (rounded_dist_in_feet * tile_map.feet_to_pixels)
 
-    current_mouse_tile : TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
+    current_mouse_tile: TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
 
     max_dist_in_feet := tile_distance(tile_map, start_mouse_tile, current_mouse_tile)
 
@@ -123,26 +130,30 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
     draw_tile_circle(tile_map, start_mouse_tile, max_dist_in_feet, state.selected_color, action)
 
     builder := strings.builder_make(context.temp_allocator)
-    strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator=context.temp_allocator))
+    strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator = context.temp_allocator))
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
 // radius is in feet
 draw_tile_circle :: proc(tile_map: ^TileMap, center: TileMapPosition, radius: f32, color: [4]u8, action: ^Action) {
-    max_dist_up := u32(math.ceil_f32(radius/tile_map.tile_side_in_feet)) + 2
+    max_dist_up := u32(math.ceil_f32(radius / tile_map.tile_side_in_feet)) + 2
 
-    start_tile : [2]u32 = {center.abs_tile.x - max_dist_up, center.abs_tile.y - max_dist_up}
-    end_tile : [2]u32 = {center.abs_tile.x + max_dist_up, center.abs_tile.y + max_dist_up}
+    start_tile: [2]u32 = {center.abs_tile.x - max_dist_up, center.abs_tile.y - max_dist_up}
+    end_tile: [2]u32 = {center.abs_tile.x + max_dist_up, center.abs_tile.y + max_dist_up}
 
-    for y : u32 = start_tile.y; y <= end_tile.y; y += 1 {
-        for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
-            temp_tile_pos: TileMapPosition = {{x,y}, {0,0}}
+    for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
+        for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
+            temp_tile_pos: TileMapPosition = {{x, y}, {0, 0}}
 
             dist := tile_distance(tile_map, temp_tile_pos, center)
             if (radius > dist) {
                 old_tile := get_tile(tile_map, {x, y})
-                new_tile := tile_make_color_walls_colors(color_over(color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
-                action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+                new_tile := tile_make_color_walls_colors(
+                    color_over(color.xyzw, old_tile.color.xyzw),
+                    old_tile.walls,
+                    old_tile.wall_colors,
+                )
+                action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
                 set_tile(tile_map, {x, y}, new_tile)
             }
         }
@@ -150,36 +161,60 @@ draw_tile_circle :: proc(tile_map: ^TileMap, center: TileMapPosition, radius: f3
 
 }
 
-rectangle_tool :: proc(start_mouse_tile: TileMapPosition, end_mouse_tile: TileMapPosition, selected_color: [4]u8, tile_map: ^TileMap, action: ^Action) -> cstring {
-    start_tile : [2]u32 = {math.min(start_mouse_tile.abs_tile.x, end_mouse_tile.abs_tile.x), math.min(start_mouse_tile.abs_tile.y, end_mouse_tile.abs_tile.y)}
-    end_tile : [2]u32 = {math.max(start_mouse_tile.abs_tile.x, end_mouse_tile.abs_tile.x), math.max(start_mouse_tile.abs_tile.y, end_mouse_tile.abs_tile.y)}
-    action.start = {start_tile, {0,0}}
-    action.end = {end_tile, {0,0}}
+rectangle_tool :: proc(
+    start_mouse_tile: TileMapPosition,
+    end_mouse_tile: TileMapPosition,
+    selected_color: [4]u8,
+    tile_map: ^TileMap,
+    action: ^Action,
+) -> cstring {
+    start_tile: [2]u32 = {
+        math.min(start_mouse_tile.abs_tile.x, end_mouse_tile.abs_tile.x),
+        math.min(start_mouse_tile.abs_tile.y, end_mouse_tile.abs_tile.y),
+    }
+    end_tile: [2]u32 = {
+        math.max(start_mouse_tile.abs_tile.x, end_mouse_tile.abs_tile.x),
+        math.max(start_mouse_tile.abs_tile.y, end_mouse_tile.abs_tile.y),
+    }
+    action.start = {start_tile, {0, 0}}
+    action.end = {end_tile, {0, 0}}
     action.color = selected_color
 
-    for y : u32 = start_tile.y; y <= end_tile.y; y += 1 {
-        for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
+    for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
+        for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
             old_tile := get_tile(tile_map, {x, y})
-            new_tile := tile_make_color_walls_colors(color_over(selected_color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
-            if action != nil{
-                action.tile_history[{x,y}] = tile_subtract(&old_tile, &new_tile)
+            new_tile := tile_make_color_walls_colors(
+                color_over(selected_color.xyzw, old_tile.color.xyzw),
+                old_tile.walls,
+                old_tile.wall_colors,
+            )
+            if action != nil {
+                action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
             }
             set_tile(tile_map, {x, y}, new_tile)
         }
     }
 
-    feet_x : f32 = abs(f32(start_tile.x) - f32(end_tile.x) - 1) * 5
-    feet_y : f32 = abs(f32(start_tile.y) - f32(end_tile.y) - 1) * 5
+    feet_x: f32 = abs(f32(start_tile.x) - f32(end_tile.x) - 1) * 5
+    feet_y: f32 = abs(f32(start_tile.y) - f32(end_tile.y) - 1) * 5
     builder := strings.builder_make(context.temp_allocator)
-    strings.write_string(&builder, fmt.aprintf("%.0fx%.0f feet (%.1fx%.1f meters)",
-                                               feet_x, feet_y, feet_x * 0.3048, feet_y * 0.3048,
-                                               allocator=context.temp_allocator))
+    strings.write_string(
+        &builder,
+        fmt.aprintf(
+            "%.0fx%.0f feet (%.1fx%.1f meters)",
+            feet_x,
+            feet_y,
+            feet_x * 0.3048,
+            feet_y * 0.3048,
+            allocator = context.temp_allocator,
+        ),
+    )
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
 find_at_initiative :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
-    row_offset : i32 = 10
-    for i : i32 = 1; i < INITIATIVE_COUNT; i += 1 {
+    row_offset: i32 = 10
+    for i: i32 = 1; i < INITIATIVE_COUNT; i += 1 {
         tokens := state.initiative_to_tokens[i]
         row_offset += 3
         if (tokens == nil || len(tokens) == 0) {
@@ -190,18 +225,18 @@ find_at_initiative :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
         } else {
             for token_id, index in tokens {
                 token := state.tokens[token_id]
-                token_size :=  f32(token.size) * 4 + 10
+                token_size := f32(token.size) * 4 + 10
                 half_of_this_row := i32(token_size + 3)
-                row_offset += 2*half_of_this_row
+                row_offset += 2 * half_of_this_row
                 if f32(row_offset) >= pos {
                     // Given that the initiative tracker moves when the token is moved
                     // (because of different sizes of empty row vs row with tokens) compare
                     // not with half but with 1/3 of a half -> 1/6.
                     // It is not exact but it seems to work alright.
-                    if f32(row_offset) - pos > f32(half_of_this_row)/3 {
+                    if f32(row_offset) - pos > f32(half_of_this_row) / 3 {
                         return i, i32(index), token.id
                     } else {
-                        return i, i32(index)+1, token.id
+                        return i, i32(index) + 1, token.id
                     }
                 }
             }
@@ -226,7 +261,10 @@ add_at_initiative :: proc(state: ^GameState, token_id: u64, initiative: i32, ini
 move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^Action) {
     //TODO(amatej): this is a bad procedure, it does 2 completely separate things based on state
     if state.selected_token == 0 {
-        state.initiative_tool_start.x, state.initiative_tool_start.y, state.selected_token = find_at_initiative(state, state.tool_start_position.?.y)
+        state.initiative_tool_start.x, state.initiative_tool_start.y, state.selected_token = find_at_initiative(
+            state,
+            state.tool_start_position.?.y,
+        )
     } else {
         end_initiative, end_index, _ := find_at_initiative(state, end_pos.y)
         remove_token_by_id_from_initiative(state, state.selected_token)
@@ -234,29 +272,50 @@ move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^
         t.initiative = end_initiative
         add_at_initiative(state, state.selected_token, end_initiative, end_index)
         if action != nil {
-            action.token_initiative_history[state.selected_token] = [2]i32{state.initiative_tool_start.x - end_initiative,
-                                                                           math.max(state.initiative_tool_start.y - end_index, 0)}
-            fmt.println("end delta: ", action.token_initiative_history[state.selected_token], " from: ", state.initiative_tool_start, " - ", end_initiative, ", ", end_index)
+            action.token_initiative_history[state.selected_token] = [2]i32 {
+                state.initiative_tool_start.x - end_initiative,
+                math.max(state.initiative_tool_start.y - end_index, 0),
+            }
+            fmt.println(
+                "end delta: ",
+                action.token_initiative_history[state.selected_token],
+                " from: ",
+                state.initiative_tool_start,
+                " - ",
+                end_initiative,
+                ", ",
+                end_index,
+            )
         }
     }
 }
 
-move_token_tool :: proc(state: ^GameState, token: ^Token,  tile_map: ^TileMap, end_pos: [2]f32, action: ^Action, feedback: bool) {
-    mouse_tile_pos : TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
-    token_pos_delta : [2]i32 = {i32(token.position.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x), i32(token.position.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y)}
+move_token_tool :: proc(
+    state: ^GameState,
+    token: ^Token,
+    tile_map: ^TileMap,
+    end_pos: [2]f32,
+    action: ^Action,
+    feedback: bool,
+) {
+    mouse_tile_pos: TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
+    token_pos_delta: [2]i32 = {
+        i32(token.position.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x),
+        i32(token.position.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
+    }
     action.token_history[token.id] = token_pos_delta
     action.start = token.position
     action.end = mouse_tile_pos
     if feedback {
         append(&state.temp_actions, make_action(.BRUSH, context.temp_allocator))
-        temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
-        assert(token.position.rel_tile == {0,0})
+        temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+        assert(token.position.rel_tile == {0, 0})
         pos := token.position
         //TODO(amatej): This breaks down for bigger tokens (size > 2)
         // We start with 31 because it works emirically
-        radius : f32 = 31
+        radius: f32 = 31
         if token.size > 1 {
-            half := tile_map.tile_side_in_feet/2
+            half := tile_map.tile_side_in_feet / 2
             // If the token size is even shift the center of the token
             // to the Tile corners
             if token.size % 2 == 0 {
@@ -274,10 +333,10 @@ move_token_tool :: proc(state: ^GameState, token: ^Token,  tile_map: ^TileMap, e
 }
 
 //TODO(amatej): this doesn't work when we loop to previous tile_chunk
-DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32, temp_action: ^Action) -> u32 {
+DDA :: proc(state: ^GameState, tile_map: ^TileMap, p0: [2]u32, p1: [2]u32, temp_action: ^Action) -> u32 {
     // calculate dx & dy
-    dx : i32 = i32(p1.x - p0.x)
-    dy : i32 = i32(p1.y - p0.y)
+    dx: i32 = i32(p1.x - p0.x)
+    dy: i32 = i32(p1.y - p0.y)
 
     // calculate steps required for generating pixels
     steps := abs(dx) > abs(dy) ? abs(dx) : abs(dy)
@@ -285,12 +344,12 @@ DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32, temp
     Xinc := f32(dx) / f32(steps)
     Yinc := f32(dy) / f32(steps)
 
-    last_diagonal_doubled : bool = true
-    walked : u32 = 0
+    last_diagonal_doubled: bool = true
+    walked: u32 = 0
 
     // Put pixel for each step
-    X : f32 = f32(p0.x)
-    Y : f32 = f32(p0.y)
+    X: f32 = f32(p0.x)
+    Y: f32 = f32(p0.y)
     last_pos: [2]u32 = {u32(math.round_f32(X)), u32(math.round_f32(Y))}
     for i: i32 = 0; i <= steps; i += 1 {
         pos: [2]u32 = {u32(math.round_f32(X)), u32(math.round_f32(Y))}
@@ -324,10 +383,10 @@ DDA :: proc(state: ^GameState,  tile_map: ^TileMap, p0: [2]u32, p1: [2]u32, temp
     return walked
 }
 
-cone_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
+cone_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
     // First snap starting point to grid
-    start_mouse_tile : TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
-    half := tile_map.tile_side_in_feet/2
+    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
+    half := tile_map.tile_side_in_feet / 2
     start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? half : -half
     start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? half : -half
     start_snapped_screen := tile_map_to_screen_coord_full(start_mouse_tile, state, tile_map)
@@ -337,7 +396,7 @@ cone_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, a
     rounded_dist_in_feet := math.round_f32(max_dist / 5) * 5
     current_pos := start_snapped_screen + unit_vec * (rounded_dist_in_feet * tile_map.feet_to_pixels)
 
-    end_pos_tile : TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
+    end_pos_tile: TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
 
     max_dist_in_feet := tile_distance(tile_map, start_mouse_tile, end_pos_tile)
 
@@ -349,21 +408,27 @@ cone_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, a
     action.performed = true
 
     builder := strings.builder_make(context.temp_allocator)
-    strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator=context.temp_allocator))
+    strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator = context.temp_allocator))
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
 
-draw_cone_tiles :: proc(tile_map: ^TileMap, start: TileMapPosition, end: TileMapPosition, color: [4]u8, action: ^Action) {
+draw_cone_tiles :: proc(
+    tile_map: ^TileMap,
+    start: TileMapPosition,
+    end: TileMapPosition,
+    color: [4]u8,
+    action: ^Action,
+) {
     screen_start_snapped := tile_map_to_screen_coord_full(start, state, tile_map)
     end_screen := tile_map_to_screen_coord_full(end, state, tile_map)
 
     axis_vec := screen_start_snapped - end_screen
-    left_vec : [2]f32 = {-axis_vec.y, axis_vec.x}
-    right_vec : [2]f32 = {axis_vec.y, -axis_vec.x}
+    left_vec: [2]f32 = {-axis_vec.y, axis_vec.x}
+    right_vec: [2]f32 = {axis_vec.y, -axis_vec.x}
     left_vec = rl.Vector2Normalize(left_vec)
     right_vec = rl.Vector2Normalize(right_vec)
-    half_dist := dist(screen_start_snapped, end_screen)/2
+    half_dist := dist(screen_start_snapped, end_screen) / 2
 
     left_vec = left_vec * half_dist
     right_vec = right_vec * half_dist
@@ -387,13 +452,13 @@ draw_cone_tiles :: proc(tile_map: ^TileMap, start: TileMapPosition, end: TileMap
     max_y := math.ceil_f32(math.max(p1.y, p2.y, p3.y))
 
 
-    seen: map[[2]u32] bool
+    seen: map[[2]u32]bool
     seen.allocator = context.temp_allocator
 
     //TODO(amatej): this iterates over pixels, its not great
-    for y : f32 = min_y; y <= max_y; y += f32(tile_map.tile_side_in_pixels - 1) {
-        for x : f32 = min_x; x <= max_x; x += f32(tile_map.tile_side_in_pixels - 1) {
-            tile_pos : TileMapPosition = screen_coord_to_tile_map({x, y}, state, tile_map)
+    for y: f32 = min_y; y <= max_y; y += f32(tile_map.tile_side_in_pixels - 1) {
+        for x: f32 = min_x; x <= max_x; x += f32(tile_map.tile_side_in_pixels - 1) {
+            tile_pos: TileMapPosition = screen_coord_to_tile_map({x, y}, state, tile_map)
             pos_snapped := tile_map_to_screen_coord(tile_pos, state, tile_map)
             _, ok := &seen[tile_pos.abs_tile]
             if ok {
@@ -402,17 +467,21 @@ draw_cone_tiles :: proc(tile_map: ^TileMap, start: TileMapPosition, end: TileMap
 
             seen[tile_pos.abs_tile] = true
             // Compute barycentric coordinates
-            denom := ((p2.y - p3.y)*(p1.x - p3.x) + (p3.x - p2.x)*(p1.y - p3.y))
+            denom := ((p2.y - p3.y) * (p1.x - p3.x) + (p3.x - p2.x) * (p1.y - p3.y))
             if denom == 0 {
-                continue  // degenerate triangle
+                continue // degenerate triangle
             }
-            a := ((p2.y - p3.y)*(pos_snapped.x - p3.x) + (p3.x - p2.x)*(pos_snapped.y - p3.y)) / denom
-            b := ((p3.y - p1.y)*(pos_snapped.x - p3.x) + (p1.x - p3.x)*(pos_snapped.y - p3.y)) / denom
+            a := ((p2.y - p3.y) * (pos_snapped.x - p3.x) + (p3.x - p2.x) * (pos_snapped.y - p3.y)) / denom
+            b := ((p3.y - p1.y) * (pos_snapped.x - p3.x) + (p1.x - p3.x) * (pos_snapped.y - p3.y)) / denom
             c := 1 - a - b
             if a >= 0 && b >= 0 && c >= 0 {
                 old_tile := get_tile(tile_map, tile_pos.abs_tile)
-                new_tile := tile_make_color_walls_colors(color_over(color.xyzw, old_tile.color.xyzw), old_tile.walls, old_tile.wall_colors)
-                if action != nil{
+                new_tile := tile_make_color_walls_colors(
+                    color_over(color.xyzw, old_tile.color.xyzw),
+                    old_tile.walls,
+                    old_tile.wall_colors,
+                )
+                if action != nil {
                     action.tile_history[tile_pos.abs_tile] = tile_subtract(&old_tile, &new_tile)
                 }
                 set_tile(tile_map, tile_pos.abs_tile, new_tile)

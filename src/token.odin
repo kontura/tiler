@@ -5,24 +5,24 @@ import "core:strings"
 import rl "vendor:raylib"
 
 Token :: struct {
-    id: u64,
-    position: TileMapPosition,
-    color: [4]u8,
-    name: string,
-    moved: u32,
-    size: i32,
+    id:         u64,
+    position:   TileMapPosition,
+    color:      [4]u8,
+    name:       string,
+    moved:      u32,
+    size:       i32,
     initiative: i32,
-    texture: ^rl.Texture2D,
-    alive: bool,
+    texture:    ^rl.Texture2D,
+    alive:      bool,
 }
 
 get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (center: [2]f32, radius: f32) {
     center = tile_map_to_screen_coord(token.position, state, tile_map)
     if token.size % 2 == 0 {
-        center -= {f32(tile_map.tile_side_in_pixels)/2, f32(tile_map.tile_side_in_pixels)/2}
-        radius = f32(tile_map.tile_side_in_pixels/2*token.size)
+        center -= {f32(tile_map.tile_side_in_pixels) / 2, f32(tile_map.tile_side_in_pixels) / 2}
+        radius = f32(tile_map.tile_side_in_pixels / 2 * token.size)
     } else {
-        radius = f32(tile_map.tile_side_in_pixels/2*token.size)
+        radius = f32(tile_map.tile_side_in_pixels / 2 * token.size)
     }
 
     return center, radius
@@ -30,10 +30,10 @@ get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) ->
 
 get_token_texture_pos_size :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (pos: [2]f32, scale: f32) {
     pos = tile_map_to_screen_coord(token.position, state, tile_map)
-    pos -= f32(tile_map.tile_side_in_pixels)/2
+    pos -= f32(tile_map.tile_side_in_pixels) / 2
     pos -= f32(token.size / 2) * f32(tile_map.tile_side_in_pixels)
     // We assume token textures are squares
-    scale = f32(tile_map.tile_side_in_pixels * token.size)/f32(token.texture.width)
+    scale = f32(tile_map.tile_side_in_pixels * token.size) / f32(token.texture.width)
 
     return pos, scale
 }
@@ -46,7 +46,7 @@ get_token_name_temp :: proc(token: ^Token) -> cstring {
     }
 }
 
-make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name : string = "", initiative : i32 = -1) -> Token {
+make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name: string = "", initiative: i32 = -1) -> Token {
     if initiative == -1 {
         return Token{id, pos, color, strings.clone(name), 0, 1, rand.int31_max(22) + 1, nil, true}
     } else {
@@ -81,7 +81,7 @@ remove_token_by_id_from_initiative :: proc(state: ^GameState, token_id: u64) -> 
         }
     }
 
-    return 0,0, false
+    return 0, 0, false
 }
 
 set_texture_based_on_name :: proc(state: ^GameState, token: ^Token) {
@@ -94,9 +94,15 @@ set_texture_based_on_name :: proc(state: ^GameState, token: ^Token) {
 
 }
 
-token_spawn :: proc(state: ^GameState, action: ^Action, pos: TileMapPosition, name: string = "", initiative : i32 = -1) -> u64 {
+token_spawn :: proc(
+    state: ^GameState,
+    action: ^Action,
+    pos: TileMapPosition,
+    name: string = "",
+    initiative: i32 = -1,
+) -> u64 {
     t := make_token(state.max_entity_id, pos, state.selected_color, name, initiative)
-    state.tokens[t.id] =  t
+    state.tokens[t.id] = t
     set_texture_based_on_name(state, &state.tokens[t.id])
     state.needs_sync = true
     add_at_initiative(state, t.id, t.initiative, 0)

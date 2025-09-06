@@ -3,30 +3,30 @@
 
 package main_web
 
-import "base:runtime"
-import "core:c"
-import "core:mem"
-import "core:fmt"
-import "core:bytes"
-import "core:math/rand"
-import "core:strings"
-import "core:time"
 import game ".."
 import am "../automerge"
+import "base:runtime"
+import "core:bytes"
+import "core:c"
+import "core:fmt"
+import "core:math/rand"
+import "core:mem"
+import "core:strings"
+import "core:time"
 
 
-@(private="file")
+@(private = "file")
 web_context: runtime.Context
 
 @(default_calling_convention = "c")
-foreign {
-        mount_idbfs  :: proc() ---
-        make_webrtc_offer  :: proc(peer_ptr: rawptr, peer_len: u32) ---
-        accept_webrtc_offer :: proc(peer_ptr: rawptr, peer_len: u32, sdp_data: rawptr, sdp_len: u32) ---
-        accept_webrtc_answer :: proc(peer_ptr: rawptr, peer_len: u32, answer_data: rawptr, answer_len: u32) ---
-        add_peer_ice :: proc(peer_ptr: rawptr, peer_len: u32, msg_data: rawptr, msg_len: u32) ---
-        connect_signaling_websocket  :: proc() ---
-        send_binary_to_peer :: proc(peer_ptr: rawptr, peer_len: u32, data: rawptr, len: u32) ---
+foreign _ {
+    mount_idbfs :: proc() ---
+    make_webrtc_offer :: proc(peer_ptr: rawptr, peer_len: u32) ---
+    accept_webrtc_offer :: proc(peer_ptr: rawptr, peer_len: u32, sdp_data: rawptr, sdp_len: u32) ---
+    accept_webrtc_answer :: proc(peer_ptr: rawptr, peer_len: u32, answer_data: rawptr, answer_len: u32) ---
+    add_peer_ice :: proc(peer_ptr: rawptr, peer_len: u32, msg_data: rawptr, msg_len: u32) ---
+    connect_signaling_websocket :: proc() ---
+    send_binary_to_peer :: proc(peer_ptr: rawptr, peer_len: u32, data: rawptr, len: u32) ---
 }
 
 doc: am.AMdocPtr
@@ -38,7 +38,7 @@ my_id: [3]u8
 
 PeerState :: struct {
     am_sync_state: am.AMsyncStatePtr,
-    webrtc: WEBRTC_STATE,
+    webrtc:        WEBRTC_STATE,
 }
 
 WEBRTC_STATE :: enum u8 {
@@ -49,15 +49,22 @@ WEBRTC_STATE :: enum u8 {
     CONNECTED,
 }
 
-@export
-build_binary_msg_c :: proc "c" (peer_len: u32, peer_data: [^]u8, msg_len: u32, msg_data: [^]u8, out_len: ^u32, out_data: ^rawptr) {
+@(export)
+build_binary_msg_c :: proc "c" (
+    peer_len: u32,
+    peer_data: [^]u8,
+    msg_len: u32,
+    msg_data: [^]u8,
+    out_len: ^u32,
+    out_data: ^rawptr,
+) {
     context = web_context
     msg := build_binary_message(2, peer_data[:peer_len], msg_data[:msg_len])
     out_len^ = u32(len(msg))
     out_data^ = &msg[0]
 }
 
-@export
+@(export)
 build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
     context = web_context
     register := build_binary_message(1, nil, nil)
@@ -65,20 +72,20 @@ build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
     out_data^ = &register[0]
 }
 
-@export
+@(export)
 set_socket_ready :: proc "c" () {
     socket_ready = true
 }
 
-@export
+@(export)
 set_peer_rtc_connected :: proc "c" (peer_len: u32, peer_data: [^]u8) {
     peer := string(peer_data[:peer_len])
     peer_state := &peers[peer]
     peer_state.webrtc = .CONNECTED
 }
 
-build_binary_message :: proc(type: u8, target: []u8, payload: []u8) -> []u8{
-    msg:= make([dynamic]u8, allocator=context.temp_allocator)
+build_binary_message :: proc(type: u8, target: []u8, payload: []u8) -> []u8 {
+    msg := make([dynamic]u8, allocator = context.temp_allocator)
     append(&msg, type)
     append(&msg, 3)
     append(&msg, my_id[0])
@@ -95,14 +102,14 @@ parse_binary_message :: proc(msg: []u8) -> (type: u8, sender, target, payload: [
     // 1 3 a b c 3 d e f x x x
     type = msg[0]
     sender_len := msg[1]
-    sender = msg[2:2+sender_len]
-    target_len := msg[2+sender_len]
-    target = msg[3+sender_len:3 + sender_len + target_len]
+    sender = msg[2:2 + sender_len]
+    target_len := msg[2 + sender_len]
+    target = msg[3 + sender_len:3 + sender_len + target_len]
     payload = msg[3 + sender_len + target_len:]
     return
 }
 
-@export
+@(export)
 process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     using am
     context = runtime.default_context()
@@ -218,7 +225,7 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
         commit_result := AMcommit(doc, AMstr("Update"), (^i64)(c.NULL))
         item := result_to_item(commit_result) or_return
         if AMitemValType(item) != .AM_VAL_TYPE_VOID {
-            bytes : am.AMbyteSpan
+            bytes: am.AMbyteSpan
             if !AMitemToChangeHash(item, &bytes) {
                 fmt.println("Failed to convert from item to change hash")
             }
@@ -246,13 +253,13 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> [dynamic]game.Action {
     defer AMresultFree(range_result)
     verify_result(range_result)
     items: AMitems = AMresultItems(range_result)
-    action_item : AMitemPtr = AMitemsNext(&items, 1)
+    action_item: AMitemPtr = AMitemsNext(&items, 1)
 
     changes_result := AMgetChanges(doc, c.NULL)
     verify_result(changes_result)
     defer AMresultFree(changes_result)
     change_items: AMitems = AMresultItems(changes_result)
-    change_item : AMitemPtr = AMitemsNext(&change_items, 1)
+    change_item: AMitemPtr = AMitemsNext(&change_items, 1)
 
     for action_item != c.NULL {
         game_action: game.Action
@@ -262,8 +269,7 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> [dynamic]game.Action {
         game_action.mine = false
 
 
-
-        change : AMchangePtr
+        change: AMchangePtr
 
         AMitemToChange(change_item, &change)
         msg := AMchangeMessage(change)
@@ -314,7 +320,7 @@ update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
     game.state.undo_history = new_undo_hist
 }
 
-@export
+@(export)
 paste_image :: proc "c" (data: [^]u8, width: i32, height: i32) {
     context = runtime.default_context()
 
@@ -325,130 +331,130 @@ paste_image :: proc "c" (data: [^]u8, width: i32, height: i32) {
     fmt.println(height)
 }
 
-@export
+@(export)
 main_start :: proc "c" (mobile: bool) {
-        using am
-	context = runtime.default_context()
-	// The WASM allocator doesn't seem to work properly in combination with
-	// emscripten. There is some kind of conflict with how the manage memory.
-	// So this sets up an allocator that uses emscripten's malloc.
-        my_allocator = emscripten_allocator()
-	context.allocator = my_allocator
-	runtime.init_global_temporary_allocator(1*mem.Megabyte)
+    using am
+    context = runtime.default_context()
+    // The WASM allocator doesn't seem to work properly in combination with
+    // emscripten. There is some kind of conflict with how the manage memory.
+    // So this sets up an allocator that uses emscripten's malloc.
+    my_allocator = emscripten_allocator()
+    context.allocator = my_allocator
+    runtime.init_global_temporary_allocator(1 * mem.Megabyte)
 
-        rand.reset(u64(time.time_to_unix(time.now())))
-        my_id[0] = u8(rand.int_max(9)+48)
-        my_id[1] = u8(rand.int_max(9)+48)
-        my_id[2] = u8(rand.int_max(9)+48)
-        fmt.println("my id: ", string(my_id[:]))
+    rand.reset(u64(time.time_to_unix(time.now())))
+    my_id[0] = u8(rand.int_max(9) + 48)
+    my_id[1] = u8(rand.int_max(9) + 48)
+    my_id[2] = u8(rand.int_max(9) + 48)
+    fmt.println("my id: ", string(my_id[:]))
 
-	// Since we now use js_wasm32 we should be able to remove this and use
-	// context.logger = log.create_console_logger(). However, that one produces
-	// extra newlines on web. So it's a bug in that core lib.
-	context.logger = create_emscripten_logger()
+    // Since we now use js_wasm32 we should be able to remove this and use
+    // context.logger = log.create_console_logger(). However, that one produces
+    // extra newlines on web. So it's a bug in that core lib.
+    context.logger = create_emscripten_logger()
 
-	web_context = context
+    web_context = context
 
-        doc_result = AMcreate(nil)
-        item, _ := result_to_item(doc_result)
-        if !AMitemToDoc(item, &doc) {
-            assert(false)
-        }
+    doc_result = AMcreate(nil)
+    item, _ := result_to_item(doc_result)
+    if !AMitemToDoc(item, &doc) {
+        assert(false)
+    }
 
-        fmt.println("Setting up signaling websocket")
-        connect_signaling_websocket()
+    fmt.println("Setting up signaling websocket")
+    connect_signaling_websocket()
 
-        mount_idbfs()
-	game.init(mobile)
+    mount_idbfs()
+    game.init(mobile)
 }
 
-@export
+@(export)
 main_update :: proc "c" () -> bool {
-        using am
-	context = web_context
-	game.update()
+    using am
+    context = web_context
+    game.update()
 
-        if game.state.debug {
-            p := make(map[string]bool, allocator=context.temp_allocator)
-            for peer, &peer_state in peers {
-                p[peer] = peer_state.webrtc == .CONNECTED ? true : false
-            }
-            game.draw_connections(string(my_id[:]), socket_ready, p)
+    if game.state.debug {
+        p := make(map[string]bool, allocator = context.temp_allocator)
+        for peer, &peer_state in peers {
+            p[peer] = peer_state.webrtc == .CONNECTED ? true : false
         }
+        game.draw_connections(string(my_id[:]), socket_ready, p)
+    }
 
-        if game.state.needs_sync {
-            update_doc_from_game_state(doc)
-            if socket_ready {
-                for peer, &peer_state in peers {
-                    finished : bool = false
-                    for !finished {
-                        msg_result := AMgenerateSyncMessage(doc, peer_state.am_sync_state)
-                        defer AMresultFree(msg_result)
-                        msg_item := result_to_item(msg_result) or_return
+    if game.state.needs_sync {
+        update_doc_from_game_state(doc)
+        if socket_ready {
+            for peer, &peer_state in peers {
+                finished: bool = false
+                for !finished {
+                    msg_result := AMgenerateSyncMessage(doc, peer_state.am_sync_state)
+                    defer AMresultFree(msg_result)
+                    msg_item := result_to_item(msg_result) or_return
 
-                        #partial switch AMitemValType(msg_item) {
-                        case .AM_VAL_TYPE_SYNC_MESSAGE:
-                                msg: AMsyncMessagePtr
-                                AMitemToSyncMessage(msg_item, &msg)
-                                encode_result := AMsyncMessageEncode(msg)
-                                defer AMresultFree(encode_result)
-                                encode_item := result_to_item(encode_result) or_return
-                                msg_bytes : AMbyteSpan
-                                if !AMitemToBytes(encode_item, &msg_bytes) {
-                                    assert(false)
-                                }
-                                peer_bytes := transmute([]u8)peer
-                                binary := build_binary_message(1, peer_bytes, msg_bytes.src[:msg_bytes.count])
-                                send_binary_to_peer(&peer_bytes[0], u32(len(peer_bytes)), &binary[0], u32(len(binary)))
-
-                        case .AM_VAL_TYPE_VOID:
-                            finished = true
-                            update_game_state_from_doc(doc)
-                        case:
+                    #partial switch AMitemValType(msg_item) {
+                    case .AM_VAL_TYPE_SYNC_MESSAGE:
+                        msg: AMsyncMessagePtr
+                        AMitemToSyncMessage(msg_item, &msg)
+                        encode_result := AMsyncMessageEncode(msg)
+                        defer AMresultFree(encode_result)
+                        encode_item := result_to_item(encode_result) or_return
+                        msg_bytes: AMbyteSpan
+                        if !AMitemToBytes(encode_item, &msg_bytes) {
                             assert(false)
                         }
+                        peer_bytes := transmute([]u8)peer
+                        binary := build_binary_message(1, peer_bytes, msg_bytes.src[:msg_bytes.count])
+                        send_binary_to_peer(&peer_bytes[0], u32(len(peer_bytes)), &binary[0], u32(len(binary)))
 
+                    case .AM_VAL_TYPE_VOID:
+                        finished = true
+                        update_game_state_from_doc(doc)
+                    case:
+                        assert(false)
                     }
+
                 }
             }
-            game.state.needs_sync = false
         }
+        game.state.needs_sync = false
+    }
 
-        if game.state.save == game.SaveStatus.REQUESTED{
-            game.state.bytes_count = store_save()
-            game.state.timeout = 60
-            game.state.save = game.SaveStatus.DONE
-        }
+    if game.state.save == game.SaveStatus.REQUESTED {
+        game.state.bytes_count = store_save()
+        game.state.timeout = 60
+        game.state.save = game.SaveStatus.DONE
+    }
 
-        free_all(context.temp_allocator)
-	return game.should_run()
+    free_all(context.temp_allocator)
+    return game.should_run()
 }
 
-@export
+@(export)
 main_end :: proc "c" () {
-        am.AMresultFree(doc_result)
-	context = web_context
-	game.shutdown()
+    am.AMresultFree(doc_result)
+    context = web_context
+    game.shutdown()
 }
 
-@export
+@(export)
 web_window_size_changed :: proc "c" (w: c.int, h: c.int) {
-	context = web_context
-	game.parent_window_size_changed(int(w), int(h))
+    context = web_context
+    game.parent_window_size_changed(int(w), int(h))
 }
 
-@export
+@(export)
 load_save :: proc "c" () {
-	context = web_context
-        data, ok := game.read_entire_file("/persist/tiler_save", context.temp_allocator)
-        if ok {
-            result := am.AMloadIncremental(doc, &data[0], len(data))
-            am.AMresultFree(result)
-            update_game_state_from_doc(doc)
-        }
+    context = web_context
+    data, ok := game.read_entire_file("/persist/tiler_save", context.temp_allocator)
+    if ok {
+        result := am.AMloadIncremental(doc, &data[0], len(data))
+        am.AMresultFree(result)
+        update_game_state_from_doc(doc)
+    }
 }
 
-@export
+@(export)
 store_save :: proc "c" () -> uint {
     context = runtime.default_context()
     context.allocator = my_allocator

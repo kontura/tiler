@@ -3,14 +3,17 @@ package tiler
 import "core:math"
 
 // TODO(amatej): add diagonal walls
-Direction :: enum{TOP, LEFT}
+Direction :: enum {
+    TOP,
+    LEFT,
+}
 WallSet :: bit_set[Direction]
 
 TileMapPosition :: struct {
     // Top left is 0,0
     // fixed point number, high bits determine chunk, low bits determine
     // position in chunk
-    abs_tile : [2]u32,
+    abs_tile: [2]u32,
     // position in feet
     // -2.5, -2.5 -----------
     //            |         |
@@ -18,22 +21,22 @@ TileMapPosition :: struct {
     //            |         |
     //            |         |
     //            ----------- 2.5, 2.5
-    rel_tile : [2]f32,
+    rel_tile: [2]f32,
 }
 
 TileChunkPosition :: struct {
     tile_chunk: [2]u32,
-    rel_tile: [2]u32,
+    rel_tile:   [2]u32,
 }
 
 Tile :: struct {
-    color: [4]u8,
-    walls: WallSet,
+    color:       [4]u8,
+    walls:       WallSet,
     wall_colors: [Direction][4]u8,
 }
 
 TileChunk :: struct {
-    tiles: [dynamic] Tile,
+    tiles: [dynamic]Tile,
 }
 
 // Compresed tile chunks are used when serializing only
@@ -41,7 +44,7 @@ TileChunk :: struct {
 // TileChunk
 CompressedTileChunk :: struct {
     counts: [dynamic]u64,
-    tiles: [dynamic]Tile,
+    tiles:  [dynamic]Tile,
 }
 
 CompressedTileChunks :: struct {
@@ -49,17 +52,14 @@ CompressedTileChunks :: struct {
 }
 
 TileMap :: struct {
-    chunk_shift : u32,
-    chunk_mask : u32,
-
-    chunk_dim : u32,
-
-    tile_side_in_feet: f32,
+    chunk_shift:         u32,
+    chunk_mask:          u32,
+    chunk_dim:           u32,
+    tile_side_in_feet:   f32,
     tile_side_in_pixels: i32,
-    feet_to_pixels: f32,
-    pixels_to_feet: f32,
-
-    tile_chunks: map[[2]u32]TileChunk,
+    feet_to_pixels:      f32,
+    pixels_to_feet:      f32,
+    tile_chunks:         map[[2]u32]TileChunk,
 }
 
 tile_add :: proc(t1: ^Tile, t2: ^Tile) -> Tile {
@@ -94,7 +94,7 @@ tile_distance :: proc(tile_map: ^TileMap, p1: TileMapPosition, p2: TileMapPositi
 }
 
 tile_pos_to_crossing_pos :: proc(p: TileMapPosition) -> [2]u32 {
-    res : [2]u32 = p.abs_tile
+    res: [2]u32 = p.abs_tile
     res.x += p.rel_tile.x > 0 ? 1 : 0
     res.y += p.rel_tile.y > 0 ? 1 : 0
 
@@ -127,8 +127,8 @@ get_chunk_position_for :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> TileChun
 
 get_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> Tile {
     // allow overflow to cast to u32 to wrap arround the world
-    chunk_pos : TileChunkPosition = get_chunk_position_for(tile_map, abs_tile)
-    tile_chunk : ^TileChunk = get_tile_chunk(tile_map, chunk_pos.tile_chunk)
+    chunk_pos: TileChunkPosition = get_chunk_position_for(tile_map, abs_tile)
+    tile_chunk: ^TileChunk = get_tile_chunk(tile_map, chunk_pos.tile_chunk)
 
     assert(chunk_pos.rel_tile.x < tile_map.chunk_dim)
     assert(chunk_pos.rel_tile.y < tile_map.chunk_dim)
@@ -141,14 +141,14 @@ get_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32) -> Tile {
     return tile_chunk.tiles[chunk_pos.rel_tile.y * tile_map.chunk_dim + chunk_pos.rel_tile.x]
 }
 
-tile_make :: proc{
+tile_make :: proc {
     tile_make_color_walls_colors,
     tile_make_color_walls_color,
     tile_make_blank,
     tile_make_color,
 }
 
-tilemap_clear :: proc(tile_map : ^TileMap) {
+tilemap_clear :: proc(tile_map: ^TileMap) {
     for key, _ in tile_map.tile_chunks {
         delete(tile_map.tile_chunks[key].tiles)
     }
@@ -185,9 +185,9 @@ tile_make_color_walls_color :: proc(color: [4]u8, walls: WallSet, wall_color: [4
     return t
 }
 
-set_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32, val : Tile) {
-    chunk_pos : TileChunkPosition = get_chunk_position_for(tile_map, abs_tile)
-    tile_chunk : ^TileChunk = get_tile_chunk(tile_map, chunk_pos.tile_chunk)
+set_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32, val: Tile) {
+    chunk_pos: TileChunkPosition = get_chunk_position_for(tile_map, abs_tile)
+    tile_chunk: ^TileChunk = get_tile_chunk(tile_map, chunk_pos.tile_chunk)
 
     assert(chunk_pos.rel_tile.x < tile_map.chunk_dim)
     assert(chunk_pos.rel_tile.y < tile_map.chunk_dim)
@@ -200,11 +200,11 @@ set_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32, val : Tile) {
 recanonicalize_coord :: proc(tile_map: ^TileMap, abs_tile: ^u32, rel_tile: ^f32) {
     offset: i32 = i32(math.round(rel_tile^ / tile_map.tile_side_in_feet))
     abs_tile^ += u32(offset)
-    rel_tile^ -= f32(offset)*tile_map.tile_side_in_feet
+    rel_tile^ -= f32(offset) * tile_map.tile_side_in_feet
 }
 
 recanonicalize_position :: proc(tile_map: ^TileMap, pos: TileMapPosition) -> TileMapPosition {
-    res : TileMapPosition = pos
+    res: TileMapPosition = pos
 
     recanonicalize_coord(tile_map, &res.abs_tile.x, &res.rel_tile.x)
     recanonicalize_coord(tile_map, &res.abs_tile.y, &res.rel_tile.y)

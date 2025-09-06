@@ -3,17 +3,24 @@
 
 package tiler
 
-import "core:os"
 import "core:fmt"
+import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
-_read_entire_file :: proc(name: string, allocator := context.allocator, loc := #caller_location) -> (data: []byte, success: bool) {
-	return os.read_entire_file(name, allocator, loc)
+_read_entire_file :: proc(
+    name: string,
+    allocator := context.allocator,
+    loc := #caller_location,
+) -> (
+    data: []byte,
+    success: bool,
+) {
+    return os.read_entire_file(name, allocator, loc)
 }
 
 _write_entire_file :: proc(name: string, data: []byte, truncate := true) -> (success: bool) {
-	return os.write_entire_file(name, data, truncate)
+    return os.write_entire_file(name, data, truncate)
 }
 
 _list_files_in_dir :: proc(path: string) -> []string {
@@ -36,7 +43,7 @@ _list_files_in_dir :: proc(path: string) -> []string {
     for fi in fis {
         _, name := filepath.split(fi.fullpath)
         if !fi.is_dir {
-            append(&res, strings.clone(name, allocator=context.temp_allocator))
+            append(&res, strings.clone(name, allocator = context.temp_allocator))
         }
     }
 
