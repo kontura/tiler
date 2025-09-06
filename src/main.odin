@@ -605,6 +605,7 @@ update :: proc() {
                             action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                             move_initiative_token_tool(state, mouse_pos, action)
                             action.performed = true
+                            state.needs_sync = true
                         }
                         state.selected_token = 0
                     }
