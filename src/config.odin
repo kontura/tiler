@@ -1,4 +1,5 @@
 package tiler
+import "core:fmt"
 import rl "vendor:raylib"
 
 KeyAction :: enum {
@@ -27,19 +28,29 @@ move_right :: proc(state: ^GameState) {
     state.camera_pos.rel_tile.x += 10
 }
 
-move_up :: proc(state: ^GameState) {
-    state.camera_pos.rel_tile.y -= 10
-}
-
-move_down :: proc(state: ^GameState) {
-    state.camera_pos.rel_tile.y += 10
-}
-
 config: []Config = {
     {.ICON_ARROW_LEFT, {{.LEFT, .DOWN}}, "Move to the left", move_left},
     {.ICON_ARROW_RIGHT, {{.RIGHT, .DOWN}}, "Move to the right", move_right},
-    {.ICON_ARROW_UP, {{.UP, .DOWN}}, "Move up", move_up},
-    {.ICON_ARROW_DOWN, {{.DOWN, .DOWN}}, "Move down", move_down},
+    {.ICON_ARROW_UP, {{.UP, .DOWN}}, "Move up", proc(state: ^GameState) {
+            if state.debug {
+                if state.undone > 0 {
+                    redo_action(state, tile_map, &state.undo_history[len(state.undo_history) - state.undone])
+                    state.undone -= 1
+                }
+            } else {
+                state.camera_pos.rel_tile.y -= 10
+            }
+        }},
+    {.ICON_ARROW_DOWN, {{.DOWN, .DOWN}}, "Move down", proc(state: ^GameState) {
+            if state.debug {
+                if state.undone < len(state.undo_history) {
+                    undo_action(state, tile_map, &state.undo_history[len(state.undo_history) - 1 - state.undone])
+                    state.undone += 1
+                }
+            } else {
+                state.camera_pos.rel_tile.y += 10
+            }
+        }},
     {.ICON_PENCIL, {{.P, .PRESSED}}, "Pintbrush", proc(state: ^GameState) {
             state.active_tool = .BRUSH}},
     {.ICON_BOX, {{.R, .PRESSED}}, "Rectangle tool", proc(state: ^GameState) {
@@ -82,6 +93,7 @@ config: []Config = {
             for &action in state.undo_history {
                 redo_action(state, tile_map, &action)
             }
+            fmt.println("redone all")
         }},
     {.ICON_COLOR_PICKER, {{.LEFT_CONTROL, .PRESSED}}, "Active colorpicker", proc(state: ^GameState) {
             if state.previous_tool == nil {
@@ -107,4 +119,9 @@ config: []Config = {
             state.active_tool = .LIGHT_SOURCE}},
     {.ICON_CURSOR_POINTER, {{.O, .PRESSED}}, "Cone tool", proc(state: ^GameState) {
             state.active_tool = .CONE}},
+    {nil, {{.E, .PRESSED}}, "Print all actions to console", proc(state: ^GameState) {
+            for &action, index in state.undo_history {
+                fmt.println(index, ". ", action)
+            }
+        }},
 }

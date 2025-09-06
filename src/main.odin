@@ -46,7 +46,10 @@ GameState :: struct {
     save:                  SaveStatus,
     bytes_count:           uint,
     timeout:               uint,
+
     debug:                 bool,
+    undone:                int,
+
     light_source:          [2]f32,
     shadow_color:          [4]u8,
     bg:                    rl.Texture2D,
@@ -1008,13 +1011,14 @@ update :: proc() {
         for action_index := len(state.undo_history) - 1; action_index >= 0; action_index -= 1 {
             a := &state.undo_history[action_index]
             a_text := fmt.caprint(
+                action_index == len(state.undo_history) - 1 - state.undone ? " -> " : "    ",
                 action_index,
                 ": ",
                 a.tool,
                 ", tile_history: ",
                 len(a.tile_history),
                 a.token_history,
-                a.hash,
+                a.token_initiative_history,
                 allocator = context.temp_allocator,
             )
             rl.DrawText(
