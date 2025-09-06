@@ -13,7 +13,11 @@ Tool :: enum {
     RECTANGLE,
     COLOR_PICKER,
     CIRCLE,
+    // All EDIT_TOKEN actions have to touch only the token,
+    // once they start changing other things (initiative tracker,..)
+    // it has to be separate action.
     EDIT_TOKEN,
+    EDIT_TOKEN_INITIATIVE,
     MOVE_TOKEN,
     WALL,
     HELP,
@@ -111,7 +115,6 @@ circle_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32,
 
     max_dist_in_feet := tile_distance(tile_map, start_mouse_tile, current_mouse_tile)
 
-    action.tool = .CIRCLE
     action.start = start_mouse_tile
     action.color = state.selected_color
     action.radius = auto_cast max_dist_in_feet
@@ -150,6 +153,9 @@ draw_tile_circle :: proc(tile_map: ^TileMap, center: TileMapPosition, radius: f3
 rectangle_tool :: proc(start_mouse_tile: TileMapPosition, end_mouse_tile: TileMapPosition, selected_color: [4]u8, tile_map: ^TileMap, action: ^Action) -> cstring {
     start_tile : [2]u32 = {math.min(start_mouse_tile.abs_tile.x, end_mouse_tile.abs_tile.x), math.min(start_mouse_tile.abs_tile.y, end_mouse_tile.abs_tile.y)}
     end_tile : [2]u32 = {math.max(start_mouse_tile.abs_tile.x, end_mouse_tile.abs_tile.x), math.max(start_mouse_tile.abs_tile.y, end_mouse_tile.abs_tile.y)}
+    action.start = {start_tile, {0,0}}
+    action.end = {end_tile, {0,0}}
+    action.color = selected_color
 
     for y : u32 = start_tile.y; y <= end_tile.y; y += 1 {
         for x : u32 = start_tile.x; x <= end_tile.x; x += 1 {
@@ -162,10 +168,11 @@ rectangle_tool :: proc(start_mouse_tile: TileMapPosition, end_mouse_tile: TileMa
         }
     }
 
+    feet_x : f32 = abs(f32(start_tile.x) - f32(end_tile.x) - 1) * 5
+    feet_y : f32 = abs(f32(start_tile.y) - f32(end_tile.y) - 1) * 5
     builder := strings.builder_make(context.temp_allocator)
-    strings.write_string(&builder, fmt.aprintf("%.0fx%.0f",
-                                               abs(f32(start_tile.x) - f32(end_tile.x) - 1) * 5,
-                                               abs(f32(start_tile.y) - f32(end_tile.y) - 1) * 5,
+    strings.write_string(&builder, fmt.aprintf("%.0fx%.0f feet (%.1fx%.1f meters)",
+                                               feet_x, feet_y, feet_x * 0.3048, feet_y * 0.3048,
                                                allocator=context.temp_allocator))
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
@@ -217,14 +224,18 @@ add_at_initiative :: proc(state: ^GameState, token_id: u64, initiative: i32, ini
 }
 
 move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^Action) {
+    //TODO(amatej): this is a bad procedure, it does 2 completely separate things based on state
     if state.selected_token == 0 {
         state.initiative_tool_start.x, state.initiative_tool_start.y, state.selected_token = find_at_initiative(state, state.tool_start_position.?.y)
     } else {
         end_initiative, end_index, _ := find_at_initiative(state, end_pos.y)
         remove_token_by_id_from_initiative(state, state.selected_token)
+        t := &state.tokens[state.selected_token]
+        t.initiative = end_initiative
         add_at_initiative(state, state.selected_token, end_initiative, end_index)
         if action != nil {
-            action.token_initiative_history[state.selected_token] = [2]i32{state.initiative_tool_start.x - end_initiative, math.max(state.initiative_tool_start.y - end_index, 0)}
+            action.token_initiative_history[state.selected_token] = [2]i32{state.initiative_tool_start.x - end_initiative,
+                                                                           math.max(state.initiative_tool_start.y - end_index, 0)}
             fmt.println("end delta: ", action.token_initiative_history[state.selected_token], " from: ", state.initiative_tool_start, " - ", end_initiative, ", ", end_index)
         }
     }
@@ -237,6 +248,7 @@ move_token_tool :: proc(state: ^GameState, token: ^Token,  tile_map: ^TileMap, e
     action.start = token.position
     action.end = mouse_tile_pos
     if feedback {
+        append(&state.temp_actions, make_action(.BRUSH, context.temp_allocator))
         temp_action : ^Action = &state.temp_actions[len(state.temp_actions)-1]
         assert(token.position.rel_tile == {0,0})
         pos := token.position
@@ -254,7 +266,7 @@ move_token_tool :: proc(state: ^GameState, token: ^Token,  tile_map: ^TileMap, e
             radius += (f32(token.size - 1) * half)
         }
         draw_tile_circle(tile_map, pos, radius, GREEN_HIGHLIGH, temp_action)
-        token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token.position.abs_tile, action)
+        token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token.position.abs_tile, temp_action)
     } else {
         token.moved = 0
     }
@@ -331,12 +343,10 @@ cone_tool :: proc(state: ^GameState,  tile_map: ^TileMap, current_pos: [2]f32, a
 
     draw_cone_tiles(tile_map, start_mouse_tile, end_pos_tile, state.selected_color, action)
 
-    action.tool = .CONE
     action.start = start_mouse_tile
     action.end = end_pos_tile
     action.color = state.selected_color
     action.performed = true
-
 
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator=context.temp_allocator))

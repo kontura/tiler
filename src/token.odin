@@ -46,8 +46,12 @@ get_token_name_temp :: proc(token: ^Token) -> cstring {
     }
 }
 
-make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name : string = "") -> Token {
-    return Token{id, pos, color, strings.clone(name), 0, 1, rand.int31_max(22) + 1, nil, true}
+make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name : string = "", initiative : i32 = -1) -> Token {
+    if initiative == -1 {
+        return Token{id, pos, color, strings.clone(name), 0, 1, rand.int31_max(22) + 1, nil, true}
+    } else {
+        return Token{id, pos, color, strings.clone(name), 0, 1, initiative, nil, true}
+    }
 }
 
 delete_token :: proc(token: ^Token) {
@@ -88,4 +92,21 @@ set_texture_based_on_name :: proc(state: ^GameState, token: ^Token) {
         }
     }
 
+}
+
+token_spawn :: proc(state: ^GameState, action: ^Action, pos: TileMapPosition, name: string = "", initiative : i32 = -1) -> u64 {
+    t := make_token(state.max_entity_id, pos, state.selected_color, name, initiative)
+    state.tokens[t.id] =  t
+    set_texture_based_on_name(state, &state.tokens[t.id])
+    state.needs_sync = true
+    add_at_initiative(state, t.id, t.initiative, 0)
+    state.max_entity_id += 1
+    if action != nil {
+        action.token_life[t.id] = true
+        action.performed = true
+        action.color = state.selected_color
+        action.token_initiative_history[t.id] = {t.initiative, 0}
+        action.token_history[t.id] = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
+    }
+    return t.id
 }

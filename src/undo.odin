@@ -43,13 +43,14 @@ Action :: struct {
     tile_history: map[[2]u32]Tile,
 }
 
-make_action :: proc(allocator := context.allocator) -> Action {
+make_action :: proc(tool: Tool, allocator := context.allocator) -> Action {
     action : Action
     action.tile_history.allocator = allocator
     action.token_history.allocator = allocator
     action.token_initiative_history.allocator = allocator
     action.token_life.allocator = allocator
     action.mine = true
+    action.tool = tool
 
     return action
 }
