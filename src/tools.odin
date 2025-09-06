@@ -254,7 +254,7 @@ add_at_initiative :: proc(state: ^GameState, token_id: u64, initiative: i32, ini
     if i32(len(tokens)) >= init_index {
         inject_at(tokens, init_index, token_id)
     } else {
-        append(tokens, state.selected_token)
+        append(tokens, token_id)
     }
 }
 
