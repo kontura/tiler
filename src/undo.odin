@@ -13,6 +13,8 @@ Action :: struct {
 
     // Whether this action should be undone (this is an undo action)
     undo: bool,
+
+    //TODO(amatej): I don't think I need to store the id 4 times..
     token_history: map[u64][2]i32,
     token_initiative_history: map[u64][2]i32,
     token_life: map[u64]bool,
