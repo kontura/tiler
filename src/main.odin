@@ -23,6 +23,7 @@ SaveStatus :: enum {
     DONE,
 }
 
+//TODO(amatej): make GameState and TileMap not global
 GameState :: struct {
     screen_width:          i32,
     screen_height:         i32,
