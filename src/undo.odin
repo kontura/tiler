@@ -29,6 +29,7 @@ Action :: struct {
     // Actions that have already been reverted or are reverting
     // actions cannot be reverted again.
     reverted: bool,
+    hash: [32]byte,
 
     // Whether this action was made by me, not other peers
     mine: bool,

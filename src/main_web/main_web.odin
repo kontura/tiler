@@ -177,9 +177,6 @@ update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
 
     update_doc_actions(doc, game.state.undo_history[:])
 
-    commit_result := AMcommit(doc, AMstr("Update"), (^i64)(c.NULL))
-    verify_result(commit_result)
-    AMresultFree(commit_result)
 }
 
 get_or_insert :: proc(doc: am.AMdocPtr, obj_id: am.AMobjIdPtr, key: cstring, type: am.AMobjType) -> am.AMresultPtr {
@@ -209,22 +206,36 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
     }
 
     for doc_actions_list_count < len(actions) {
-        action := actions[doc_actions_list_count]
+        action := &actions[doc_actions_list_count]
         put_result := AMlistPutObject(doc, actions_id, c.SIZE_MAX, true, .AM_OBJ_TYPE_MAP)
         defer AMresultFree(put_result)
         action_map := result_to_objid(put_result) or_return
 
-        put_into_map(doc, action_map, "action", &action)
+        put_into_map(doc, action_map, "action", action)
 
         doc_actions_list_count += 1
+
+        commit_result := AMcommit(doc, AMstr("Update"), (^i64)(c.NULL))
+        item := result_to_item(commit_result) or_return
+        if AMitemValType(item) != .AM_VAL_TYPE_VOID {
+            bytes : am.AMbyteSpan
+            if !AMitemToChangeHash(item, &bytes) {
+                fmt.println("Failed to convert from item to change hash")
+            }
+            for i := 0; i < 32; i += 1 {
+                action.hash[i] = bytes.src[i]
+            }
+        }
+
+        AMresultFree(commit_result)
     }
 
     return true
 }
 
-get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
+get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> [dynamic]game.Action {
     using am
-    undo_history := make([dynamic]game.Action, allocator=context.temp_allocator)
+    undo_history := make([dynamic]game.Action)
 
     undo_history_result: AMresultPtr = AMmapGet(doc, AM_ROOT, AMstr("actions"), c.NULL)
     defer AMresultFree(undo_history_result)
@@ -236,6 +247,13 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
     verify_result(range_result)
     items: AMitems = AMresultItems(range_result)
     action_item : AMitemPtr = AMitemsNext(&items, 1)
+
+    changes_result := AMgetChanges(doc, c.NULL)
+    verify_result(changes_result)
+    defer AMresultFree(changes_result)
+    change_items: AMitems = AMresultItems(changes_result)
+    change_item : AMitemPtr = AMitemsNext(&change_items, 1)
+
     for action_item != c.NULL {
         game_action: game.Action
         action_map := AMitemObjId(action_item)
@@ -243,18 +261,41 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> []game.Action {
         game_action = get_from_map(doc, action_map, "action", game.Action)
         game_action.mine = false
 
-        append(&undo_history, game_action)
 
+
+        change : AMchangePtr
+
+        AMitemToChange(change_item, &change)
+        msg := AMchangeMessage(change)
+        // TODO(amatej): verify our message is "Update", we know its 6 long
+        // This is needed because automerge adds at least one its own commit at the start of a client/doc
+        // Pair commits to actions, we should always have one action per commit
+        for msg.count != 6 {
+            change_item = AMitemsNext(&change_items, 1)
+            AMitemToChange(change_item, &change)
+            msg = AMchangeMessage(change)
+            fmt.println("looping")
+        }
+
+        bytes := AMchangeHash(change)
+        for i := 0; i < 32; i += 1 {
+            game_action.hash[i] = bytes.src[i]
+        }
+        fmt.println("got hash: ", game_action.hash)
+
+        append(&undo_history, game_action)
         action_item = AMitemsNext(&items, 1)
+        change_item = AMitemsNext(&change_items, 1)
     }
 
-    return undo_history[:]
+    return undo_history
 }
 
 update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
     using am
 
     result := AMmapGet(doc, AM_ROOT, AMstr("max_entity_id"), c.NULL)
+    defer AMresultFree(result)
     item, _ := result_to_item(result)
     if AMitemValType(item) != .AM_VAL_TYPE_VOID {
         max: i64
@@ -264,28 +305,13 @@ update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
         game.state.max_entity_id = u64(max)
     }
 
-    doc_actions := get_undo_history_from_doc(doc)
-    game_undo_len := len(game.state.undo_history)
-
-    for len(doc_actions) > game_undo_len {
-        action := doc_actions[game_undo_len]
-        if action.undo {
-            game.undo_action(game.state, game.tile_map, &action)
-        } else {
-            game.redo_action(game.state, game.tile_map, &action)
-        }
-        //TODO(amatej): I guess this could cause problems
-        //              because the action is only temp_allocated
-        action.performed = true
-        append(&game.state.undo_history, action)
-
-        game_undo_len += 1
+    new_undo_hist := get_undo_history_from_doc(doc)
+    game.redo_unmatched_actions(game.state, game.tile_map, new_undo_hist[:])
+    for _, index in game.state.undo_history {
+        game.delete_action(&game.state.undo_history[index])
     }
-
-    if len(doc_actions) < game_undo_len {
-        game.state.needs_sync = true
-    }
-
+    delete(game.state.undo_history)
+    game.state.undo_history = new_undo_hist
 }
 
 @export
