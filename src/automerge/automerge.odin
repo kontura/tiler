@@ -14,6 +14,7 @@ AMdocPtr :: rawptr
 AMobjIdPtr :: rawptr
 AMsyncStatePtr :: rawptr
 AMsyncMessagePtr :: rawptr
+AMchangePtr :: rawptr
 
 // This actually is accessible struct
 AMitemsPtr :: rawptr
@@ -182,6 +183,8 @@ foreign _ {
 	AMitemToBool :: proc(item: AMitemPtr, value: ^c.bool) -> c.bool ---
 	AMitemToCounter :: proc(item: AMitemPtr, value: ^c.int64_t) -> c.bool ---
 	AMitemToF64 :: proc(item: AMitemPtr, value: ^c.double) -> c.bool ---
+	AMitemToChange :: proc(item: AMitemPtr, value: ^AMchangePtr) -> c.bool ---
+	AMitemToChangeHash :: proc(item: AMitemPtr, value: ^AMbyteSpan) -> c.bool ---
 
         AMitemObjId :: proc(item: AMitemPtr) -> AMobjIdPtr ---
         AMitemsNext :: proc(items: AMitemsPtr, n: c.ptrdiff_t) -> AMitemsPtr ---
@@ -210,6 +213,10 @@ foreign _ {
         AMload :: proc(src: [^]c.uint8_t, count: c.size_t) -> AMresultPtr ---
         AMloadIncremental :: proc(doc: AMdocPtr, src: [^]c.uint8_t, count: c.size_t) -> AMresultPtr ---
 
+        AMgetChanges :: proc(doc: AMdocPtr, have_deps: AMitemsPtr) -> AMresultPtr ---
+        AMchangeHash :: proc(change : AMchangePtr) -> AMbyteSpan ---
+        AMchangeMessage :: proc(change : AMchangePtr) -> AMbyteSpan ---
+        AMchangeIsEmpty :: proc(change : AMchangePtr) -> bool ---
 }
 
 //TODO(amatej): add here AMitemToOdinBytes
@@ -528,6 +535,9 @@ result_to_objid :: proc(result: AMresultPtr, loc := #caller_location) -> (obj_id
 // The returned string will be valid only as long as the AMbyteSpan is valid
 am_byte_span_to_string :: proc(span: AMbyteSpan) -> string {
     return string(span.src[:span.count])
+}
+am_byte_span_to_bytes :: proc(span: AMbyteSpan) -> []byte {
+    return span.src[:span.count]
 }
 
 put_map_tile_map_position :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, key: cstring, value: game.TileMapPosition, loc := #caller_location) -> bool {
