@@ -71,6 +71,18 @@ set_token_position :: proc(token: ^Token, pos: TileMapPosition) {
 
 }
 
+get_token_init_pos :: proc(state: ^GameState, token_id: u64) -> (i32, i32, bool) {
+    t_init := state.tokens[token_id].initiative
+    tokens := state.initiative_to_tokens[t_init]
+    for id, index in tokens {
+        if id == token_id {
+            return t_init, i32(index), true
+        }
+    }
+
+    return 0, 0, false
+}
+
 remove_token_by_id_from_initiative :: proc(state: ^GameState, token_id: u64) -> (i32, i32, bool) {
     for initiative, &tokens in state.initiative_to_tokens {
         for id, index in tokens {

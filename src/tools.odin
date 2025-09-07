@@ -212,7 +212,9 @@ rectangle_tool :: proc(
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
 }
 
-find_at_initiative :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
+// This does two things it picks the token on the given pos (returned token id) and
+// it also returns seleced pos (this doesn't have to be the position of the returned token!)
+select_initiative_pos :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
     row_offset: i32 = 10
     for i: i32 = 1; i < INITIATIVE_COUNT; i += 1 {
         tokens := state.initiative_to_tokens[i]
@@ -251,41 +253,31 @@ add_at_initiative :: proc(state: ^GameState, token_id: u64, initiative: i32, ini
         state.initiative_to_tokens[initiative] = make([dynamic]u64)
     }
     tokens := &state.initiative_to_tokens[initiative]
-    if i32(len(tokens)) >= init_index {
-        inject_at(tokens, init_index, token_id)
-    } else {
-        append(tokens, token_id)
+    inject_at(tokens, init_index, token_id)
+}
+
+move_initiative_token :: proc(state: ^GameState, token_id: u64, old_init, old_index, new_init, new_index: i32) {
+    new_index := new_index
+    if (new_init != old_init || new_index != old_index) {
+        t := &state.tokens[token_id]
+        t.initiative = new_init
+        ordered_remove(&state.initiative_to_tokens[old_init], old_index)
+        add_at_initiative(state, token_id, new_init, new_index)
     }
+
 }
 
 move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^Action) {
-    //TODO(amatej): this is a bad procedure, it does 2 completely separate things based on state
-    if state.selected_token == 0 {
-        state.initiative_tool_start.x, state.initiative_tool_start.y, state.selected_token = find_at_initiative(
-            state,
-            state.tool_start_position.?.y,
-        )
-    } else {
-        end_initiative, end_index, _ := find_at_initiative(state, end_pos.y)
-        remove_token_by_id_from_initiative(state, state.selected_token)
-        t := &state.tokens[state.selected_token]
-        t.initiative = end_initiative
-        add_at_initiative(state, state.selected_token, end_initiative, end_index)
+    _, _, selected_token := select_initiative_pos(state, state.tool_start_position.?.y)
+    old_init, old_index, ok := get_token_init_pos(state, selected_token)
+    new_init, new_index, _ := select_initiative_pos(state, end_pos.y)
+    if selected_token != 0 {
+        if (new_init == old_init && old_index < new_index) {
+            new_index = new_index - 1
+        }
+        move_initiative_token(state, selected_token, old_init, old_index, new_init, new_index)
         if action != nil {
-            action.token_initiative_history[state.selected_token] = [2]i32 {
-                state.initiative_tool_start.x - end_initiative,
-                math.max(state.initiative_tool_start.y - end_index, 0),
-            }
-            fmt.println(
-                "end delta: ",
-                action.token_initiative_history[state.selected_token],
-                " from: ",
-                state.initiative_tool_start,
-                " - ",
-                end_initiative,
-                ", ",
-                end_index,
-            )
+            action.token_initiative_history[selected_token] = [2]i32{old_init - new_init, old_index - new_index}
         }
     }
 }

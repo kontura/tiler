@@ -35,7 +35,6 @@ GameState :: struct {
     active_tool:           Tool,
     previous_tool:         Maybe(Tool),
     tool_start_position:   Maybe([2]f32),
-    selected_token:        u64,
     temp_actions:          [dynamic]Action,
     key_consumed:          bool,
     needs_sync:            bool,
@@ -43,7 +42,6 @@ GameState :: struct {
     previous_touch_dist:   f32,
     previous_touch_pos:    [2]f32,
     previous_touch_count:  i32,
-    initiative_tool_start: [2]i32,
     save:                  SaveStatus,
     bytes_count:           uint,
     timeout:               uint,
@@ -599,7 +597,9 @@ update :: proc() {
             case .INITIATIVE:
                 {
                     if rl.IsMouseButtonDown(.LEFT) {
-                        move_initiative_token_tool(state, mouse_pos, nil)
+                        append(&state.temp_actions, make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator))
+                        temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+                        move_initiative_token_tool(state, mouse_pos, temp_action)
                     } else if rl.IsMouseButtonReleased(.LEFT) {
                         if (state.tool_start_position != nil) {
                             append(&state.undo_history, make_action(.EDIT_TOKEN_INITIATIVE))
@@ -608,7 +608,6 @@ update :: proc() {
                             action.performed = true
                             state.needs_sync = true
                         }
-                        state.selected_token = 0
                     }
                     icon = .ICON_SHUFFLE
                 }

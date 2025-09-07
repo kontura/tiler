@@ -87,12 +87,10 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
     case .EDIT_TOKEN_INITIATIVE:
         {
             for token_id, &delta_init_pos in action.token_initiative_history {
-                old_init, old_init_index, ok := remove_token_by_id_from_initiative(state, token_id)
+                old_init, old_init_index, ok := get_token_init_pos(state, token_id)
                 if ok {
                     new_init_pos := [2]i32{old_init, old_init_index} + delta_init_pos
-                    add_at_initiative(state, token_id, new_init_pos.x, new_init_pos.y)
-                    t := &state.tokens[token_id]
-                    t.initiative = new_init_pos.x
+                    move_initiative_token(state, token_id, old_init, old_init_index, new_init_pos.x, new_init_pos.y)
                 }
             }
         }
@@ -177,12 +175,10 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
     case .EDIT_TOKEN_INITIATIVE:
         {
             for token_id, &delta_init_pos in action.token_initiative_history {
-                old_init, old_init_index, ok := remove_token_by_id_from_initiative(state, token_id)
+                old_init, old_init_index, ok := get_token_init_pos(state, token_id)
                 if ok {
                     new_init_pos := [2]i32{old_init, old_init_index} - delta_init_pos
-                    add_at_initiative(state, token_id, new_init_pos.x, new_init_pos.y)
-                    t := &state.tokens[token_id]
-                    t.initiative = new_init_pos.x
+                    move_initiative_token(state, token_id, old_init, old_init_index, new_init_pos.x, new_init_pos.y)
                 }
             }
         }
