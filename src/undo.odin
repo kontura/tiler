@@ -196,7 +196,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                             token_id,
                             {{u32(action.token_history[token_id].x), u32(action.token_history[token_id].y)}, {0, 0}},
                             action.color,
-                            "",
+                            action.new_names[token_id],
                             action.token_initiative_history[token_id].x,
                         )
                         add_at_initiative(

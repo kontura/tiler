@@ -125,6 +125,7 @@ token_spawn :: proc(
         action.color = state.selected_color
         action.token_initiative_history[t.id] = {t.initiative, 0}
         action.token_history[t.id] = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
+        action.new_names[t.id] = name
     }
     return t.id
 }
