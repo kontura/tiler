@@ -199,8 +199,10 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             // We token ids are expected to only ever increase by one
             // to keep consistency.
             keys : = make([dynamic]u64, len(action.token_life), allocator=context.temp_allocator)
+            i := 0
             for key, _ in action.token_life {
-                append(&keys, key)
+                keys[0] = key
+                i += 1
             }
             slice.sort(keys[:])
             for token_id in keys {

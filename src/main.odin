@@ -6,6 +6,7 @@ import "core:math/rand"
 import "core:mem"
 import "core:strings"
 import "core:time"
+import "core:slice"
 
 import rl "vendor:raylib"
 
@@ -992,12 +993,20 @@ update :: proc() {
     // draw debug info
     if state.debug {
         live_t := 0
-        for _, &t in state.tokens {
+        keys : = make([dynamic]u64, len(state.tokens), allocator=context.temp_allocator)
+        i := 0
+        for key, _ in state.tokens {
+            keys[i] = key
+            i += 1
+        }
+        slice.sort(keys[:])
+        for token_id in keys {
+            t := &state.tokens[token_id]
             if t.alive {
                 live_t += 1
             }
-            token_text := fmt.caprint(get_token_name_temp(&t), ": ", t.position, allocator = context.temp_allocator)
-            rl.DrawText(token_text, 430, 60 + 30 * (i32(live_t)), 15, rl.BLUE)
+            token_text := fmt.caprint(get_token_name_temp(t), ": ", t.position, allocator = context.temp_allocator)
+            rl.DrawText(token_text, 530, 60 + 30 * (i32(live_t)), 15, rl.BLUE)
         }
         total_tokens_live := fmt.caprint("Total live tokens: ", live_t, allocator = context.temp_allocator)
         total_tokens := fmt.caprint("Total tokens: ", len(state.tokens), allocator = context.temp_allocator)
