@@ -83,7 +83,6 @@ create_spawn_token_action :: proc(
 @(test)
 basic_token_spawn_test :: proc(t: ^testing.T) {
     state, tile_map := setup()
-    state.max_entity_id = 1
 
     pos: TileMapPosition = {{2, 2}, {0, 0}}
     temp_action, token_id := create_spawn_token_action(&state, pos, -1, context.temp_allocator)

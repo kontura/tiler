@@ -25,47 +25,43 @@ SaveStatus :: enum {
 
 //TODO(amatej): make GameState and TileMap not global
 GameState :: struct {
-    screen_width:          i32,
-    screen_height:         i32,
-    camera_pos:            TileMapPosition,
-    selected_color:        [4]u8,
-    selected_alpha:        f32,
-    draw_grid:             bool,
-    draw_initiative:       bool,
-    active_tool:           Tool,
-    previous_tool:         Maybe(Tool),
-    tool_start_position:   Maybe([2]f32),
-    temp_actions:          [dynamic]Action,
-    key_consumed:          bool,
-    needs_sync:            bool,
-    mobile:                bool,
-    previous_touch_dist:   f32,
-    previous_touch_pos:    [2]f32,
-    previous_touch_count:  i32,
-    save:                  SaveStatus,
-    bytes_count:           uint,
-    timeout:               uint,
-
-    debug:                 bool,
-    undone:                int,
-
-    light_source:          [2]f32,
-    shadow_color:          [4]u8,
-    bg:                    rl.Texture2D,
-    bg_pos:                TileMapPosition,
-    bg_scale:              f32,
+    screen_width:         i32,
+    screen_height:        i32,
+    camera_pos:           TileMapPosition,
+    selected_color:       [4]u8,
+    selected_alpha:       f32,
+    draw_grid:            bool,
+    draw_initiative:      bool,
+    active_tool:          Tool,
+    previous_tool:        Maybe(Tool),
+    tool_start_position:  Maybe([2]f32),
+    temp_actions:         [dynamic]Action,
+    key_consumed:         bool,
+    needs_sync:           bool,
+    mobile:               bool,
+    previous_touch_dist:  f32,
+    previous_touch_pos:   [2]f32,
+    previous_touch_count: i32,
+    save:                 SaveStatus,
+    bytes_count:          uint,
+    timeout:              uint,
+    debug:                bool,
+    undone:               int,
+    light_source:         [2]f32,
+    shadow_color:         [4]u8,
+    bg:                   rl.Texture2D,
+    bg_pos:               TileMapPosition,
+    bg_scale:             f32,
 
     // permanent state
-    textures:              map[string]rl.Texture2D,
-    gui_rectangles:        map[Widget]rl.Rectangle,
+    textures:             map[string]rl.Texture2D,
+    gui_rectangles:       map[Widget]rl.Rectangle,
 
-    // persistent state
-    max_entity_id:         u64,
     //TODO(amatej): check if the tool actually does any color change before recoding
     //              undoing non-color changes does nothing
-    undo_history:          [dynamic]Action,
-    tokens:                map[u64]Token,
-    initiative_to_tokens:  map[i32][dynamic]u64,
+    undo_history:         [dynamic]Action,
+    tokens:               map[u64]Token,
+    initiative_to_tokens: map[i32][dynamic]u64,
 }
 
 Widget :: enum {
@@ -196,13 +192,17 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.selected_color.g = u8(rand.int_max(255))
     state.selected_color.b = u8(rand.int_max(255))
     state.selected_alpha = 1
-    // entity id 0 is reserved for temporary preview entity
-    state.max_entity_id = 1
     state.needs_sync = true
     state.mobile = mobile
     state.bg_scale = 1
     state.light_source = {0.06, 0.09}
     state.shadow_color = {0, 0, 0, 65}
+    // Token 0 is reserved, it is a temp token used for previews
+    state.tokens[0] = Token {
+        id   = 0,
+        name = strings.clone(" "),
+        size = 1,
+    }
 }
 
 tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {
@@ -585,8 +585,6 @@ update :: proc() {
                             token.alive = true
                             token.position = mouse_tile_pos
                             token.color = c
-                        } else {
-                            state.tokens[0] = make_token(0, mouse_tile_pos, c, " ")
                         }
                         append(&state.temp_actions, make_action(.EDIT_TOKEN, context.temp_allocator))
                         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
@@ -1007,8 +1005,6 @@ update :: proc() {
         rl.DrawText(total_tokens, 430, 50, 18, rl.BLUE)
         total_actions := fmt.caprint("Total actions: ", len(state.undo_history), allocator = context.temp_allocator)
         rl.DrawText(total_actions, 30, 30, 18, rl.GREEN)
-        max_id := fmt.caprint("Max entity id: ", state.max_entity_id, allocator = context.temp_allocator)
-        rl.DrawText(max_id, 630, 30, 18, rl.GREEN)
         for action_index := len(state.undo_history) - 1; action_index >= 0; action_index -= 1 {
             a := &state.undo_history[action_index]
             a_text := fmt.caprint(

@@ -113,13 +113,14 @@ token_spawn :: proc(
     color: [4]u8,
     name: string = "",
     initiative: i32 = -1,
+    id_override: u64 = 0,
 ) -> u64 {
+    id := id_override > 0 ? id_override : u64(len(state.tokens))
     t := make_token(id, pos, color, name, initiative)
     state.tokens[t.id] = t
     set_texture_based_on_name(state, &state.tokens[t.id])
     state.needs_sync = true
     add_at_initiative(state, t.id, t.initiative, 0)
-    state.max_entity_id += 1
     if action != nil {
         action.token_life[t.id] = true
         action.performed = true

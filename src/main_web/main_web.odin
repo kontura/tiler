@@ -162,28 +162,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
 }
 
 update_doc_from_game_state :: proc(doc: am.AMdocPtr) {
-    using am
-
-    result := AMmapGet(doc, AM_ROOT, AMstr("max_entity_id"), c.NULL)
-    item, _ := result_to_item(result)
-    if AMitemValType(item) == .AM_VAL_TYPE_VOID {
-        AMresultFree(result)
-        // Insert new
-        new_result := AMmapPutCounter(doc, AM_ROOT, AMstr("max_entity_id"), i64(game.state.max_entity_id))
-        verify_result(new_result)
-    } else {
-        max: i64
-        if !AMitemToCounter(item, &max) {
-            fmt.println("Failed to convert from item to max_entity_id counter")
-        }
-        for max < i64(game.state.max_entity_id) {
-            AMmapIncrement(doc, AM_ROOT, AMstr("max_entity_id"), 1)
-            max += 1
-        }
-    }
-
     update_doc_actions(doc, game.state.undo_history[:])
-
 }
 
 get_or_insert :: proc(doc: am.AMdocPtr, obj_id: am.AMobjIdPtr, key: cstring, type: am.AMobjType) -> am.AMresultPtr {
@@ -298,19 +277,6 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> [dynamic]game.Action {
 }
 
 update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
-    using am
-
-    result := AMmapGet(doc, AM_ROOT, AMstr("max_entity_id"), c.NULL)
-    defer AMresultFree(result)
-    item, _ := result_to_item(result)
-    if AMitemValType(item) != .AM_VAL_TYPE_VOID {
-        max: i64
-        if !AMitemToCounter(item, &max) {
-            fmt.println("Failed to convert from item to max_entity_id counter")
-        }
-        game.state.max_entity_id = u64(max)
-    }
-
     new_undo_hist := get_undo_history_from_doc(doc)
     game.redo_unmatched_actions(game.state, game.tile_map, new_undo_hist[:])
     for _, index in game.state.undo_history {

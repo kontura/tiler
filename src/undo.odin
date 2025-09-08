@@ -1,6 +1,7 @@
 package tiler
 import "core:fmt"
 import "core:mem"
+import "core:slice"
 import "core:strings"
 
 Action :: struct {
@@ -186,28 +187,45 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         }
     case .EDIT_TOKEN:
         {
-            for token_id, life in action.token_life {
-                if life {
+            // We first have to sort all created tokens by id
+            // because tokens have to be created in ascending order
+            // otherwise it is an error.
+            // We token ids are expected to only ever increase by one
+            // to keep consistency.
+            keys : = make([dynamic]u64, len(action.token_life))
+            for key, _ in action.token_life {
+                append(&keys, key)
+            }
+            slice.sort(keys[:])
+            for token_id in keys {
+                if action.token_life[token_id] {
                     // life is true == token was created
                     token, ok := &state.tokens[token_id]
                     if ok {
                         token.alive = true
                         append(&state.initiative_to_tokens[token.initiative], token_id)
                     } else {
-                        t := make_token(
-                            token_id,
-                            {{u32(action.token_history[token_id].x), u32(action.token_history[token_id].y)}, {0, 0}},
-                            action.color,
-                            action.new_names[token_id],
-                            action.token_initiative_history[token_id].x,
-                        )
-                        add_at_initiative(
-                            state,
-                            t.id,
-                            action.token_initiative_history[token_id].x,
-                            action.token_initiative_history[token_id].y,
-                        )
-                        state.tokens[t.id] = t
+                        if token_id == u64(len(state.tokens)) {
+                            pos: TileMapPosition = {
+                                {u32(action.token_history[token_id].x), u32(action.token_history[token_id].y)},
+                                {0, 0},
+                            }
+                            token_spawn(
+                                state,
+                                nil,
+                                pos,
+                                action.color,
+                                action.new_names[token_id],
+                                action.token_initiative_history[token_id].x,
+                            )
+                        } else {
+                            fmt.println(
+                                "[WARNING]: REDO attempted to create token with id: ",
+                                token_id,
+                                " but the next available id is: ",
+                                len(state.tokens),
+                            )
+                        }
                     }
                 } else {
                     // life is false == token was deleted
