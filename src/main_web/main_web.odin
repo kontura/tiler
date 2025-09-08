@@ -259,14 +259,12 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> [dynamic]game.Action {
             change_item = AMitemsNext(&change_items, 1)
             AMitemToChange(change_item, &change)
             msg = AMchangeMessage(change)
-            fmt.println("looping")
         }
 
         bytes := AMchangeHash(change)
         for i := 0; i < 32; i += 1 {
             game_action.hash[i] = bytes.src[i]
         }
-        fmt.println("got hash: ", game_action.hash)
 
         append(&undo_history, game_action)
         action_item = AMitemsNext(&items, 1)
