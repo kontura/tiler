@@ -66,7 +66,13 @@ delete_action :: proc(action: ^Action) {
     delete(action.token_history)
     delete(action.token_life)
     delete(action.token_initiative_history)
+    for _, &name in action.old_names {
+        delete(name)
+    }
     delete(action.old_names)
+    for _, &name in action.new_names {
+        delete(name)
+    }
     delete(action.new_names)
 }
 
@@ -192,7 +198,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             // otherwise it is an error.
             // We token ids are expected to only ever increase by one
             // to keep consistency.
-            keys : = make([dynamic]u64, len(action.token_life))
+            keys : = make([dynamic]u64, len(action.token_life), allocator=context.temp_allocator)
             for key, _ in action.token_life {
                 append(&keys, key)
             }
