@@ -599,12 +599,12 @@ update :: proc() {
                     if rl.IsMouseButtonDown(.LEFT) {
                         append(&state.temp_actions, make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator))
                         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                        move_initiative_token_tool(state, mouse_pos, temp_action)
+                        move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, temp_action)
                     } else if rl.IsMouseButtonReleased(.LEFT) {
                         if (state.tool_start_position != nil) {
                             append(&state.undo_history, make_action(.EDIT_TOKEN_INITIATIVE))
                             action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                            move_initiative_token_tool(state, mouse_pos, action)
+                            move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, action)
                             action.performed = true
                             state.needs_sync = true
                         }

@@ -267,10 +267,11 @@ move_initiative_token :: proc(state: ^GameState, token_id: u64, old_init, old_in
 
 }
 
-move_initiative_token_tool :: proc(state: ^GameState, end_pos: [2]f32, action: ^Action) {
-    _, _, selected_token := select_initiative_pos(state, state.tool_start_position.?.y)
+move_initiative_token_tool :: proc(state: ^GameState, start_pos, end_pos: f32, action: ^Action) {
+    fmt.println(start_pos, end_pos)
+    _, _, selected_token := select_initiative_pos(state, start_pos)
     old_init, old_index, ok := get_token_init_pos(state, selected_token)
-    new_init, new_index, _ := select_initiative_pos(state, end_pos.y)
+    new_init, new_index, _ := select_initiative_pos(state, end_pos)
     if selected_token != 0 {
         if (new_init == old_init && old_index < new_index) {
             new_index = new_index - 1
