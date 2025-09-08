@@ -52,6 +52,8 @@ make_action :: proc(tool: Tool, allocator := context.allocator) -> Action {
     action.token_history.allocator = allocator
     action.token_initiative_history.allocator = allocator
     action.token_life.allocator = allocator
+    action.old_names.allocator = allocator
+    action.new_names.allocator = allocator
     action.mine = true
     action.tool = tool
 
