@@ -231,11 +231,7 @@ select_initiative_pos :: proc(state: ^GameState, pos: f32) -> (i32, i32, u64) {
                 half_of_this_row := i32(token_size + 3)
                 row_offset += 2 * half_of_this_row
                 if f32(row_offset) >= pos {
-                    // Given that the initiative tracker moves when the token is moved
-                    // (because of different sizes of empty row vs row with tokens) compare
-                    // not with half but with 1/3 of a half -> 1/6.
-                    // It is not exact but it seems to work alright.
-                    if f32(row_offset) - pos > f32(half_of_this_row) / 3 {
+                    if f32(row_offset) - pos > f32(half_of_this_row) {
                         return i, i32(index), token.id
                     } else {
                         return i, i32(index) + 1, token.id
