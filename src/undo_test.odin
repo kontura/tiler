@@ -76,7 +76,7 @@ create_spawn_token_action :: proc(
     u64,
 ) {
     action := make_action(.EDIT_TOKEN, allocator)
-    id := token_spawn(state, &action, pos, "", initiative)
+    id := token_spawn(state, &action, pos, "", initiative, [4]u8{0,0,0,0})
     return action, id
 }
 

@@ -565,7 +565,7 @@ update :: proc() {
                                 token_pos.rel_tile = {0, 0}
                                 token_pos.abs_tile.y += pos_offset
 
-                                token_spawn(state, action, token_pos, name)
+                                token_spawn(state, action, token_pos, state.selected_color, name)
                                 pos_offset += 2
                             }
                             action.performed = true
@@ -574,7 +574,7 @@ update :: proc() {
                             action := make_action(.EDIT_TOKEN)
                             token_pos := mouse_tile_pos
                             token_pos.rel_tile = {0, 0}
-                            token_spawn(state, &action, token_pos)
+                            token_spawn(state, &action, token_pos, state.selected_color)
                             append(&state.undo_history, action)
                         }
                     } else {

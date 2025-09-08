@@ -110,10 +110,11 @@ token_spawn :: proc(
     state: ^GameState,
     action: ^Action,
     pos: TileMapPosition,
+    color: [4]u8,
     name: string = "",
     initiative: i32 = -1,
 ) -> u64 {
-    t := make_token(state.max_entity_id, pos, state.selected_color, name, initiative)
+    t := make_token(id, pos, color, name, initiative)
     state.tokens[t.id] = t
     set_texture_based_on_name(state, &state.tokens[t.id])
     state.needs_sync = true
@@ -122,7 +123,7 @@ token_spawn :: proc(
     if action != nil {
         action.token_life[t.id] = true
         action.performed = true
-        action.color = state.selected_color
+        action.color = color
         action.token_initiative_history[t.id] = {t.initiative, 0}
         action.token_history[t.id] = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
         action.new_names[t.id] = name
