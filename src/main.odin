@@ -4,9 +4,9 @@ import "core:fmt"
 import "core:math"
 import "core:math/rand"
 import "core:mem"
+import "core:slice"
 import "core:strings"
 import "core:time"
-import "core:slice"
 
 import rl "vendor:raylib"
 
@@ -993,7 +993,7 @@ update :: proc() {
     // draw debug info
     if state.debug {
         live_t := 0
-        keys : = make([dynamic]u64, len(state.tokens), allocator=context.temp_allocator)
+        keys := make([dynamic]u64, len(state.tokens), allocator = context.temp_allocator)
         i := 0
         for key, _ in state.tokens {
             keys[i] = key
