@@ -13,7 +13,7 @@ setup :: proc() -> (GameState, TileMap) {
 }
 
 teardown :: proc(state: ^GameState, tile_map: ^TileMap) {
-    tokens_clear(state)
+    tokens_reset(state)
     delete(state.initiative_to_tokens)
     for id, _ in state.tokens {
         delete_token(&state.tokens[id])

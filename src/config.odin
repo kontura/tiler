@@ -87,7 +87,7 @@ config: []Config = {
             }
         }},
     {.ICON_REDO, {{.A, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, "Redo all actions", proc(state: ^GameState) {
-            tokens_clear(state)
+            tokens_reset(state)
             tilemap_clear(tile_map)
 
             for &action in state.undo_history {

@@ -1095,7 +1095,7 @@ update :: proc() {
     free_all(context.temp_allocator)
 }
 
-tokens_clear :: proc(state: ^GameState) {
+tokens_reset :: proc(state: ^GameState) {
     for _, &token_ids in state.initiative_to_tokens {
         delete(token_ids)
     }
@@ -1104,6 +1104,11 @@ tokens_clear :: proc(state: ^GameState) {
         delete_token(&token)
     }
     clear(&state.tokens)
+    state.tokens[0] = Token {
+        id   = 0,
+        name = strings.clone(" "),
+        size = 1,
+    }
 }
 
 shutdown :: proc() {
@@ -1114,7 +1119,8 @@ shutdown :: proc() {
     delete(state.textures)
     delete(state.gui_rectangles)
 
-    tokens_clear(state)
+    tokens_reset(state)
+    delete_token(&state.tokens[0])
     delete(state.initiative_to_tokens)
     delete(state.tokens)
 
