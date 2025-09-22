@@ -211,7 +211,12 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     token, ok := &state.tokens[token_id]
                     if ok {
                         token.alive = true
-                        append(&state.initiative_to_tokens[token.initiative], token_id)
+                        add_at_initiative(
+                            state,
+                            token.id,
+                            action.token_initiative_history[token_id].x,
+                            action.token_initiative_history[token_id].y,
+                        )
                     } else {
                         if token_id == u64(len(state.tokens)) {
                             pos: TileMapPosition = {
