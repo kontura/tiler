@@ -71,7 +71,7 @@ config: []Config = {
             state.draw_grid = !state.draw_grid}},
     {.ICON_FILE_SAVE, {{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, "Save game", proc(state: ^GameState) {
             state.save = .REQUESTED}},
-    {nil, {{.D, .PRESSED}}, "Toggle debug info", proc(state: ^GameState) {
+    {nil, {{.D, .PRESSED}}, "Toggle debug info (freezes syncing, allows walking current action history)", proc(state: ^GameState) {
             if state.debug {
                 // When exiting debug mode ensure all actions are done, we don't want to get into inconsistent state
                 for state.undone > 0 {
