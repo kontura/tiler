@@ -29,8 +29,8 @@ move_right :: proc(state: ^GameState) {
 }
 
 config: []Config = {
-    {.ICON_ARROW_LEFT, {{.LEFT, .DOWN}}, "Move to the left", move_left},
-    {.ICON_ARROW_RIGHT, {{.RIGHT, .DOWN}}, "Move to the right", move_right},
+    {.ICON_ARROW_LEFT, {{.LEFT, .PRESSED}}, "Move to the left", move_left},
+    {.ICON_ARROW_RIGHT, {{.RIGHT, .PRESSED}}, "Move to the right", move_right},
     {.ICON_ARROW_UP, {{.UP, .PRESSED}}, "Move up", proc(state: ^GameState) {
             if state.debug {
                 if state.undone > 0 {
