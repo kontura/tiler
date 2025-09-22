@@ -346,7 +346,7 @@ main_update :: proc "c" () -> bool {
         game.draw_connections(string(my_id[:]), socket_ready, p)
     }
 
-    if game.state.needs_sync {
+    if game.state.needs_sync && !game.state.debug {
         update_doc_from_game_state(doc)
         if socket_ready {
             for peer, &peer_state in peers {
