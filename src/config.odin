@@ -72,7 +72,17 @@ config: []Config = {
     {.ICON_FILE_SAVE, {{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, "Save game", proc(state: ^GameState) {
             state.save = .REQUESTED}},
     {nil, {{.D, .PRESSED}}, "Toggle debug info", proc(state: ^GameState) {
-            state.debug = !state.debug}},
+            if state.debug {
+                // When exiting debug mode ensure all actions are done, we don't want to get into inconsistent state
+                for state.undone > 0 {
+                    redo_action(state, tile_map, &state.undo_history[len(state.undo_history) - state.undone])
+                    state.undone -= 1
+                }
+                state.debug = false
+            } else {
+                state.debug = true
+            }
+        }},
     {.ICON_UNDO, {{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, "Undo last action", proc(state: ^GameState) {
             #reverse for &action in state.undo_history {
                 if action.mine && !action.reverted {
