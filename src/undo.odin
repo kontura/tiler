@@ -198,7 +198,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             // otherwise it is an error.
             // We token ids are expected to only ever increase by one
             // to keep consistency.
-            keys : = make([dynamic]u64, len(action.token_life), allocator=context.temp_allocator)
+            keys := make([dynamic]u64, len(action.token_life), allocator = context.temp_allocator)
             i := 0
             for key, _ in action.token_life {
                 keys[0] = key
