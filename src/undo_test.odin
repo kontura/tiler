@@ -69,14 +69,14 @@ basic_rectangle_test :: proc(t: ^testing.T) {
 create_spawn_token_action :: proc(
     state: ^GameState,
     pos: TileMapPosition,
-    initiative: i32 = -1,
+    initiative: [2]i32 = {-1,0},
     allocator := context.allocator,
 ) -> (
     Action,
     u64,
 ) {
     action := make_action(.EDIT_TOKEN, allocator)
-    id := token_spawn(state, &action, pos, "", initiative, [4]u8{0,0,0,0})
+    id := token_spawn(state, &action, pos, [4]u8{0,0,0,0}, "", initiative)
     return action, id
 }
 
@@ -85,7 +85,7 @@ basic_token_spawn_test :: proc(t: ^testing.T) {
     state, tile_map := setup()
 
     pos: TileMapPosition = {{2, 2}, {0, 0}}
-    temp_action, token_id := create_spawn_token_action(&state, pos, -1, context.temp_allocator)
+    temp_action, token_id := create_spawn_token_action(&state, pos, {-1, 0}, context.temp_allocator)
 
     testing.expect_value(t, len(state.tokens), 1)
     token := state.tokens[1]
@@ -135,7 +135,7 @@ basic_token_spawn_test :: proc(t: ^testing.T) {
 basic_token_initiative_move_test :: proc(t: ^testing.T) {
     state, tile_map := setup()
 
-    _, token_id := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, 20, context.temp_allocator)
+    _, token_id := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {20, 0}, context.temp_allocator)
     token := &(state.tokens[token_id])
 
     temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
@@ -170,7 +170,7 @@ basic_token_initiative_move_test :: proc(t: ^testing.T) {
     // redo on empty state and tile_map to simulate syncing peer
     state2, tile_map2 := setup()
     // this only works because we spawn the tokens in both states with the same id
-    _, token_id = create_spawn_token_action(&state2, {{0, 0}, {0, 0}}, 20, context.temp_allocator)
+    _, token_id = create_spawn_token_action(&state2, {{0, 0}, {0, 0}}, {20, 0}, context.temp_allocator)
     token = &(state2.tokens[token_id])
     redo_action(&state2, &tile_map2, &temp_action)
     testing.expect_value(t, len(state2.tokens), 1)
@@ -188,11 +188,11 @@ basic_token_initiative_move_test :: proc(t: ^testing.T) {
 multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     state, tile_map := setup()
 
-    spawn_action1, token_id1 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, 18, context.temp_allocator)
+    spawn_action1, token_id1 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {18, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action1)
-    spawn_action2, token_id2 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, 20, context.temp_allocator)
+    spawn_action2, token_id2 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {20, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action2)
-    spawn_action3, token_id3 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, 22, context.temp_allocator)
+    spawn_action3, token_id3 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {22, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action3)
 
     temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
@@ -327,9 +327,9 @@ redo_unmatched_actions_test :: proc(t: ^testing.T) {
 multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     state, tile_map := setup()
 
-    spawn_action1, token_id1 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, 3, context.temp_allocator)
+    spawn_action1, token_id1 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {3, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action1)
-    spawn_action2, token_id2 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, 3, context.temp_allocator)
+    spawn_action2, token_id2 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {3, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action2)
 
     testing.expect_value(t, len(state.initiative_to_tokens), 1)

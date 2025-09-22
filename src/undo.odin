@@ -224,7 +224,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                                 pos,
                                 action.color,
                                 action.new_names[token_id],
-                                action.token_initiative_history[token_id].x,
+                                action.token_initiative_history[token_id],
                             )
                         } else {
                             fmt.println(

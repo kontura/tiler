@@ -112,20 +112,23 @@ token_spawn :: proc(
     pos: TileMapPosition,
     color: [4]u8,
     name: string = "",
-    initiative: i32 = -1,
+    initiative: [2]i32 = {-1, 0},
     id_override: u64 = 0,
 ) -> u64 {
     id := id_override > 0 ? id_override : u64(len(state.tokens))
-    t := make_token(id, pos, color, name, initiative)
+    t := make_token(id, pos, color, name, initiative.x)
     state.tokens[t.id] = t
     set_texture_based_on_name(state, &state.tokens[t.id])
     state.needs_sync = true
-    add_at_initiative(state, t.id, t.initiative, 0)
+    add_at_initiative(state, t.id, t.initiative, initiative.y)
     if action != nil {
         action.token_life[t.id] = true
         action.performed = true
         action.color = color
-        action.token_initiative_history[t.id] = {t.initiative, 0}
+        init_pos, init_index, ok := get_token_init_pos(state, t.id)
+        // the newly created token has to be in initiative
+        assert(ok)
+        action.token_initiative_history[t.id] = {init_pos, init_index}
         action.token_history[t.id] = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
         action.new_names[t.id] = name
     }
