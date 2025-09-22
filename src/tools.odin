@@ -274,6 +274,7 @@ move_initiative_token_tool :: proc(state: ^GameState, start_pos, end_pos: f32, a
         move_initiative_token(state, selected_token, old_init, old_index, new_init, new_index)
         if action != nil {
             action.token_initiative_history[selected_token] = [2]i32{old_init - new_init, old_index - new_index}
+            action.token_initiative_start[selected_token] = [2]i32{old_init, old_index}
         }
     }
 }

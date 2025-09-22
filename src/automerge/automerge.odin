@@ -696,6 +696,7 @@ put_map_action :: proc(
 
     put_into_map(doc, map_id, "token_history", value.token_history) or_return
     put_into_map(doc, map_id, "token_initiative_history", value.token_initiative_history) or_return
+    put_into_map(doc, map_id, "token_initiative_start", value.token_initiative_start) or_return
     put_into_map(doc, map_id, "token_life", value.token_life) or_return
     put_into_map(doc, map_id, "token_size", value.token_size) or_return
 
@@ -730,6 +731,7 @@ get_map_action :: proc(
     action.tile_history = get_from_map(doc, map_id, "tile_history", map[[2]u32]game.Tile)
     action.token_history = get_from_map(doc, map_id, "token_history", map[u64][2]i32)
     action.token_initiative_history = get_from_map(doc, map_id, "token_initiative_history", map[u64][2]i32)
+    action.token_initiative_start = get_from_map(doc, map_id, "token_initiative_start", map[u64][2]i32)
     action.token_life = get_from_map(doc, map_id, "token_life", map[u64]bool)
     action.token_size = get_from_map(doc, map_id, "token_size", map[u64]i64)
 

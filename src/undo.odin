@@ -18,6 +18,7 @@ Action :: struct {
     //TODO(amatej): I don't think I need to store the id 4 times..
     token_history:            map[u64][2]i32,
     token_initiative_history: map[u64][2]i32,
+    token_initiative_start:   map[u64][2]i32,
     token_life:               map[u64]bool,
     token_size:               map[u64]i64,
 
@@ -52,6 +53,7 @@ make_action :: proc(tool: Tool, allocator := context.allocator) -> Action {
     action.tile_history.allocator = allocator
     action.token_history.allocator = allocator
     action.token_initiative_history.allocator = allocator
+    action.token_initiative_start.allocator = allocator
     action.token_life.allocator = allocator
     action.old_names.allocator = allocator
     action.new_names.allocator = allocator
@@ -66,6 +68,7 @@ delete_action :: proc(action: ^Action) {
     delete(action.token_history)
     delete(action.token_life)
     delete(action.token_initiative_history)
+    delete(action.token_initiative_start)
     for _, &name in action.old_names {
         delete(name)
     }
@@ -185,7 +188,8 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         {
             for token_id, &delta_init_pos in action.token_initiative_history {
                 old_init, old_init_index, ok := get_token_init_pos(state, token_id)
-                if ok {
+                old: [2]i32 = {old_init, old_init_index}
+                if ok && old == action.token_initiative_start[token_id] {
                     new_init_pos := [2]i32{old_init, old_init_index} - delta_init_pos
                     move_initiative_token(state, token_id, old_init, old_init_index, new_init_pos.x, new_init_pos.y)
                 }
