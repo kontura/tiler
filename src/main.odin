@@ -224,9 +224,6 @@ init :: proc(mobile := false) {
     rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "Tiler")
 
-    // Since we don't run any simulation we don't have to run when there is not user input
-    rl.EnableEventWaiting()
-
     state = new(GameState)
     game_state_init(state, mobile, rl.GetScreenWidth(), rl.GetScreenHeight())
 
