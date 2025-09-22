@@ -31,7 +31,7 @@ move_right :: proc(state: ^GameState) {
 config: []Config = {
     {.ICON_ARROW_LEFT, {{.LEFT, .DOWN}}, "Move to the left", move_left},
     {.ICON_ARROW_RIGHT, {{.RIGHT, .DOWN}}, "Move to the right", move_right},
-    {.ICON_ARROW_UP, {{.UP, .DOWN}}, "Move up", proc(state: ^GameState) {
+    {.ICON_ARROW_UP, {{.UP, .PRESSED}}, "Move up", proc(state: ^GameState) {
             if state.debug {
                 if state.undone > 0 {
                     redo_action(state, tile_map, &state.undo_history[len(state.undo_history) - state.undone])
@@ -41,7 +41,7 @@ config: []Config = {
                 state.camera_pos.rel_tile.y -= 10
             }
         }},
-    {.ICON_ARROW_DOWN, {{.DOWN, .DOWN}}, "Move down", proc(state: ^GameState) {
+    {.ICON_ARROW_DOWN, {{.DOWN, .PRESSED}}, "Move down", proc(state: ^GameState) {
             if state.debug {
                 if state.undone < len(state.undo_history) {
                     undo_action(state, tile_map, &state.undo_history[len(state.undo_history) - 1 - state.undone])
