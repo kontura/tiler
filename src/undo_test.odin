@@ -87,7 +87,7 @@ basic_token_spawn_test :: proc(t: ^testing.T) {
     pos: TileMapPosition = {{2, 2}, {0, 0}}
     temp_action, token_id := create_spawn_token_action(&state, pos, {-1, 0}, context.temp_allocator)
 
-    testing.expect_value(t, len(state.tokens), 1)
+    testing.expect_value(t, len(state.tokens), 2)
     token := state.tokens[1]
     testing.expect_value(t, token.id, 1)
     testing.expect_value(t, token.position, pos)
@@ -98,7 +98,7 @@ basic_token_spawn_test :: proc(t: ^testing.T) {
 
     undo_action(&state, &tile_map, &temp_action)
 
-    testing.expect_value(t, len(state.tokens), 1)
+    testing.expect_value(t, len(state.tokens), 2)
     token = state.tokens[1]
     testing.expect_value(t, token.id, 1)
     testing.expect_value(t, token.position, pos)
@@ -108,7 +108,7 @@ basic_token_spawn_test :: proc(t: ^testing.T) {
 
     redo_action(&state, &tile_map, &temp_action)
 
-    testing.expect_value(t, len(state.tokens), 1)
+    testing.expect_value(t, len(state.tokens), 2)
     token = state.tokens[1]
     testing.expect_value(t, token.id, 1)
     testing.expect_value(t, token.position, pos)
@@ -119,7 +119,7 @@ basic_token_spawn_test :: proc(t: ^testing.T) {
     // redo on empty state and tile_map to simulate syncing peer
     state2, tile_map2 := setup()
     redo_action(&state2, &tile_map2, &temp_action)
-    testing.expect_value(t, len(state2.tokens), 1)
+    testing.expect_value(t, len(state2.tokens), 2)
     token = state2.tokens[1]
     testing.expect_value(t, token.id, 1)
     testing.expect_value(t, token.position, pos)
@@ -142,7 +142,7 @@ basic_token_initiative_move_test :: proc(t: ^testing.T) {
     // 275 ~ init 20, 40 screen pos targers initiative "3"
     move_initiative_token_tool(&state, 275, 40, &temp_action)
 
-    testing.expect_value(t, len(state.tokens), 1)
+    testing.expect_value(t, len(state.tokens), 2)
     testing.expect_value(t, len(state.initiative_to_tokens), 2)
     testing.expect_value(t, token.initiative, 3)
     testing.expect_value(t, len(state.initiative_to_tokens[20]), 0)
@@ -151,7 +151,7 @@ basic_token_initiative_move_test :: proc(t: ^testing.T) {
 
     undo_action(&state, &tile_map, &temp_action)
 
-    testing.expect_value(t, len(state.tokens), 1)
+    testing.expect_value(t, len(state.tokens), 2)
     testing.expect_value(t, len(state.initiative_to_tokens), 2)
     testing.expect_value(t, token.initiative, 20)
     testing.expect_value(t, len(state.initiative_to_tokens[3]), 0)
@@ -160,7 +160,7 @@ basic_token_initiative_move_test :: proc(t: ^testing.T) {
 
     redo_action(&state, &tile_map, &temp_action)
 
-    testing.expect_value(t, len(state.tokens), 1)
+    testing.expect_value(t, len(state.tokens), 2)
     testing.expect_value(t, len(state.initiative_to_tokens), 2)
     testing.expect_value(t, token.initiative, 3)
     testing.expect_value(t, len(state.initiative_to_tokens[20]), 0)
@@ -173,7 +173,7 @@ basic_token_initiative_move_test :: proc(t: ^testing.T) {
     _, token_id = create_spawn_token_action(&state2, {{0, 0}, {0, 0}}, {20, 0}, context.temp_allocator)
     token = &(state2.tokens[token_id])
     redo_action(&state2, &tile_map2, &temp_action)
-    testing.expect_value(t, len(state2.tokens), 1)
+    testing.expect_value(t, len(state2.tokens), 2)
     testing.expect_value(t, len(state2.initiative_to_tokens), 2)
     testing.expect_value(t, token.initiative, 3)
     testing.expect_value(t, len(state2.initiative_to_tokens[20]), 0)
@@ -202,7 +202,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     move_initiative_token_tool(&state, 260, 40, &temp_action)
     append(&state.undo_history, temp_action)
 
-    testing.expect_value(t, len(state.tokens), 3)
+    testing.expect_value(t, len(state.tokens), 4)
     testing.expect_value(t, len(state.initiative_to_tokens), 4)
     testing.expect_value(t, len(state.initiative_to_tokens[18]), 0)
     testing.expect_value(t, len(state.initiative_to_tokens[20]), 1)
@@ -220,7 +220,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     move_initiative_token_tool(&state, 290, 69, &temp_action)
     append(&state.undo_history, temp_action)
 
-    testing.expect_value(t, len(state.tokens), 3)
+    testing.expect_value(t, len(state.tokens), 4)
     testing.expect_value(t, len(state.initiative_to_tokens), 4)
     testing.expect_value(t, len(state.initiative_to_tokens[18]), 0)
     testing.expect_value(t, len(state.initiative_to_tokens[20]), 0)
@@ -238,7 +238,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     move_initiative_token_tool(&state, 345, 103, &temp_action)
     append(&state.undo_history, temp_action)
 
-    testing.expect_value(t, len(state.tokens), 3)
+    testing.expect_value(t, len(state.tokens), 4)
     testing.expect_value(t, len(state.initiative_to_tokens), 4)
     testing.expect_value(t, len(state.initiative_to_tokens[18]), 0)
     testing.expect_value(t, len(state.initiative_to_tokens[20]), 0)
@@ -252,7 +252,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
 
     state2, tile_map2 := setup()
     redo_unmatched_actions(&state2, &tile_map2, state.undo_history[:])
-    testing.expect_value(t, len(state2.tokens), 3)
+    testing.expect_value(t, len(state2.tokens), 4)
     testing.expect_value(t, len(state2.initiative_to_tokens), 4)
     testing.expect_value(t, len(state2.initiative_to_tokens[18]), 0)
     testing.expect_value(t, len(state2.initiative_to_tokens[20]), 0)
@@ -360,10 +360,10 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, len(state.initiative_to_tokens), 2)
     testing.expect_value(t, len(state.initiative_to_tokens[13]), 2)
     testing.expect_value(t, len(state.initiative_to_tokens[3]), 0)
-    testing.expect_value(t, state.initiative_to_tokens[13][0], token_id1)
-    testing.expect_value(t, state.initiative_to_tokens[13][1], token_id2)
+    testing.expect_value(t, state.initiative_to_tokens[13][0], token_id2)
+    testing.expect_value(t, state.initiative_to_tokens[13][1], token_id1)
     testing.expect_value(t, len(temp_action.token_initiative_history), 1)
-    testing.expect_value(t, temp_action.token_initiative_history[token_id1], [2]i32{-10, 0})
+    testing.expect_value(t, temp_action.token_initiative_history[token_id1], [2]i32{-10, -1})
 
     temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 351 screen pos targers initiative "22"
@@ -374,10 +374,10 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, len(state.initiative_to_tokens[3]), 0)
     testing.expect_value(t, len(state.initiative_to_tokens[13]), 1)
     testing.expect_value(t, len(state.initiative_to_tokens[22]), 1)
-    testing.expect_value(t, state.initiative_to_tokens[13][0], token_id2)
-    testing.expect_value(t, state.initiative_to_tokens[22][0], token_id1)
+    testing.expect_value(t, state.initiative_to_tokens[13][0], token_id1)
+    testing.expect_value(t, state.initiative_to_tokens[22][0], token_id2)
     testing.expect_value(t, len(temp_action.token_initiative_history), 1)
-    testing.expect_value(t, temp_action.token_initiative_history[token_id1], [2]i32{-9, 0})
+    testing.expect_value(t, temp_action.token_initiative_history[token_id2], [2]i32{-9, 0})
 
     state2, tile_map2 := setup()
     redo_unmatched_actions(&state2, &tile_map2, state.undo_history[:])
@@ -385,8 +385,8 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, len(state2.initiative_to_tokens[3]), 0)
     testing.expect_value(t, len(state2.initiative_to_tokens[13]), 1)
     testing.expect_value(t, len(state2.initiative_to_tokens[22]), 1)
-    testing.expect_value(t, state2.initiative_to_tokens[13][0], token_id2)
-    testing.expect_value(t, state2.initiative_to_tokens[22][0], token_id1)
+    testing.expect_value(t, state2.initiative_to_tokens[13][0], token_id1)
+    testing.expect_value(t, state2.initiative_to_tokens[22][0], token_id2)
     teardown(&state2, &tile_map2)
 
     teardown(&state, &tile_map)
