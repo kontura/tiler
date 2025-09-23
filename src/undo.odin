@@ -122,7 +122,12 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     if ok {
                         token.alive = true
                     }
-                    append(&state.initiative_to_tokens[token.initiative], token_id)
+                    add_at_initiative(
+                        state,
+                        token.id,
+                        action.token_initiative_history[token_id].x,
+                        action.token_initiative_history[token_id].y,
+                    )
                 }
             }
             for token_id, delta_size in action.token_size {

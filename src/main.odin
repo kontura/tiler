@@ -494,13 +494,15 @@ update :: proc() {
                         // Trigger only once for each press
                         if rl.IsKeyPressed(key) {
                             if key == .DELETE {
-                                remove_token_by_id_from_initiative(state, token.id)
+                                init, init_index, ok :=remove_token_by_id_from_initiative(state, token.id)
+                                assert(ok)
                                 token.alive = false
                                 state.needs_sync = true
                                 append(&state.undo_history, make_action(.EDIT_TOKEN))
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                 action.token_life[token.id] = false
                                 action.performed = true
+                                action.token_initiative_history[token.id] = {init, init_index}
                             } else {
                                 if rl.IsKeyDown(.BACKSPACE) {
                                     key = .BACKSPACE
