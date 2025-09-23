@@ -491,65 +491,68 @@ update :: proc() {
                         }
                     } else if token != nil {
                         key := rl.GetKeyPressed()
-                        if key == .DELETE {
-                            remove_token_by_id_from_initiative(state, token.id)
-                            token.alive = false
-                            state.needs_sync = true
-                            append(&state.undo_history, make_action(.EDIT_TOKEN))
-                            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                            action.token_life[token.id] = false
-                            action.performed = true
-                        } else {
-                            if rl.IsKeyDown(.BACKSPACE) {
-                                key = .BACKSPACE
-                            }
-                            byte: u8 = u8(key)
-                            if byte != 0 {
-                                builder: strings.Builder
-                                strings.write_string(&builder, token.name)
-                                #partial switch key {
-                                case .BACKSPACE:
-                                    strings.pop_rune(&builder)
-                                case .MINUS:
-                                    {
-                                        if token.size > 1 {
-                                            token.size -= 1
-                                            append(&state.undo_history, make_action(.EDIT_TOKEN))
-                                            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                            action.performed = true
-                                            action.token_size[token.id] = -1
-                                        }
-                                    }
-                                case .EQUAL:
-                                    {
-                                        if token.size < 10 &&
-                                           (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
-                                            token.size += 1
-                                            append(&state.undo_history, make_action(.EDIT_TOKEN))
-                                            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                            action.performed = true
-                                            action.token_size[token.id] = 1
-                                        }
-                                    }
-                                case .RIGHT_SHIFT, .LEFT_SHIFT:
-                                    {
-                                    }
-                                case:
-                                    strings.write_byte(&builder, byte)
-                                }
-
+                        // Trigger only once for each press
+                        if rl.IsKeyPressed(key) {
+                            if key == .DELETE {
+                                remove_token_by_id_from_initiative(state, token.id)
+                                token.alive = false
+                                state.needs_sync = true
                                 append(&state.undo_history, make_action(.EDIT_TOKEN))
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                                action.token_life[token.id] = false
                                 action.performed = true
-                                action.token_history[token.id] = {0, 0}
-                                action.old_names[token.id] = strings.clone(token.name)
-                                action.new_names[token.id] = strings.clone(strings.to_string(builder))
+                            } else {
+                                if rl.IsKeyDown(.BACKSPACE) {
+                                    key = .BACKSPACE
+                                }
+                                byte: u8 = u8(key)
+                                if byte != 0 {
+                                    builder: strings.Builder
+                                    strings.write_string(&builder, token.name)
+                                    #partial switch key {
+                                    case .BACKSPACE:
+                                        strings.pop_rune(&builder)
+                                    case .MINUS:
+                                        {
+                                            if token.size > 1 {
+                                                token.size -= 1
+                                                append(&state.undo_history, make_action(.EDIT_TOKEN))
+                                                action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                                                action.performed = true
+                                                action.token_size[token.id] = -1
+                                            }
+                                        }
+                                    case .EQUAL:
+                                        {
+                                            if token.size < 10 &&
+                                               (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
+                                                token.size += 1
+                                                append(&state.undo_history, make_action(.EDIT_TOKEN))
+                                                action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                                                action.performed = true
+                                                action.token_size[token.id] = 1
+                                            }
+                                        }
+                                    case .RIGHT_SHIFT, .LEFT_SHIFT:
+                                        {
+                                        }
+                                    case:
+                                        strings.write_byte(&builder, byte)
+                                    }
 
-                                delete(token.name)
-                                token.name = strings.to_string(builder)
+                                    append(&state.undo_history, make_action(.EDIT_TOKEN))
+                                    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                                    action.performed = true
+                                    action.token_history[token.id] = {0, 0}
+                                    action.old_names[token.id] = strings.clone(token.name)
+                                    action.new_names[token.id] = strings.clone(strings.to_string(builder))
 
-                                state.key_consumed = true
-                                set_texture_based_on_name(state, token)
+                                    delete(token.name)
+                                    token.name = strings.to_string(builder)
+
+                                    state.key_consumed = true
+                                    set_texture_based_on_name(state, token)
+                                }
                             }
                         }
                     } else if rl.IsMouseButtonPressed(.LEFT) {
