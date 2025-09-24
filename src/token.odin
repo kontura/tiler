@@ -130,7 +130,7 @@ token_spawn :: proc(
         assert(ok)
         action.token_initiative_history[t.id] = {init_pos, init_index}
         action.token_history[t.id] = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
-        action.new_names[t.id] = name
+        action.new_names[t.id] = strings.clone(name)
     }
     return t.id
 }
