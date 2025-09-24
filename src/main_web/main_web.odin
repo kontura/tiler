@@ -391,7 +391,7 @@ main_update :: proc "c" () -> bool {
     }
 
     free_all(context.temp_allocator)
-    return game.should_run()
+    return true
 }
 
 @(export)
