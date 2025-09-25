@@ -646,6 +646,7 @@ update :: proc() {
                 if state.previous_touch_dist != 0 {
                     zoom_amount := i32((state.previous_touch_dist - dist) * 0.1)
                     tile_map.tile_side_in_pixels -= zoom_amount
+                    tile_map.tile_side_in_pixels = math.max(20, tile_map.tile_side_in_pixels)
                 }
 
                 state.previous_touch_dist = dist
