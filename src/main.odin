@@ -631,7 +631,7 @@ update :: proc() {
         {
             if state.previous_touch_pos != 0 {
                 d := state.previous_touch_pos - mouse_pos
-                state.camera_pos.rel_tile += d / 4
+                state.camera_pos.rel_tile += d / 5
             }
 
             state.previous_touch_pos = mouse_pos
