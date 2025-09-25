@@ -106,6 +106,13 @@ set_texture_based_on_name :: proc(state: ^GameState, token: ^Token) {
 
 }
 
+clear_selected_tokens :: proc(state: ^GameState) {
+    if len(state.selected_tokens) > 0 {
+        state.last_selected_token_id = state.selected_tokens[0]
+        clear(&state.selected_tokens)
+    }
+}
+
 token_spawn :: proc(
     state: ^GameState,
     action: ^Action,
