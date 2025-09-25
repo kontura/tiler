@@ -1110,7 +1110,7 @@ update :: proc() {
     if state.active_tool == .HELP {
         rl.DrawRectangleV({30, 30}, {f32(state.screen_width) - 60, f32(state.screen_height) - 60}, {0, 0, 0, 155})
         offset: i32 = 100
-        for c in config {
+        for &c in config {
             builder := strings.builder_make(context.temp_allocator)
             for trigger in c.key_triggers {
                 strings.write_string(
@@ -1120,14 +1120,19 @@ update :: proc() {
             }
             strings.pop_rune(&builder)
             strings.pop_rune(&builder)
-            rl.DrawText(strings.to_cstring(&builder) or_else BUILDER_FAILED, 100, offset, 18, rl.WHITE)
-            //TODO(amatej): fix help
-            //if c.icon != nil {
-            //    rl.GuiDrawIcon(c.icon, 500, offset, 1, rl.WHITE)
-            //}
-            //rl.DrawText(strings.clone_to_cstring(c.help, context.temp_allocator), 540, offset, 18, rl.WHITE)
-            offset += 30
+            rl.DrawText(strings.to_cstring(&builder) or_else BUILDER_FAILED, 100, offset, 15, rl.WHITE)
+            for &bind in c.bindings {
+                if bind.icon != nil {
+                    rl.GuiDrawIcon(bind.icon, 500, offset, 1, rl.WHITE)
+                }
+                if bind.tool != nil {
+                    tool_str, ok := fmt.enum_value_to_string(bind.tool.?)
+                    rl.DrawText(strings.clone_to_cstring(tool_str, context.temp_allocator), 340, offset, 18, rl.WHITE)
+                }
+                rl.DrawText(strings.clone_to_cstring(bind.help, context.temp_allocator), 540, offset, 18, rl.WHITE)
 
+                offset += 20
+            }
         }
     }
 
