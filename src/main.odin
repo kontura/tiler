@@ -695,10 +695,9 @@ update :: proc() {
         }
     }
 
-
     if state.mobile {
+        // We support only move and touch tools for mobile
         if touch_count > state.previous_touch_count {
-            //TODO(amatej): this overrides any other active tool...
             if len(state.selected_tokens) != 0 {
                 state.active_tool = .MOVE_TOKEN
             } else if touch_count >= 2 {
