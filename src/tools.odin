@@ -49,9 +49,12 @@ color_over :: proc(c1: [4]u8, c2: [4]u8) -> [4]u8 {
     return rl.ColorFromNormalized(res).xyzw
 }
 
-wall_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
+wall_tool :: proc(tile_map: ^TileMap, start, end: TileMapPosition, color: [4]u8, action: ^Action) -> cstring {
+    action.start = start
+    action.end = end
+    action.color = color
+
     drawn: f32 = 0
-    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
     // convert to crossing possition:
     // The very top left (first) crossing i 0,0
     // 0,0, +---+---+--+
@@ -59,10 +62,8 @@ wall_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, ac
     //      +---+---+--+
     //      |   |   |  |
     //      +---+---+--+
-    start_crossing_pos: [2]u32 = tile_pos_to_crossing_pos(start_mouse_tile)
-
-    end_mouse_tile: TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
-    end_crossing_pos: [2]u32 = tile_pos_to_crossing_pos(end_mouse_tile)
+    start_crossing_pos: [2]u32 = tile_pos_to_crossing_pos(start)
+    end_crossing_pos: [2]u32 = tile_pos_to_crossing_pos(end)
 
     start: [2]u32 = {
         math.min(start_crossing_pos.x, end_crossing_pos.x),
@@ -81,7 +82,7 @@ wall_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, ac
             old_tile := get_tile(tile_map, {x, y})
             new_tile := old_tile
             new_tile.walls += {Direction.TOP}
-            new_tile.wall_colors[Direction.TOP] = state.selected_color
+            new_tile.wall_colors[Direction.TOP] = color
             action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
             set_tile(tile_map, {x, y}, new_tile)
         }
@@ -92,7 +93,7 @@ wall_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, ac
             old_tile := get_tile(tile_map, {x, y})
             new_tile := old_tile
             new_tile.walls += {Direction.LEFT}
-            new_tile.wall_colors[Direction.LEFT] = state.selected_color
+            new_tile.wall_colors[Direction.LEFT] = color
             action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
             set_tile(tile_map, {x, y}, new_tile)
         }
@@ -296,7 +297,7 @@ move_token_tool :: proc(
     action.start = token.position
     action.end = mouse_tile_pos
     // We want to keep the tokens at the center of each tile
-    action.end.rel_tile = {0,0}
+    action.end.rel_tile = {0, 0}
     if feedback {
         append(&state.temp_actions, make_action(.BRUSH, context.temp_allocator))
         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]

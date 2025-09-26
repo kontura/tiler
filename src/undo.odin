@@ -174,6 +174,10 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         {
             draw_cone_tiles(tile_map, action.start, action.end, action.color, action)
         }
+    case .WALL:
+        {
+            wall_tool(tile_map, action.start, action.end, action.color, action)
+        }
     case .BRUSH:
         {
             for abs_tile, &tile in action.tile_history {
@@ -276,7 +280,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 }
             }
         }
-    case .WALL, .EDIT_BG, .LIGHT_SOURCE:
+    case .EDIT_BG, .LIGHT_SOURCE:
         {
             fmt.println("TODO(amatej): missing implementation")
         }

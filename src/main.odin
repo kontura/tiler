@@ -476,13 +476,26 @@ update :: proc() {
             if rl.IsMouseButtonDown(.LEFT) {
                 append(&state.temp_actions, make_action(.WALL, context.temp_allocator))
                 temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                tooltip = wall_tool(state, tile_map, mouse_pos, temp_action)
+                start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(
+                    state.tool_start_position.?,
+                    state,
+                    tile_map,
+                )
+                end_mouse_tile: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
+                tooltip = wall_tool(tile_map, start_mouse_tile, end_mouse_tile, state.selected_color, temp_action)
             } else if rl.IsMouseButtonReleased(.LEFT) {
                 if (state.tool_start_position != nil) {
                     append(&state.undo_history, make_action(.WALL))
                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                    tooltip = wall_tool(state, tile_map, mouse_pos, action)
+                    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(
+                        state.tool_start_position.?,
+                        state,
+                        tile_map,
+                    )
+                    end_mouse_tile: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
+                    tooltip = wall_tool(tile_map, start_mouse_tile, end_mouse_tile, state.selected_color, action)
                     action.performed = true
+                    state.needs_sync = true
                 }
             } else {
                 highligh_current_tile_intersection = true
