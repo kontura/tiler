@@ -15,8 +15,9 @@ Action :: struct {
     // Whether this action should be undone (this is an undo action)
     undo:                     bool,
 
-    //TODO(amatej): I don't think I need to store the id 4 times..
+    //TODO(amatej): remove this
     token_history:            map[u64][2]i32,
+    //TODO(amatej): I don't think I need to store the id 4 times..
     token_initiative_history: map[u64][2]i32,
     token_initiative_start:   map[u64][2]i32,
     token_life:               map[u64]bool,
@@ -93,7 +94,7 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         {
             for token_id, &pos_delta in action.token_history {
                 token := &state.tokens[token_id]
-                add_tile_pos_delta(&token.position, pos_delta * -1)
+                token.position = action.start
             }
         }
     case .EDIT_TOKEN_INITIATIVE:
@@ -184,8 +185,8 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         {
             for token_id, &pos_delta in action.token_history {
                 token, ok := &state.tokens[token_id]
-                if ok && token.position == action.start {
-                    add_tile_pos_delta(&token.position, pos_delta)
+                if ok {
+                    token.position = action.end
                 }
             }
         }
@@ -194,6 +195,8 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             for token_id, &delta_init_pos in action.token_initiative_history {
                 old_init, old_init_index, ok := get_token_init_pos(state, token_id)
                 old: [2]i32 = {old_init, old_init_index}
+                //TODO(amatej): first move the token to action.token_initiative_start[token_id]
+                //              similarly to what MOVE_TOKEN does
                 if ok && old == action.token_initiative_start[token_id] {
                     new_init_pos := [2]i32{old_init, old_init_index} - delta_init_pos
                     move_initiative_token(state, token_id, old_init, old_init_index, new_init_pos.x, new_init_pos.y)

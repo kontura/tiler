@@ -295,6 +295,8 @@ move_token_tool :: proc(
     action.token_history[token.id] = token_pos_delta
     action.start = token.position
     action.end = mouse_tile_pos
+    // We want to keep the tokens at the center of each tile
+    action.end.rel_tile = {0,0}
     if feedback {
         append(&state.temp_actions, make_action(.BRUSH, context.temp_allocator))
         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
