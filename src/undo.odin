@@ -56,6 +56,7 @@ make_action :: proc(tool: Tool, allocator := context.allocator) -> Action {
     action.token_initiative_history.allocator = allocator
     action.token_initiative_start.allocator = allocator
     action.token_life.allocator = allocator
+    action.token_size.allocator = allocator
     action.old_names.allocator = allocator
     action.new_names.allocator = allocator
     action.mine = true
@@ -70,6 +71,7 @@ delete_action :: proc(action: ^Action) {
     delete(action.token_life)
     delete(action.token_initiative_history)
     delete(action.token_initiative_start)
+    delete(action.token_size)
     for _, &name in action.old_names {
         delete(name)
     }
