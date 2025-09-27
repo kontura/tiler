@@ -247,7 +247,6 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> [dynamic]game.Action {
         game_action = get_from_map(doc, action_map, "action", game.Action)
         game_action.mine = false
 
-
         change: AMchangePtr
 
         AMitemToChange(change_item, &change)
@@ -296,7 +295,7 @@ paste_image :: proc "c" (data: [^]u8, width: i32, height: i32) {
 }
 
 @(export)
-main_start :: proc "c" (mobile: bool) {
+main_start :: proc "c" (path_len: u32, path_data: [^]u8, mobile: bool) {
     using am
     context = runtime.default_context()
     // The WASM allocator doesn't seem to work properly in combination with
@@ -329,7 +328,7 @@ main_start :: proc "c" (mobile: bool) {
     connect_signaling_websocket()
 
     mount_idbfs()
-    game.init(mobile)
+    game.init(string(path_data[:path_len]), mobile)
 }
 
 @(export)
@@ -410,7 +409,8 @@ web_window_size_changed :: proc "c" (w: c.int, h: c.int) {
 @(export)
 load_save :: proc "c" () {
     context = web_context
-    data, ok := game.read_entire_file("/persist/tiler_save", context.temp_allocator)
+    save_name := fmt.aprint("/persist/", game.state.path, sep = "", allocator = context.temp_allocator)
+    data, ok := game.read_entire_file(save_name, context.temp_allocator)
     if ok {
         result := am.AMloadIncremental(doc, &data[0], len(data))
         am.AMresultFree(result)
@@ -444,7 +444,8 @@ store_save :: proc "c" () -> uint {
             fmt.println("writing incremental bytes")
             bytes := am.item_to_or_report(item, am.AMbyteSpan)
             count = bytes.count
-            game.write_entire_file("/persist/tiler_save", bytes.src[:bytes.count])
+            save_name := fmt.aprint("/persist/", game.state.path, sep = "", allocator = context.temp_allocator)
+            game.write_entire_file(save_name, bytes.src[:bytes.count])
         }
     }
     return count

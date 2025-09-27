@@ -70,6 +70,7 @@ GameState :: struct {
     undo_history:           [dynamic]Action,
     tokens:                 map[u64]Token,
     initiative_to_tokens:   map[i32][dynamic]u64,
+    path:                   string,
 }
 
 Widget :: enum {
@@ -184,7 +185,7 @@ add_background :: proc(data: [^]u8, width: i32, height: i32) {
     state.bg = rl.LoadTextureFromImage(image)
 }
 
-game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32) {
+game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32, path: string) {
     state.camera_pos.abs_tile.x = 100
     state.camera_pos.abs_tile.y = 100
     state.camera_pos.rel_tile.x = 0.0
@@ -213,6 +214,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
         name = strings.clone(" "),
         size = 1,
     }
+    state.path = path
 }
 
 tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {
@@ -229,12 +231,12 @@ tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
 }
 
-init :: proc(mobile := false) {
+init :: proc(path: string = "root", mobile := false) {
     rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "Tiler")
 
     state = new(GameState)
-    game_state_init(state, mobile, rl.GetScreenWidth(), rl.GetScreenHeight())
+    game_state_init(state, mobile, rl.GetScreenWidth(), rl.GetScreenHeight(), path)
 
     tile_map = new(TileMap)
     tile_map_init(tile_map, mobile)
