@@ -466,8 +466,13 @@ update :: proc() {
         {
             if selected_widget == .MAP {
                 if rl.IsMouseButtonPressed(.LEFT) {
-                    mouse_tile: Tile = get_tile(tile_map, mouse_tile_pos.abs_tile)
-                    state.selected_color = mouse_tile.color
+                    token := find_token_at_screen(tile_map, state, mouse_pos)
+                    if token != nil {
+                        state.selected_color = token.color
+                    } else {
+                        mouse_tile: Tile = get_tile(tile_map, mouse_tile_pos.abs_tile)
+                        state.selected_color = mouse_tile.color
+                    }
                 }
                 icon = .ICON_COLOR_PICKER
             }
