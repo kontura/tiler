@@ -6,7 +6,7 @@ import "core:testing"
 setup :: proc() -> (GameState, TileMap) {
     state: GameState
     tile_map: TileMap
-    game_state_init(&state, false, 100, 100)
+    game_state_init(&state, false, 100, 100, "root")
     tile_map_init(&tile_map, false)
 
     return state, tile_map
