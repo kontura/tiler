@@ -275,12 +275,8 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> [dynamic]game.Action {
 
 update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
     new_undo_hist := get_undo_history_from_doc(doc)
-    game.redo_unmatched_actions(game.state, game.tile_map, new_undo_hist[:])
-    for _, index in game.state.undo_history {
-        game.delete_action(&game.state.undo_history[index])
-    }
-    delete(game.state.undo_history)
-    game.state.undo_history = new_undo_hist
+    old_undone, new_redone := game.redo_unmatched_actions(game.state, game.tile_map, new_undo_hist[:])
+    game.splice_dynamic_arrays_of_actions(&game.state.undo_history, &new_undo_hist, old_undone, new_redone)
 }
 
 @(export)

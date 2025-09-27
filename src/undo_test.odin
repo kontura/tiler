@@ -391,3 +391,111 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
 
     teardown(&state, &tile_map)
 }
+
+@(test)
+splice_dynamic_arrays_of_actions_test :: proc(t: ^testing.T) {
+    a: [dynamic]Action
+    temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
+    append(&a, temp_action)
+    temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
+    append(&a, temp_action)
+
+    b: [dynamic]Action
+    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    append(&b, temp_action)
+    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    append(&b, temp_action)
+
+    splice_dynamic_arrays_of_actions(&a, &b, 1, 1)
+    testing.expect_value(t, len(a), 2)
+    testing.expect_value(t, a[0].tool, Tool.EDIT_TOKEN_INITIATIVE)
+    testing.expect_value(t, a[1].tool, Tool.MOVE_TOKEN)
+
+    for _, i in a {
+        delete_action(&a[i])
+    }
+    delete(a)
+}
+
+@(test)
+splice_dynamic_arrays_of_actions_test2 :: proc(t: ^testing.T) {
+    a: [dynamic]Action
+    temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
+    append(&a, temp_action)
+    temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
+    append(&a, temp_action)
+
+    b: [dynamic]Action
+    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    append(&b, temp_action)
+    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    append(&b, temp_action)
+
+    splice_dynamic_arrays_of_actions(&a, &b, 0, 2)
+    testing.expect_value(t, len(a), 4)
+    testing.expect_value(t, a[0].tool, Tool.EDIT_TOKEN_INITIATIVE)
+    testing.expect_value(t, a[1].tool, Tool.EDIT_TOKEN_INITIATIVE)
+    testing.expect_value(t, a[2].tool, Tool.MOVE_TOKEN)
+    testing.expect_value(t, a[3].tool, Tool.MOVE_TOKEN)
+
+    for _, i in a {
+        delete_action(&a[i])
+    }
+    delete(a)
+}
+
+@(test)
+splice_dynamic_arrays_of_actions_test3 :: proc(t: ^testing.T) {
+    a: [dynamic]Action
+    temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
+    append(&a, temp_action)
+    temp_action = make_action(.BRUSH, context.temp_allocator)
+    append(&a, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    append(&a, temp_action)
+
+    b: [dynamic]Action
+    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    append(&b, temp_action)
+    temp_action = make_action(.CONE, context.temp_allocator)
+    append(&b, temp_action)
+
+    splice_dynamic_arrays_of_actions(&a, &b, 3, 1)
+    testing.expect_value(t, len(a), 1)
+    testing.expect_value(t, a[0].tool, Tool.CONE)
+
+    for _, i in a {
+        delete_action(&a[i])
+    }
+    delete(a)
+}
+
+@(test)
+splice_dynamic_arrays_of_actions_test4 :: proc(t: ^testing.T) {
+    a: [dynamic]Action
+    temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
+    append(&a, temp_action)
+    temp_action = make_action(.BRUSH, context.temp_allocator)
+    append(&a, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    append(&a, temp_action)
+
+    b: [dynamic]Action
+    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    append(&b, temp_action)
+    temp_action = make_action(.CONE, context.temp_allocator)
+    append(&b, temp_action)
+
+    splice_dynamic_arrays_of_actions(&a, &b, 0, 2)
+    testing.expect_value(t, len(a), 5)
+    testing.expect_value(t, a[0].tool, Tool.EDIT_TOKEN_INITIATIVE)
+    testing.expect_value(t, a[1].tool, Tool.BRUSH)
+    testing.expect_value(t, a[2].tool, Tool.CIRCLE)
+    testing.expect_value(t, a[3].tool, Tool.MOVE_TOKEN)
+    testing.expect_value(t, a[4].tool, Tool.CONE)
+
+    for _, i in a {
+        delete_action(&a[i])
+    }
+    delete(a)
+}
