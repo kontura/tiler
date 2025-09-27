@@ -202,7 +202,6 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.selected_color.b = u8(rand.int_max(255))
     state.selected_alpha = 1
     state.needs_sync = true
-    state.debug = true
     state.mobile = mobile
     state.bg_scale = 1
     state.should_run = true
