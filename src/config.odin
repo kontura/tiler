@@ -344,4 +344,8 @@ config: []Config = {
             },
         },
     },
+    {
+        {{.F, .PRESSED}},
+        {{nil, nil, "Toggle offline state", nil, proc(state: ^GameState) {state.offline = !state.offline}}},
+    },
 }

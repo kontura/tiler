@@ -71,6 +71,7 @@ GameState :: struct {
     tokens:                 map[u64]Token,
     initiative_to_tokens:   map[i32][dynamic]u64,
     path:                   string,
+    offline:                bool,
 }
 
 Widget :: enum {
@@ -1058,6 +1059,10 @@ update :: proc() {
         } else {
             state.save = .NONE
         }
+    }
+    if state.offline {
+        msg := fmt.caprint("Offline", allocator = context.temp_allocator)
+        rl.DrawText(msg, 10, 10, 18, rl.RED)
     }
     // draw debug info
     if state.debug {
