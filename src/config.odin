@@ -55,7 +55,7 @@ move_selected_tokens_by_delta :: proc(state: ^GameState, delta: [2]i32) {
 select_next_init_token :: proc(state: ^GameState, init_start: i32, init_index_start: i32) {
     init_index := init_index_start
     init := init_start
-    for true {
+    for loop := 0; loop < 2; loop += 1 {
         for i: i32 = init; i < INITIATIVE_COUNT; i += 1 {
             tokens, ok := &state.initiative_to_tokens[i]
             if ok {
