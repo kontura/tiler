@@ -1,5 +1,6 @@
 package tiler
 
+import "core:math"
 import "core:math/rand"
 import "core:strings"
 import rl "vendor:raylib"
@@ -56,6 +57,32 @@ make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name: string = "
 
 delete_token :: proc(token: ^Token) {
     delete(token.name)
+}
+
+token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
+    init, init_index, ok := remove_token_by_id_from_initiative(state, token.id)
+    assert(ok)
+    token.alive = false
+    if action != nil {
+        action.token_life[token.id] = false
+        action.performed = true
+        action.token_initiative_history[token.id] = {init, init_index}
+    }
+    for i := 0; i < 80 * int(token.size) * int(token.size); i += 1 {
+        angle := rand.float32() * 2 * math.PI
+        rand_radius := math.sqrt(rand.float32()) * f32(token.size) * tile_map.tile_side_in_feet
+        random_pos_in_token_circle := token.position
+        random_pos_in_token_circle.rel_tile.x += rand_radius * math.cos(angle)
+        random_pos_in_token_circle.rel_tile.y += rand_radius * math.sin(angle)
+        random_pos_in_token_circle = recanonicalize_position(tile_map, random_pos_in_token_circle)
+        particle_emit(
+            state,
+            random_pos_in_token_circle,
+            PARTICLE_BASE_VELOCITY + f32(token.size) * 4,
+            PARTICLE_LIFETIME + f32(token.size) / 4,
+            token.color,
+        )
+    }
 }
 
 // When size is even the real token position is in lower right,

@@ -260,10 +260,9 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     }
                 } else {
                     // life is false == token was deleted
-                    remove_token_by_id_from_initiative(state, token_id)
                     token, ok := &state.tokens[token_id]
                     if ok {
-                        token.alive = false
+                        token_kill(state, token, nil)
                     }
                 }
             }

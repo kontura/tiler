@@ -72,6 +72,8 @@ GameState :: struct {
     initiative_to_tokens:   map[i32][dynamic]u64,
     path:                   string,
     offline:                bool,
+    particles:              [1024]Particle,
+    particle_index:         u32,
 }
 
 Widget :: enum {
@@ -303,6 +305,8 @@ update :: proc() {
         }
     }
 
+    particles_update(state, tile_map, rl.GetFrameTime())
+
     if !state.mobile {
         // Mouse clicks
         if rl.IsMouseButtonPressed(.LEFT) {
@@ -523,16 +527,11 @@ update :: proc() {
                         // Trigger only once for each press
                         if rl.IsKeyPressed(key) {
                             if key == .DELETE {
-                                init, init_index, ok := remove_token_by_id_from_initiative(state, token.id)
-                                assert(ok)
-                                token.alive = false
-                                state.needs_sync = true
                                 append(&state.undo_history, make_action(.EDIT_TOKEN))
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                action.token_life[token.id] = false
-                                action.performed = true
-                                action.token_initiative_history[token.id] = {init, init_index}
+                                token_kill(state, token, action)
                                 clear_selected_tokens(state)
+                                state.needs_sync = true
                             } else {
                                 if rl.IsKeyDown(.BACKSPACE) {
                                     key = .BACKSPACE
@@ -1049,6 +1048,19 @@ update :: proc() {
             }
             rl.DrawRectangleGradientH(0, row_offset, 100, 2, {40, 40, 40, 155}, {0, 0, 0, 0})
         }
+    }
+
+    // draw particles
+    for &particle in state.particles {
+        if particle.lifetime_remaining <= 0 {
+            continue
+        }
+
+        pos: rl.Vector2 = tile_map_to_screen_coord_full(particle.position, state, tile_map)
+        color := particle.color_begin
+        // particle lifetime is 0 to 1, multiply by 255 to get opacity
+        color.w = u8(particle.lifetime_remaining / particle.lifetime * 255)
+        rl.DrawCircleV(pos, particle.size, color.xyzw)
     }
 
     if state.save == .DONE {
