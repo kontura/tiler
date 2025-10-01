@@ -1121,6 +1121,10 @@ update :: proc() {
                 a.performed ? rl.GREEN : rl.RED,
             )
         }
+        dt := rl.GetFrameTime()
+        fps := 1/dt
+        fps_text := fmt.caprint("fps", ": ", fps, allocator = context.temp_allocator)
+        rl.DrawText(fps_text, state.screen_width - 200, state.screen_height - 100, 17, rl.GREEN)
     }
 
     if (state.draw_grid) {
