@@ -54,14 +54,7 @@ _list_files_in_dir :: proc(path: string) -> []string {
             // type 8 should be regular file
             if dir != nil && dir.d_type == 8 {
                 str := ([^]u8)(&dir.d_name)
-                str_size := int(dir.d_reclen) - 1 - cast(int)offset_of(dirent, d_name)
-                for str[str_size] != 0 {
-                    str_size -= 1
-                }
-                for str[str_size - 1] == 0 {
-                    str_size -= 1
-                }
-                append(&data, string(str[:str_size]))
+                append(&data, strings.clone_from_cstring(cstring(str), context.temp_allocator))
             }
             dir = readdir(d)
         }
