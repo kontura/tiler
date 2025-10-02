@@ -1,5 +1,6 @@
 package tiler
 
+import "core:fmt"
 import "core:math"
 import "core:math/rand"
 import "core:strings"
@@ -61,7 +62,7 @@ delete_token :: proc(token: ^Token) {
 
 token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
     init, init_index, ok := remove_token_by_id_from_initiative(state, token.id)
-    assert(ok)
+    assert(ok, fmt.aprint("tried to kill: ", token.id, " and cant find it in initiative.", allocator=context.temp_allocator))
     token.alive = false
     if action != nil {
         action.token_life[token.id] = false
