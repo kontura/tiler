@@ -219,7 +219,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             keys := make([dynamic]u64, len(action.token_life), allocator = context.temp_allocator)
             i := 0
             for key, _ in action.token_life {
-                keys[0] = key
+                keys[i] = key
                 i += 1
             }
             slice.sort(keys[:])
