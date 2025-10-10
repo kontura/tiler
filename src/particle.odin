@@ -1,7 +1,6 @@
 package tiler
 
 import "core:math/rand"
-import "core:fmt"
 
 Particle :: struct {
     position:           TileMapPosition,
