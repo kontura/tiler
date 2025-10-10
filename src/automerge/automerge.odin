@@ -733,7 +733,7 @@ get_map_action :: proc(
     action.token_initiative_history = get_from_map(doc, map_id, "token_initiative_history", map[u64][2]i32)
     action.token_initiative_start = get_from_map(doc, map_id, "token_initiative_start", map[u64][2]i32)
     action.token_life = get_from_map(doc, map_id, "token_life", map[u64]bool)
-    action.token_size = get_from_map(doc, map_id, "token_size", map[u64]i64)
+    action.token_size = get_from_map(doc, map_id, "token_size", map[u64]f64)
 
     action.old_names = get_from_map(doc, map_id, "old_names", map[u64]string)
     action.new_names = get_from_map(doc, map_id, "new_names", map[u64]string)

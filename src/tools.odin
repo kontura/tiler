@@ -318,7 +318,7 @@ move_token_tool :: proc(
             half := tile_map.tile_side_in_feet / 2
             // If the token size is even shift the center of the token
             // to the Tile corners
-            if token.size % 2 == 0 {
+            if math.mod_f32(token.size, 2) <= 0.5 {
                 pos.rel_tile = {-half, -half}
             }
             // Grow the raidus by the size of the token (-1 because size 1 is the default)

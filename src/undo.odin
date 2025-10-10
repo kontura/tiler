@@ -21,7 +21,7 @@ Action :: struct {
     token_initiative_history: map[u64][2]i32,
     token_initiative_start:   map[u64][2]i32,
     token_life:               map[u64]bool,
-    token_size:               map[u64]i64,
+    token_size:               map[u64]f64,
 
     // This can work for only one token
     // But will we ever rename more tokens at once>
@@ -136,7 +136,7 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             for token_id, delta_size in action.token_size {
                 token, ok := &state.tokens[token_id]
                 if ok {
-                    token.size -= i32(delta_size)
+                    token.size -= f32(delta_size)
                 }
             }
             for token_id, &old_name in action.old_names {
@@ -269,7 +269,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             for token_id, delta_size in action.token_size {
                 token, ok := &state.tokens[token_id]
                 if ok {
-                    token.size += i32(delta_size)
+                    token.size += f32(delta_size)
                 }
             }
             for token_id, &new_name in action.new_names {

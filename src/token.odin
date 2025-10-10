@@ -12,7 +12,7 @@ Token :: struct {
     color:      [4]u8,
     name:       string,
     moved:      u32,
-    size:       i32,
+    size:       f32,
     initiative: i32,
     texture:    ^rl.Texture2D,
     alive:      bool,
@@ -20,11 +20,11 @@ Token :: struct {
 
 get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (center: [2]f32, radius: f32) {
     center = tile_map_to_screen_coord(token.position, state, tile_map)
-    if token.size % 2 == 0 {
+    if math.mod_f32(token.size, 2) <= 0.5 {
         center -= {f32(tile_map.tile_side_in_pixels) / 2, f32(tile_map.tile_side_in_pixels) / 2}
-        radius = f32(tile_map.tile_side_in_pixels / 2 * token.size)
+        radius = f32(tile_map.tile_side_in_pixels) / 2 * token.size
     } else {
-        radius = f32(tile_map.tile_side_in_pixels / 2 * token.size)
+        radius = f32(tile_map.tile_side_in_pixels) / 2 * token.size
     }
 
     return center, radius
@@ -35,7 +35,7 @@ get_token_texture_pos_size :: proc(tile_map: ^TileMap, state: ^GameState, token:
     pos -= f32(tile_map.tile_side_in_pixels) / 2
     pos -= f32(token.size / 2) * f32(tile_map.tile_side_in_pixels)
     // We assume token textures are squares
-    scale = f32(tile_map.tile_side_in_pixels * token.size) / f32(token.texture.width)
+    scale = f32(tile_map.tile_side_in_pixels) * token.size / f32(token.texture.width)
 
     return pos, scale
 }
@@ -89,7 +89,7 @@ token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
 // When size is even the real token position is in lower right,
 // see get_token_circle
 set_token_position :: proc(token: ^Token, pos: TileMapPosition) {
-    if token.size % 2 == 0 {
+    if math.mod_f32(token.size, 2) <= 0.5 {
         pos := pos
         pos.abs_tile += {1, 1}
         token.position = pos
