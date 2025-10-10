@@ -17,12 +17,12 @@ PARTICLE_SIZE: f32 : 3
 PARTICLE_LIFETIME: f32 : 1
 PARTICLE_BASE_VELOCITY: f32 : 10
 
-particle_emit :: proc(state: ^GameState, pos: TileMapPosition, velocity: f32, lifetime: f32, color: [4]u8) {
+particle_emit :: proc(state: ^GameState, pos: TileMapPosition, velocity: f32, lifetime: f32, color: [4]u8, size: f32) {
     p := &state.particles[state.particle_index]
     p.position = pos
     p.color_begin = color
     p.color_end = color
-    p.size = PARTICLE_SIZE
+    p.size = size
     p.velocity.x = velocity * (rand.float32() - .5) * 2
     p.velocity.y = velocity * (rand.float32() - .5) * 2
     p.lifetime = lifetime

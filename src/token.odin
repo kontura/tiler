@@ -82,6 +82,7 @@ token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
             PARTICLE_BASE_VELOCITY + f32(token.size) * 4,
             PARTICLE_LIFETIME + f32(token.size) / 4,
             token.color,
+            PARTICLE_SIZE,
         )
     }
 }
