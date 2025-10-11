@@ -79,7 +79,7 @@ token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
     }
     for i := 0; i < 80 * int(token.size) * int(token.size); i += 1 {
         angle := rand.float32() * 2 * math.PI
-        rand_radius := math.sqrt(rand.float32()) * f32(token.size) * tile_map.tile_side_in_feet
+        rand_radius := math.sqrt(rand.float32()) * f32(token.size) * tile_map.tile_side_in_feet / 2
         random_pos_in_token_circle := token.position
         random_pos_in_token_circle.rel_tile.x += rand_radius * math.cos(angle)
         random_pos_in_token_circle.rel_tile.y += rand_radius * math.sin(angle)
