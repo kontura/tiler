@@ -2,6 +2,7 @@ package tiler
 
 import "core:fmt"
 import "core:math"
+import "core:math/rand"
 import "core:strings"
 import rl "vendor:raylib"
 
@@ -328,6 +329,24 @@ move_token_tool :: proc(
         token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token.position.abs_tile, temp_action)
     } else {
         token.moved = 0
+        //Spawn particles on move
+        //for i := 0; i < 9 * int(token.size) * int(token.size); i += 1 {
+        //    angle := rand.float32() * 2 * math.PI
+        //    radius := f32(token.size) * tile_map.tile_side_in_feet / 2
+        //    random_pos_on_token_circle := mouse_tile_pos
+        //    random_pos_on_token_circle.rel_tile = {0, 0}
+        //    random_pos_on_token_circle.rel_tile.x += radius * math.cos(angle)
+        //    random_pos_on_token_circle.rel_tile.y += radius * math.sin(angle)
+        //    random_pos_on_token_circle = recanonicalize_position(tile_map, random_pos_on_token_circle)
+        //    particle_emit(
+        //        state,
+        //        random_pos_on_token_circle,
+        //        PARTICLE_BASE_VELOCITY + f32(token.size) * 28,
+        //        0.3,
+        //        {122, 122, 122, 255},
+        //        3,
+        //    )
+        //}
     }
     add_tile_pos_delta(&token.position, token_pos_delta)
 }
