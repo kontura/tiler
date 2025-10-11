@@ -831,7 +831,7 @@ update :: proc() {
                     //TODO(amatej): use DrawLineEx if we want to do diagonals
                     rl.DrawRectangleV(
                         {min_x, min_y},
-                        {f32(tile_map.tile_side_in_pixels), f32(2)},
+                        {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels) * .1},
                         current_tile_value.wall_colors[Direction.TOP].xyzw,
                     )
                 }
@@ -840,7 +840,7 @@ update :: proc() {
                 if Direction.LEFT in current_tile_value.walls {
                     rl.DrawRectangleV(
                         {min_x, min_y},
-                        {f32(2), f32(tile_map.tile_side_in_pixels)},
+                        {f32(tile_map.tile_side_in_pixels) * .1, f32(tile_map.tile_side_in_pixels)},
                         current_tile_value.wall_colors[Direction.LEFT].xyzw,
                     )
                 }
@@ -1122,7 +1122,7 @@ update :: proc() {
             )
         }
         dt := rl.GetFrameTime()
-        fps := 1/dt
+        fps := 1 / dt
         fps_text := fmt.caprint("fps", ": ", fps, allocator = context.temp_allocator)
         rl.DrawText(fps_text, state.screen_width - 200, state.screen_height - 100, 17, rl.GREEN)
     }
