@@ -49,6 +49,45 @@ Action :: struct {
     tile_history:             map[[2]u32]Tile,
 }
 
+duplicate_action :: proc(a: ^Action) -> Action {
+    action: Action = make_action(a.tool, a.tile_history.allocator)
+    action.start = a.start
+    action.end = a.end
+    action.color = a.color
+    action.radius = a.radius
+    action.undo = a.undo
+    action.reverted = a.reverted
+    action.hash = a.hash
+    action.mine = a.mine
+    action.performed = a.performed
+    for id, &hist in a.token_history {
+        action.token_history[id] = hist
+    }
+    for id, &hist in a.token_initiative_history {
+        action.token_initiative_history[id] = hist
+    }
+    for id, &hist in a.token_initiative_start {
+        action.token_initiative_start[id] = hist
+    }
+    for id, &hist in a.token_life {
+        action.token_life[id] = hist
+    }
+    for id, &hist in a.token_size {
+        action.token_size[id] = hist
+    }
+    for id, &hist in a.old_names {
+        action.old_names[id] = hist
+    }
+    for id, &hist in a.new_names {
+        action.new_names[id] = hist
+    }
+    for pos, &hist in a.tile_history {
+        action.tile_history[pos] = hist
+    }
+
+    return action
+}
+
 make_action :: proc(tool: Tool, allocator := context.allocator) -> Action {
     action: Action
     action.tile_history.allocator = allocator

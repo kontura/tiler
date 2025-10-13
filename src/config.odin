@@ -90,7 +90,12 @@ config: []Config = {
                     // TODO(amatej): convert to a tool
                     if state.debug {
                         if state.undone > 0 {
-                            redo_action(state, tile_map, &state.undo_history[len(state.undo_history) - state.undone])
+                            a := &state.undo_history[len(state.undo_history) - state.undone]
+                            if a.undo {
+                                undo_action(state, tile_map, a)
+                            } else {
+                                redo_action(state, tile_map, a)
+                            }
                             state.undone -= 1
                         }
                     } else {
@@ -103,11 +108,12 @@ config: []Config = {
     {{{.DOWN, .PRESSED}}, {{.ICON_ARROW_DOWN, nil, "Move down", nil, proc(state: ^GameState) {
                     if state.debug {
                         if state.undone < len(state.undo_history) {
-                            undo_action(
-                                state,
-                                tile_map,
-                                &state.undo_history[len(state.undo_history) - 1 - state.undone],
-                            )
+                            a := &state.undo_history[len(state.undo_history) - 1 - state.undone]
+                            if a.undo {
+                                redo_action(state, tile_map, a)
+                            } else {
+                                undo_action(state, tile_map, a)
+                            }
                             state.undone += 1
                         }
                     } else {
@@ -171,7 +177,12 @@ config: []Config = {
                     if state.debug {
                         // When exiting debug mode ensure all actions are done, we don't want to get into inconsistent state
                         for state.undone > 0 {
-                            redo_action(state, tile_map, &state.undo_history[len(state.undo_history) - state.undone])
+                            a := &state.undo_history[len(state.undo_history) - state.undone]
+                            if a.undo {
+                                undo_action(state, tile_map, a)
+                            } else {
+                                redo_action(state, tile_map, a)
+                            }
                             state.undone -= 1
                         }
                         state.debug = false
@@ -182,32 +193,19 @@ config: []Config = {
             },
         },
     },
-    {
-        {{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}},
-        {
-            {
-                .ICON_UNDO,
-                nil,
-                "Undo last action",
-                nil,
-                proc(state: ^GameState) {
+    {{{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_UNDO, nil, "Undo last action", nil, proc(state: ^GameState) {
                     #reverse for &action in state.undo_history {
                         if action.mine && !action.reverted {
                             undo_action(state, tile_map, &action)
                             action.reverted = true
-                            // TODO(amatej): Do I need a deep copy here?
-                            // crash when: spawn token, delete token, undo delete -> bad free on exit
-                            append(&state.undo_history, action)
+                            append(&state.undo_history, duplicate_action(&action))
                             undo_action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                             undo_action.undo = true
                             state.needs_sync = true
                             break
                         }
                     }
-                },
-            },
-        },
-    },
+                }}}},
     {{{.A, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_REDO, nil, "Redo all actions", nil, proc(state: ^GameState) {
                     tokens_reset(state)
                     tilemap_clear(tile_map)
