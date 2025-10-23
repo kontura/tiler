@@ -781,6 +781,7 @@ update :: proc() {
 
     screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
+    //TODO(amatej): extract into render method
     // draw bg
     pos: rl.Vector2 = tile_map_to_screen_coord(state.bg_pos, state, tile_map)
     pos += state.bg_pos.rel_tile * tile_map.feet_to_pixels
