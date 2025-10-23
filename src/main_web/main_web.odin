@@ -219,27 +219,43 @@ update_doc_actions :: proc(doc: am.AMdocPtr, actions: []game.Action) -> bool {
     return true
 }
 
-get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> [dynamic]game.Action {
+get_undo_history_from_doc :: proc(doc: am.AMdocPtr, max_count: u64) -> [dynamic]game.Action {
     using am
-    undo_history := make([dynamic]game.Action)
 
+    //time_start := time.now()
     undo_history_result: AMresultPtr = AMmapGet(doc, AM_ROOT, AMstr("actions"), c.NULL)
     defer AMresultFree(undo_history_result)
     undo_history_id, _ := result_to_objid(undo_history_result)
+    doc_actions_list_count := AMobjSize(doc, undo_history_id, c.NULL)
 
+    count := doc_actions_list_count
+    if max_count > 0 && count > (c.size_t)(max_count) {
+        count = (c.size_t)(max_count)
+    }
+
+    undo_history := make([dynamic]game.Action, count)
     //TODO(amatej): technically I could get only those action I don't already have
     range_result := AMlistRange(doc, undo_history_id, 0, c.SIZE_MAX, c.NULL)
     defer AMresultFree(range_result)
     verify_result(range_result)
     items: AMitems = AMresultItems(range_result)
+    items = AMitemsReversed(&items)
     action_item: AMitemPtr = AMitemsNext(&items, 1)
 
     changes_result := AMgetChanges(doc, c.NULL)
     verify_result(changes_result)
     defer AMresultFree(changes_result)
     change_items: AMitems = AMresultItems(changes_result)
+    change_items = AMitemsReversed(&change_items)
     change_item: AMitemPtr = AMitemsNext(&change_items, 1)
 
+    //time_duration := time.since(time_start)
+    //fmt.println(
+    //    "measured just getting automerge: ",
+    //    time.duration_milliseconds(time_duration),
+    //)
+
+    index: uint = 0
     for action_item != c.NULL {
         game_action: game.Action
         action_map := AMitemObjId(action_item)
@@ -265,17 +281,46 @@ get_undo_history_from_doc :: proc(doc: am.AMdocPtr) -> [dynamic]game.Action {
             game_action.hash[i] = bytes.src[i]
         }
 
-        append(&undo_history, game_action)
+        undo_history[count - 1] = game_action
         action_item = AMitemsNext(&items, 1)
         change_item = AMitemsNext(&change_items, 1)
+        count -= 1
+        if count <= 0 {
+            break
+        }
     }
 
     return undo_history
 }
 
 update_game_state_from_doc :: proc(doc: am.AMdocPtr) {
-    new_undo_hist := get_undo_history_from_doc(doc)
+    //time_start := time.now()
+    new_undo_hist: [dynamic]game.Action
+    if len(game.state.undo_history) == 0 {
+        new_undo_hist = get_undo_history_from_doc(doc, 0)
+    } else {
+        new_undo_hist = get_undo_history_from_doc(doc, 4)
+    }
+    //time_duration := time.since(time_start)
+    //fmt.println(
+    //    "measured duration for getting full undo history from automerge: ",
+    //    time.duration_milliseconds(time_duration),
+    //)
+    //TODO(amatej): I don't like this API
+    //TODO(amatej): this should just be changed to find counting old_undone and new_redone
+    //TODO(amatej): rename to like find_unmatched_actions
     old_undone, new_redone := game.redo_unmatched_actions(game.state, game.tile_map, new_undo_hist[:])
+    // If we would need to undone all old actions it means we didn't find common ancestor action
+    // this either means there is none or we didn't load enough new actions, load all to make sure
+    // TODO(amatej): If we still don't find common ancestor I could add some UI prompt?
+    if old_undone != 0 && old_undone == len(game.state.undo_history) {
+        for _, index in game.state.undo_history {
+            game.delete_action(&game.state.undo_history[index])
+        }
+        clear(&game.state.undo_history)
+        new_undo_hist = get_undo_history_from_doc(doc, 0)
+        old_undone, new_redone = game.redo_unmatched_actions(game.state, game.tile_map, new_undo_hist[:])
+    }
     game.splice_dynamic_arrays_of_actions(&game.state.undo_history, &new_undo_hist, old_undone, new_redone)
 }
 

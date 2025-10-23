@@ -188,6 +188,7 @@ foreign _ {
 
     AMitemObjId :: proc(item: AMitemPtr) -> AMobjIdPtr ---
     AMitemsNext :: proc(items: AMitemsPtr, n: c.ptrdiff_t) -> AMitemsPtr ---
+    AMitemsReversed :: proc(items: AMitemsPtr) -> AMitems ---
 
     AMobjSize :: proc(doc: AMdocPtr, obj_id: AMobjIdPtr, heads: AMitemsPtr) -> c.size_t ---
 
