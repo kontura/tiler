@@ -1,8 +1,10 @@
 package tiler
 import "core:fmt"
+import "core:hash/xxhash"
 import "core:mem"
 import "core:slice"
 import "core:strings"
+
 
 Action :: struct {
     // SYNCED
@@ -35,6 +37,7 @@ Action :: struct {
     // actions cannot be reverted again.
     reverted:                 bool,
     hash:                     [32]byte,
+    my_hash:                  u128,
 
     // Whether this action was made by me, not other peers
     mine:                     bool,
@@ -86,6 +89,26 @@ duplicate_action :: proc(a: ^Action) -> Action {
     }
 
     return action
+}
+
+compute_undo_history_hashes :: proc(state: ^GameState) -> xxhash.Error {
+    if len(state.undo_history) > 0 {
+        action := &state.undo_history[0]
+        hash0 := xxhash.XXH3_create_state(context.temp_allocator) or_return
+        update_hash(hash0, action)
+        action.my_hash = xxhash.XXH3_128_digest(hash0)
+
+        for i := 1; i < len(state.undo_history); i += 1 {
+            action := &state.undo_history[i]
+            action_before := state.undo_history[i-1]
+            hash := xxhash.XXH3_create_state(context.temp_allocator) or_return
+            update_hash(hash, action)
+            xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action_before.my_hash)) or_return
+            action.my_hash = xxhash.XXH3_128_digest(hash)
+        }
+    }
+
+    return xxhash.Error.None
 }
 
 make_action :: proc(tool: Tool, allocator := context.allocator) -> Action {
@@ -389,4 +412,22 @@ splice_dynamic_arrays_of_actions :: proc(a, b: ^[dynamic]$Action, drop_last_N_of
         delete_action(&popped)
     }
     delete(b^)
+}
+
+update_hash :: proc(hash: ^xxhash.XXH3_state, action: ^Action) -> xxhash.Error {
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.tool)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.start)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.end)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.color)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.radius)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.undo)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.token_history)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.token_initiative_history)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.token_initiative_start)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.token_life)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.token_size)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.old_names)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.new_names)) or_return
+
+    return xxhash.Error.None
 }
