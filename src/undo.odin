@@ -63,6 +63,7 @@ duplicate_action :: proc(a: ^Action) -> Action {
     action.hash = a.hash
     action.mine = a.mine
     action.performed = a.performed
+    action.my_hash = a.my_hash
     for id, &hist in a.token_history {
         action.token_history[id] = hist
     }
