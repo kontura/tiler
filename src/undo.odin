@@ -91,26 +91,6 @@ duplicate_action :: proc(a: ^Action) -> Action {
     return action
 }
 
-compute_undo_history_hashes :: proc(state: ^GameState) -> xxhash.Error {
-    if len(state.undo_history) > 0 {
-        action := &state.undo_history[0]
-        hash0 := xxhash.XXH3_create_state(context.temp_allocator) or_return
-        update_hash(hash0, action)
-        action.my_hash = xxhash.XXH3_128_digest(hash0)
-
-        for i := 1; i < len(state.undo_history); i += 1 {
-            action := &state.undo_history[i]
-            action_before := state.undo_history[i-1]
-            hash := xxhash.XXH3_create_state(context.temp_allocator) or_return
-            update_hash(hash, action)
-            xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action_before.my_hash)) or_return
-            action.my_hash = xxhash.XXH3_128_digest(hash)
-        }
-    }
-
-    return xxhash.Error.None
-}
-
 make_action :: proc(tool: Tool, allocator := context.allocator) -> Action {
     action: Action
     action.tile_history.allocator = allocator
