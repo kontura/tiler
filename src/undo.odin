@@ -4,6 +4,7 @@ import "core:hash/xxhash"
 import "core:mem"
 import "core:slice"
 import "core:strings"
+import "core:time"
 
 
 Action :: struct {
@@ -50,9 +51,12 @@ Action :: struct {
     // we could store more state in this so we don't have to always redo) Although undo is typically
     // done just once? But the starting actions we get re-done many times..
     tile_history:             map[[2]u32]Tile,
+    timestamp:                time.Time,
+    author_id:                u64,
 }
 
 duplicate_action :: proc(a: ^Action) -> Action {
+    //TODO(amatej): Could we add some detection that all members are copied?
     action: Action = make_action(a.tool, a.tile_history.allocator)
     action.start = a.start
     action.end = a.end
@@ -64,6 +68,8 @@ duplicate_action :: proc(a: ^Action) -> Action {
     action.mine = a.mine
     action.performed = a.performed
     action.my_hash = a.my_hash
+    action.author_id = a.author_id
+    action.timestamp = a.timestamp
     for id, &hist in a.token_history {
         action.token_history[id] = hist
     }
@@ -106,6 +112,24 @@ make_action :: proc(tool: Tool, allocator := context.allocator) -> Action {
     action.tool = tool
 
     return action
+}
+
+finish_last_undo_history_action :: proc(state: ^GameState) {
+    if len(state.undo_history) > 0 {
+        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+        action.timestamp = time.now()
+        action.author_id = state.id
+
+        hash, _ := xxhash.XXH3_create_state(context.temp_allocator)
+        update_hash(hash, action)
+        if len(state.undo_history) > 1 {
+            action_before := state.undo_history[len(state.undo_history) - 2]
+            xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action_before.my_hash))
+        }
+
+        action.my_hash = xxhash.XXH3_128_digest(hash)
+    }
+
 }
 
 delete_action :: proc(action: ^Action) {
@@ -409,6 +433,8 @@ update_hash :: proc(hash: ^xxhash.XXH3_state, action: ^Action) -> xxhash.Error {
     xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.token_size)) or_return
     xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.old_names)) or_return
     xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.new_names)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.author_id)) or_return
+    xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action.timestamp)) or_return
 
     return xxhash.Error.None
 }

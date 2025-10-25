@@ -74,6 +74,7 @@ GameState :: struct {
     offline:                bool,
     particles:              [1024]Particle,
     particle_index:         u32,
+    id:                     u64,
 }
 
 Widget :: enum {
@@ -232,6 +233,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.selected_color.r = u8(rand.int_max(255))
     state.selected_color.g = u8(rand.int_max(255))
     state.selected_color.b = u8(rand.int_max(255))
+    state.id = rand.uint64()
     state.selected_alpha = 1
     state.needs_sync = true
     state.mobile = mobile
@@ -373,6 +375,7 @@ update :: proc() {
                         action.performed = true
                         set_tile(tile_map, mouse_tile_pos.abs_tile, new_tile)
                     }
+                    finish_last_undo_history_action(state)
                 }
             }
             icon = .ICON_PENCIL
@@ -390,6 +393,7 @@ update :: proc() {
                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                     action.performed = true
                     tooltip = cone_tool(state, tile_map, mouse_pos, action)
+                    finish_last_undo_history_action(state)
                     state.needs_sync = true
                 }
             } else {
@@ -422,6 +426,7 @@ update :: proc() {
                     action.performed = true
                     tooltip = rectangle_tool(start_mouse_tile, end_mouse_tile, state.selected_color, tile_map, action)
                     state.needs_sync = true
+                    finish_last_undo_history_action(state)
                 }
             }
             icon = .ICON_BOX
@@ -439,6 +444,7 @@ update :: proc() {
                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                     tooltip = circle_tool(state, tile_map, mouse_pos, action)
                     state.needs_sync = true
+                    finish_last_undo_history_action(state)
                 }
             } else {
                 highligh_current_tile_intersection = true
@@ -457,6 +463,7 @@ update :: proc() {
                             move_token_tool(state, token, tile_map, mouse_pos, action, false)
                             action.performed = true
                             state.needs_sync = true
+                            finish_last_undo_history_action(state)
                         }
                     }
                     if rl.IsMouseButtonPressed(.LEFT) {
@@ -474,6 +481,7 @@ update :: proc() {
                                 moved = true
                                 action.performed = true
                                 state.needs_sync = true
+                                finish_last_undo_history_action(state)
                             }
                         }
                         if moved {
@@ -536,6 +544,7 @@ update :: proc() {
                     tooltip = wall_tool(tile_map, start_mouse_tile, end_mouse_tile, state.selected_color, action)
                     action.performed = true
                     state.needs_sync = true
+                    finish_last_undo_history_action(state)
                 }
             } else {
                 highligh_current_tile_intersection = true
@@ -561,6 +570,7 @@ update :: proc() {
                                 token_kill(state, token, action)
                                 clear_selected_tokens(state)
                                 state.needs_sync = true
+                                finish_last_undo_history_action(state)
                             } else {
                                 if rl.IsKeyDown(.BACKSPACE) {
                                     key = .BACKSPACE
@@ -580,6 +590,7 @@ update :: proc() {
                                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                                 action.performed = true
                                                 action.token_size[token.id] = -1
+                                                finish_last_undo_history_action(state)
                                             }
                                         }
                                     case .EQUAL:
@@ -591,6 +602,7 @@ update :: proc() {
                                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                                 action.performed = true
                                                 action.token_size[token.id] = 1
+                                                finish_last_undo_history_action(state)
                                             }
                                         }
                                     case .RIGHT_SHIFT, .LEFT_SHIFT:
@@ -606,6 +618,7 @@ update :: proc() {
                                     action.token_history[token.id] = {0, 0}
                                     action.old_names[token.id] = strings.clone(token.name)
                                     action.new_names[token.id] = strings.clone(strings.to_string(builder))
+                                    finish_last_undo_history_action(state)
 
                                     delete(token.name)
                                     token.name = strings.to_string(builder)
@@ -634,12 +647,14 @@ update :: proc() {
                             }
                             action.performed = true
                             state.needs_sync = true
+                            finish_last_undo_history_action(state)
                         } else {
                             action := make_action(.EDIT_TOKEN)
                             token_pos := mouse_tile_pos
                             token_pos.rel_tile = {0, 0}
                             token_spawn(state, &action, token_pos, state.selected_color)
                             append(&state.undo_history, action)
+                            finish_last_undo_history_action(state)
                         }
                     } else {
                         c := state.selected_color
@@ -669,6 +684,7 @@ update :: proc() {
                             move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, action)
                             action.performed = true
                             state.needs_sync = true
+                            finish_last_undo_history_action(state)
                         }
                     }
                     icon = .ICON_SHUFFLE
