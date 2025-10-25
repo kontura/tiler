@@ -38,7 +38,7 @@ Action :: struct {
     // actions cannot be reverted again.
     reverted:                 bool,
     hash:                     [32]byte,
-    my_hash:                  u128,
+    my_hash:                  u64,
 
     // Whether this action was made by me, not other peers
     mine:                     bool,
@@ -124,12 +124,11 @@ finish_last_undo_history_action :: proc(state: ^GameState) {
         update_hash(hash, action)
         if len(state.undo_history) > 1 {
             action_before := state.undo_history[len(state.undo_history) - 2]
-            xxhash.XXH3_128_update(hash, mem.ptr_to_bytes(&action_before.my_hash))
+            xxhash.XXH3_64_update(hash, mem.ptr_to_bytes(&action_before.my_hash))
         }
 
-        action.my_hash = xxhash.XXH3_128_digest(hash)
+        action.my_hash = xxhash.XXH3_64_digest(hash)
     }
-
 }
 
 delete_action :: proc(action: ^Action) {
