@@ -176,7 +176,7 @@ state: ^GameState
 tile_map: ^TileMap
 
 // Beware the returned data are temp only by default
-serialize_to_bytes :: proc(allocator := context.temp_allocator) -> []byte {
+serialize_to_bytes :: proc(actions: ^[]Action, allocator := context.temp_allocator) -> []byte {
     s: Serializer
     serializer_init_writer(&s, allocator=allocator)
     serialize(&s, &state.undo_history)
@@ -551,7 +551,7 @@ update :: proc() {
             }
             icon = .ICON_BOX_GRID_BIG
         }
-    case .EDIT_TOKEN, .EDIT_TOKEN_INITIATIVE:
+    case .EDIT_TOKEN, .EDIT_TOKEN_INITIATIVE, .EDIT_TOKEN_NAME, .EDIT_TOKEN_SIZE, .EDIT_TOKEN_LIFE:
         {
             #partial switch selected_widget {
             case .MAP:
@@ -586,11 +586,13 @@ update :: proc() {
                                         {
                                             if token.size > 1 {
                                                 token.size -= 1
-                                                append(&state.undo_history, make_action(.EDIT_TOKEN))
+                                                append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
                                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                                 action.performed = true
-                                                action.token_size[token.id] = -1
+                                                action.token_id = token.id
+                                                action.token_size = -1
                                                 finish_last_undo_history_action(state)
+                                                state.needs_sync = true
                                             }
                                         }
                                     case .EQUAL:
@@ -598,11 +600,13 @@ update :: proc() {
                                             if token.size < 10 &&
                                                (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
                                                 token.size += 1
-                                                append(&state.undo_history, make_action(.EDIT_TOKEN))
+                                                append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
                                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                                 action.performed = true
-                                                action.token_size[token.id] = 1
+                                                action.token_id = token.id
+                                                action.token_size = 1
                                                 finish_last_undo_history_action(state)
+                                                state.needs_sync = true
                                             }
                                         }
                                     case .RIGHT_SHIFT, .LEFT_SHIFT:
@@ -612,12 +616,12 @@ update :: proc() {
                                         strings.write_byte(&builder, byte)
                                     }
 
-                                    append(&state.undo_history, make_action(.EDIT_TOKEN))
+                                    append(&state.undo_history, make_action(.EDIT_TOKEN_NAME))
                                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                     action.performed = true
-                                    action.token_history[token.id] = {0, 0}
-                                    action.old_names[token.id] = strings.clone(token.name)
-                                    action.new_names[token.id] = strings.clone(strings.to_string(builder))
+                                    action.token_id = token.id
+                                    action.old_name = strings.clone(token.name)
+                                    action.new_name = strings.clone(strings.to_string(builder))
                                     finish_last_undo_history_action(state)
 
                                     delete(token.name)
@@ -634,20 +638,20 @@ update :: proc() {
                             append(&state.selected_tokens, token.id)
                         } else if rl.IsKeyDown(.LEFT_SHIFT) {
                             players := [?]string{"Wesley", "AR100", "Daren", "Max", "Mardun", "Rodion"}
-                            append(&state.undo_history, make_action(.EDIT_TOKEN))
-                            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                             pos_offset: u32 = 0
                             for name in players {
+                                append(&state.undo_history, make_action(.EDIT_TOKEN))
+                                action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                 token_pos := mouse_tile_pos
                                 token_pos.rel_tile = {0, 0}
                                 token_pos.abs_tile.y += pos_offset
 
                                 token_spawn(state, action, token_pos, state.selected_color, name)
                                 pos_offset += 2
+                                action.performed = true
+                                finish_last_undo_history_action(state)
                             }
-                            action.performed = true
                             state.needs_sync = true
-                            finish_last_undo_history_action(state)
                         } else {
                             action := make_action(.EDIT_TOKEN)
                             token_pos := mouse_tile_pos
@@ -667,7 +671,8 @@ update :: proc() {
                         }
                         append(&state.temp_actions, make_action(.EDIT_TOKEN, context.temp_allocator))
                         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                        temp_action.token_life[0] = true
+                        temp_action.token_id = 0
+                        temp_action.token_life = true
                     }
                     icon = .ICON_PLAYER
                 }
@@ -1155,7 +1160,6 @@ update :: proc() {
                 a.tool,
                 ", tile_history: ",
                 len(a.tile_history),
-                a.token_history,
                 a.token_initiative_history,
                 allocator = context.temp_allocator,
             )

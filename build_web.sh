@@ -26,7 +26,7 @@ ODIN_PATH=$($ODIN_BIN root)
 cp $ODIN_PATH/core/sys/wasm/js/odin.js $OUT_DIR
 
 files="$OUT_DIR/game.wasm.o ${ODIN_PATH}/vendor/raylib/wasm/libraylib.a \
-       ${ODIN_PATH}/vendor/raylib/wasm/libraygui.a /home/kontura/src/automerge/rust/target/wasm32-unknown-emscripten/debug/libautomerge_core.a"
+       ${ODIN_PATH}/vendor/raylib/wasm/libraygui.a"
 
 # index_template.html contains the javascript code that calls the procedures in
 # src/main_web/main_web.odin

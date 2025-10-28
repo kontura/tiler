@@ -3,6 +3,7 @@ package tiler
 import "core:fmt"
 import "base:intrinsics"
 import "core:mem"
+import "core:time"
 import "base:runtime"
 import "core:slice"
 
@@ -361,6 +362,11 @@ serialize_tile_map_position :: proc(s: ^Serializer, tile_map_position: ^TileMapP
     return true
 }
 
+serialize_time :: proc(s: ^Serializer, time: ^time.Time, loc := #caller_location) -> bool {
+    serialize(s, &time._nsec, loc) or_return
+    return true
+}
+
 serialize_token :: proc(s: ^Serializer, token: ^Token, loc := #caller_location) -> bool {
     serialize(s, &token.id, loc) or_return
     serialize(s, &token.position, loc) or_return
@@ -377,16 +383,19 @@ serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_locatio
     serialize(s, &action.end, loc) or_return
     serialize(s, &action.color, loc) or_return
     serialize(s, &action.radius, loc) or_return
+    serialize(s, &action.token_id, loc) or_return
 
     serialize(s, &action.undo, loc) or_return
 
-    serialize(s, &action.token_history, loc) or_return
     serialize(s, &action.token_initiative_history, loc) or_return
     serialize(s, &action.token_initiative_start, loc) or_return
     serialize(s, &action.token_life, loc) or_return
     serialize(s, &action.token_size, loc) or_return
-    serialize(s, &action.old_names, loc) or_return
-    serialize(s, &action.new_names, loc) or_return
+    serialize(s, &action.old_name, loc) or_return
+    serialize(s, &action.new_name, loc) or_return
+    serialize(s, &action.hash, loc) or_return
+    serialize(s, &action.author_id, loc) or_return
+    serialize(s, &action.timestamp, loc) or_return
 
     if action.undo || action.tool == .BRUSH {
         serialize(s, &action.tile_history, loc) or_return
@@ -409,4 +418,5 @@ serialize :: proc {
     serialize_tile,
     serialize_tile_map_position,
     serialize_token,
+    serialize_time,
 }

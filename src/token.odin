@@ -74,9 +74,10 @@ token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
     )
     token.alive = false
     if action != nil {
-        action.token_life[token.id] = false
+        action.token_id = token.id
+        action.token_life = false
         action.performed = true
-        action.token_initiative_history[token.id] = {init, init_index}
+        action.token_initiative_history = {init, init_index}
     }
     for i := 0; i < 80 * int(token.size) * int(token.size); i += 1 {
         angle := rand.float32() * 2 * math.PI
@@ -167,15 +168,16 @@ token_spawn :: proc(
     state.needs_sync = true
     add_at_initiative(state, t.id, t.initiative, initiative.y)
     if action != nil {
-        action.token_life[t.id] = true
+        action.token_id = t.id
+        action.token_life = true
         action.performed = true
         action.color = color
         init_pos, init_index, ok := get_token_init_pos(state, t.id)
         // the newly created token has to be in initiative
         assert(ok)
-        action.token_initiative_history[t.id] = {init_pos, init_index}
-        action.token_history[t.id] = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
-        action.new_names[t.id] = strings.clone(name)
+        action.token_initiative_history = {init_pos, init_index}
+        action.start = pos
+        action.new_name = strings.clone(name)
     }
     return t.id
 }

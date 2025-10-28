@@ -69,14 +69,14 @@ basic_rectangle_test :: proc(t: ^testing.T) {
 create_spawn_token_action :: proc(
     state: ^GameState,
     pos: TileMapPosition,
-    initiative: [2]i32 = {-1,0},
+    initiative: [2]i32 = {-1, 0},
     allocator := context.allocator,
 ) -> (
     Action,
     u64,
 ) {
     action := make_action(.EDIT_TOKEN, allocator)
-    id := token_spawn(state, &action, pos, [4]u8{0,0,0,0}, "", initiative)
+    id := token_spawn(state, &action, pos, [4]u8{0, 0, 0, 0}, "", initiative)
     return action, id
 }
 
@@ -211,8 +211,8 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     testing.expect_value(t, state.initiative_to_tokens[3][0], token_id1)
     testing.expect_value(t, state.initiative_to_tokens[20][0], token_id2)
     testing.expect_value(t, state.initiative_to_tokens[22][0], token_id3)
-    testing.expect_value(t, len(temp_action.token_initiative_history), 1)
-    testing.expect_value(t, temp_action.token_initiative_history[token_id1], [2]i32{15, 0})
+    testing.expect_value(t, temp_action.token_id, token_id1)
+    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{15, 0})
 
     temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 290 screen pos targers initiative "20"
@@ -229,8 +229,8 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     testing.expect_value(t, state.initiative_to_tokens[3][0], token_id1)
     testing.expect_value(t, state.initiative_to_tokens[3][1], token_id2)
     testing.expect_value(t, state.initiative_to_tokens[22][0], token_id3)
-    testing.expect_value(t, len(temp_action.token_initiative_history), 1)
-    testing.expect_value(t, temp_action.token_initiative_history[token_id2], [2]i32{17, -1})
+    testing.expect_value(t, temp_action.token_id, token_id2)
+    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{17, -1})
 
     temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 345 screen pos targers initiative "22"
@@ -247,8 +247,8 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     testing.expect_value(t, state.initiative_to_tokens[3][0], token_id1)
     testing.expect_value(t, state.initiative_to_tokens[3][1], token_id2)
     testing.expect_value(t, state.initiative_to_tokens[3][2], token_id3)
-    testing.expect_value(t, len(temp_action.token_initiative_history), 1)
-    testing.expect_value(t, temp_action.token_initiative_history[token_id3], [2]i32{19, -2})
+    testing.expect_value(t, temp_action.token_id, token_id3)
+    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{19, -2})
 
     state2, tile_map2 := setup()
     redo_unmatched_actions(&state2, &tile_map2, state.undo_history[:])
@@ -271,7 +271,7 @@ redo_unmatched_actions_test :: proc(t: ^testing.T) {
     state, tile_map := setup()
 
     action := make_action(.RECTANGLE)
-    action.hash[0] = 1
+    action.hash = 1
     start_tile: TileMapPosition = {{0, 0}, {0, 0}}
     end_tile: TileMapPosition = {{2, 2}, {0, 0}}
     // perform for the first time
@@ -293,7 +293,7 @@ redo_unmatched_actions_test :: proc(t: ^testing.T) {
     testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 255})
 
     action2 := action
-    action2.hash[0] = 2
+    action2.hash = 2
     redo_action(&state, &tile_map, &action2)
     // do the one extra unmatching action2
     redo_unmatched_actions(&state, &tile_map, {action, action2})
@@ -349,8 +349,8 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, len(state.initiative_to_tokens[13]), 1)
     testing.expect_value(t, state.initiative_to_tokens[3][0], token_id1)
     testing.expect_value(t, state.initiative_to_tokens[13][0], token_id2)
-    testing.expect_value(t, len(temp_action.token_initiative_history), 1)
-    testing.expect_value(t, temp_action.token_initiative_history[token_id2], [2]i32{-10, 0})
+    testing.expect_value(t, temp_action.token_id, token_id2)
+    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{-10, 0})
 
     temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 220 screen pos targers initiative "13"
@@ -362,8 +362,8 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, len(state.initiative_to_tokens[3]), 0)
     testing.expect_value(t, state.initiative_to_tokens[13][0], token_id2)
     testing.expect_value(t, state.initiative_to_tokens[13][1], token_id1)
-    testing.expect_value(t, len(temp_action.token_initiative_history), 1)
-    testing.expect_value(t, temp_action.token_initiative_history[token_id1], [2]i32{-10, -1})
+    testing.expect_value(t, temp_action.token_id, token_id1)
+    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{-10, -1})
 
     temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 351 screen pos targers initiative "22"
@@ -376,8 +376,8 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, len(state.initiative_to_tokens[22]), 1)
     testing.expect_value(t, state.initiative_to_tokens[13][0], token_id1)
     testing.expect_value(t, state.initiative_to_tokens[22][0], token_id2)
-    testing.expect_value(t, len(temp_action.token_initiative_history), 1)
-    testing.expect_value(t, temp_action.token_initiative_history[token_id2], [2]i32{-9, 0})
+    testing.expect_value(t, temp_action.token_id, token_id2)
+    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{-9, 0})
 
     state2, tile_map2 := setup()
     redo_unmatched_actions(&state2, &tile_map2, state.undo_history[:])
@@ -498,4 +498,267 @@ splice_dynamic_arrays_of_actions_test4 :: proc(t: ^testing.T) {
         delete_action(&a[i])
     }
     delete(a)
+}
+
+@(test)
+find_common_parent_action_test :: proc(t: ^testing.T) {
+    a: [dynamic]Action
+    temp_action := make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action.hash = 1
+    append(&a, temp_action)
+    temp_action = make_action(.BRUSH, context.temp_allocator)
+    temp_action.hash = 2
+    append(&a, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    temp_action.hash = 3
+    append(&a, temp_action)
+
+    b: [dynamic]Action
+    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action.hash = 1
+    append(&b, temp_action)
+    temp_action = make_action(.CONE, context.temp_allocator)
+    temp_action.hash = 2
+    append(&b, temp_action)
+
+    index_a, index_b := find_first_not_matching_action(a[:], b[:])
+    testing.expect_value(t, index_a, 2)
+    testing.expect_value(t, index_b, 2)
+
+    delete(a)
+    delete(b)
+}
+
+@(test)
+find_common_parent_action_test2 :: proc(t: ^testing.T) {
+    a: [dynamic]Action
+    temp_action := make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action.hash = 1
+    append(&a, temp_action)
+    temp_action = make_action(.BRUSH, context.temp_allocator)
+    temp_action.hash = 2
+    append(&a, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    temp_action.hash = 3
+    append(&a, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    temp_action.hash = 4
+    append(&a, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    temp_action.hash = 5
+    append(&a, temp_action)
+
+    b: [dynamic]Action
+    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action.hash = 1
+    append(&b, temp_action)
+    temp_action = make_action(.BRUSH, context.temp_allocator)
+    temp_action.hash = 2
+    append(&b, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    temp_action.hash = 3
+    append(&b, temp_action)
+
+    index_a, index_b := find_first_not_matching_action(a[:], b[:])
+    testing.expect_value(t, index_a, 3)
+    testing.expect_value(t, index_b, 3)
+
+    delete(a)
+    delete(b)
+}
+
+@(test)
+inject_action_test :: proc(t: ^testing.T) {
+    a: [dynamic]Action
+    temp_action := make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action.timestamp = {10}
+    temp_action.author_id = 1
+    append(&a, temp_action)
+    temp_action = make_action(.BRUSH, context.temp_allocator)
+    temp_action.timestamp = {20}
+    temp_action.author_id = 1
+    append(&a, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    temp_action.timestamp = {30}
+    temp_action.author_id = 1
+    append(&a, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    temp_action.timestamp = {40}
+    temp_action.author_id = 1
+    append(&a, temp_action)
+    temp_action = make_action(.CIRCLE, context.temp_allocator)
+    temp_action.timestamp = {50}
+    temp_action.author_id = 1
+    append(&a, temp_action)
+
+    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action.timestamp = {23}
+    temp_action.author_id = 1
+
+    inject_action(&a, 0, &temp_action)
+    testing.expect_value(t, len(a), 6)
+    testing.expect_value(t, a[2].timestamp._nsec, 23)
+
+    temp_action = make_action(.RECTANGLE, context.temp_allocator)
+    temp_action.timestamp = {23}
+    temp_action.author_id = 4
+
+    inject_action(&a, 0, &temp_action)
+    testing.expect_value(t, len(a), 7)
+    testing.expect_value(t, a[2].timestamp._nsec, 23)
+    testing.expect_value(t, a[2].author_id, 1)
+    testing.expect_value(t, a[3].timestamp._nsec, 23)
+    testing.expect_value(t, a[3].author_id, 4)
+
+    delete(a)
+}
+
+@(test)
+merge_and_redo_single_action_test :: proc(t: ^testing.T) {
+    state, tile_map := setup()
+
+    spawn_action1, token_id := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {18, 0}, context.temp_allocator)
+    spawn_action1.timestamp = {1}
+    token := &state.tokens[token_id]
+    append(&state.undo_history, spawn_action1)
+    finish_last_undo_history_action(&state)
+    testing.expect_value(t, token.position.abs_tile, [2]u32{0, 0})
+    testing.expect_value(t, len(state.initiative_to_tokens), 1)
+    testing.expect_value(t, len(state.initiative_to_tokens[token.initiative]), 1)
+
+    actions: [dynamic]Action
+    append(&actions, state.undo_history[len(state.undo_history) - 1])
+    merge_and_redo_actions(&state, &tile_map, actions)
+
+    testing.expect_value(t, len(state.undo_history), 1)
+    testing.expect_value(t, len(state.initiative_to_tokens), 1)
+    testing.expect_value(t, len(state.initiative_to_tokens[token.initiative]), 1)
+
+    teardown(&state, &tile_map)
+}
+
+@(test)
+merge_and_redo_actions_test :: proc(t: ^testing.T) {
+    state, tile_map := setup()
+
+    spawn_action1, token_id := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {18, 0}, context.temp_allocator)
+    spawn_action1.hash = 1
+    spawn_action1.timestamp = {1}
+    token := &state.tokens[token_id]
+    append(&state.undo_history, spawn_action1)
+    testing.expect_value(t, token.position.abs_tile, [2]u32{0, 0})
+
+    append(&state.undo_history, make_action(.MOVE_TOKEN))
+    action2: ^Action = &state.undo_history[len(state.undo_history) - 1]
+    action2.hash = 2
+    action2.timestamp = {2}
+    move_token_tool(&state, token, &tile_map, {20, 20}, action2, false)
+    testing.expect_value(t, token.position.abs_tile, [2]u32{99, 99})
+
+    append(&state.undo_history, make_action(.MOVE_TOKEN))
+    action3 := &state.undo_history[len(state.undo_history) - 1]
+    action3.hash = 3
+    action3.timestamp = {3}
+    move_token_tool(&state, token, &tile_map, {200, 200}, action3, false)
+    testing.expect_value(t, token.position.abs_tile, [2]u32{105, 105})
+
+    append(&state.undo_history, make_action(.MOVE_TOKEN))
+    action4 := &state.undo_history[len(state.undo_history) - 1]
+    action4.hash = 4
+    action4.timestamp = {4}
+    move_token_tool(&state, token, &tile_map, {300, 300}, action4, false)
+    testing.expect_value(t, token.position.abs_tile, [2]u32{108, 108})
+
+    new_actions: [dynamic]Action
+    append(&new_actions, duplicate_action(action3))
+
+    action1 := make_action(.MOVE_TOKEN)
+    action1.hash = 5
+    action1.timestamp = {5}
+    action1.token_id = token_id
+    action1.start = {{105, 105}, {0, 0}}
+    action1.end = {{17, 17}, {0, 0}}
+    append(&new_actions, action1)
+
+    merge_and_redo_actions(&state, &tile_map, new_actions)
+
+    testing.expect_value(t, len(state.undo_history), 5)
+    testing.expect_value(t, state.undo_history[0].timestamp._nsec, 1)
+    testing.expect_value(t, state.undo_history[1].timestamp._nsec, 2)
+    testing.expect_value(t, state.undo_history[2].timestamp._nsec, 3)
+    testing.expect_value(t, state.undo_history[3].timestamp._nsec, 4)
+    testing.expect_value(t, state.undo_history[4].timestamp._nsec, 5)
+
+    testing.expect_value(t, token.position.abs_tile, [2]u32{17, 17})
+
+    teardown(&state, &tile_map)
+}
+
+@(test)
+action_hash_test :: proc(t: ^testing.T) {
+    action1 := make_action(.MOVE_TOKEN, context.temp_allocator)
+    action1.timestamp = {5}
+    action1.token_life = true
+    action1.token_size = 2
+    action1.token_id = 1
+    action1.old_name = "test"
+    action1.start = {{105, 105}, {0, 0}}
+    action1.end = {{17, 17}, {0, 0}}
+
+    action2 := make_action(.MOVE_TOKEN, context.temp_allocator)
+    action2.timestamp = {5}
+    action2.token_life = true
+    action2.token_size = 2
+    action2.token_id = 1
+    action2.old_name = "test"
+    action2.start = {{105, 105}, {0, 0}}
+    action2.end = {{17, 17}, {0, 0}}
+
+    sha2_1 := compute_hash_with_prev(&action1, nil)
+    sha2_2 := compute_hash_with_prev(&action2, nil)
+    testing.expect_value(t, sha2_1, sha2_2)
+}
+
+@(test)
+action_hash_test_multiple_spawn :: proc(t: ^testing.T) {
+    action1 := make_action(.MOVE_TOKEN, context.temp_allocator)
+    action1.timestamp = {5}
+    action1.token_life = true
+    action1.token_size = 2
+    action1.token_id = 1
+    action1.token_initiative_history = {1, 1}
+    action1.new_name = "test"
+    action1.start = {{105, 105}, {0, 0}}
+    action1.end = {{17, 17}, {0, 0}}
+
+    action2 := make_action(.MOVE_TOKEN, context.temp_allocator)
+    action2.timestamp = {5}
+    action2.token_life = true
+    action2.token_size = 2
+    action2.token_id = 1
+    action2.token_initiative_history = {1, 1}
+    action2.new_name = "test"
+    action2.start = {{105, 105}, {0, 0}}
+    action2.end = {{17, 17}, {0, 0}}
+
+
+    s1: Serializer
+    serializer_init_writer(&s1, allocator = context.temp_allocator)
+    serialize(&s1, &action1)
+    b1 := s1.data[:]
+
+    s2: Serializer
+    serializer_init_writer(&s2, allocator = context.temp_allocator)
+    serialize(&s2, &action2)
+    b2 := s2.data[:]
+
+    for i in 0 ..< len(b1) {
+        testing.expect_value(t, b1[i], b2[i])
+    }
+
+
+    sha2_1 := compute_hash_with_prev(&action1, nil)
+    sha2_2 := compute_hash_with_prev(&action2, nil)
+
+    testing.expect_value(t, sha2_1, sha2_2)
 }

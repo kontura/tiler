@@ -19,6 +19,9 @@ Tool :: enum {
     // it has to be separate action.
     EDIT_TOKEN,
     EDIT_TOKEN_INITIATIVE,
+    EDIT_TOKEN_NAME,
+    EDIT_TOKEN_SIZE,
+    EDIT_TOKEN_LIFE,
     MOVE_TOKEN,
     WALL,
     HELP,
@@ -283,8 +286,9 @@ move_initiative_token_tool :: proc(state: ^GameState, start_pos, end_pos: f32, a
         }
         move_initiative_token(state, selected_token, old_init, old_index, new_init, new_index)
         if action != nil {
-            action.token_initiative_history[selected_token] = [2]i32{old_init - new_init, old_index - new_index}
-            action.token_initiative_start[selected_token] = [2]i32{old_init, old_index}
+            action.token_id = selected_token
+            action.token_initiative_history = [2]i32{old_init - new_init, old_index - new_index}
+            action.token_initiative_start = [2]i32{old_init, old_index}
         }
     }
 }
@@ -302,7 +306,7 @@ move_token_tool :: proc(
         i32(token.position.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x),
         i32(token.position.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
     }
-    action.token_history[token.id] = token_pos_delta
+    action.token_id = token.id
     action.start = token.position
     action.end = mouse_tile_pos
     // We want to keep the tokens at the center of each tile
