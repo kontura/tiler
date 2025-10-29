@@ -70,8 +70,8 @@ duplicate_action :: proc(a: ^Action) -> Action {
     action.token_life = a.token_life
     action.token_size = a.token_size
     action.token_id = a.token_id
-    action.old_name = a.old_name
-    action.new_name = a.new_name
+    action.old_name = strings.clone(a.old_name)
+    action.new_name = strings.clone(a.new_name)
     for pos, &hist in a.tile_history {
         action.tile_history[pos] = hist
     }
