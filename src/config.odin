@@ -201,6 +201,7 @@ config: []Config = {
                             append(&state.undo_history, duplicate_action(&action))
                             undo_action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                             undo_action.undo = true
+                            finish_last_undo_history_action(state)
                             state.needs_sync = true
                             break
                         }
