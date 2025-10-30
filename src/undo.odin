@@ -147,6 +147,14 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     return h
 }
 
+serialize_actions :: proc(actions: []Action, allocator := context.allocator) -> []byte {
+    s: Serializer
+    serializer_init_writer(&s, allocator = allocator)
+    as := actions
+    serialize(&s, &as)
+    return s.data[:]
+}
+
 finish_last_undo_history_action :: proc(state: ^GameState) {
     if len(state.undo_history) > 0 {
         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
