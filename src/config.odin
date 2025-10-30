@@ -211,7 +211,11 @@ config: []Config = {
                     tilemap_clear(tile_map)
 
                     for &action in state.undo_history {
-                        redo_action(state, tile_map, &action)
+                        if action.undo {
+                            undo_action(state, tile_map, &action)
+                        } else {
+                            redo_action(state, tile_map, &action)
+                        }
                     }
                     fmt.println("redone all")
                 }}}},
