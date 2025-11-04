@@ -1,5 +1,6 @@
 package tiler
 import "core:fmt"
+import "core:math"
 import rl "vendor:raylib"
 
 KeyAction :: enum {
@@ -81,6 +82,10 @@ config: []Config = {
     {
         key_triggers = {{.UP, .PRESSED}},
         bindings     = {
+            {.ICON_ARROW_UP, .LOAD_SAVE, "Select previous", nil, proc(state: ^GameState) {
+                    state.selected_index -= 1
+                    state.selected_index = math.max(state.selected_index, 0)
+                }},
             {
                 .ICON_ARROW_UP,
                 nil,
@@ -105,7 +110,12 @@ config: []Config = {
             },
         },
     },
-    {{{.DOWN, .PRESSED}}, {{.ICON_ARROW_DOWN, nil, "Move down", nil, proc(state: ^GameState) {
+    {
+        key_triggers = {{.DOWN, .PRESSED}},
+        bindings = {{.ICON_ARROW_DOWN, .LOAD_SAVE, "Select next", nil, proc(state: ^GameState) {
+                    state.selected_index += 1
+                    state.selected_index = math.min(state.selected_index, len(state.available_files) - 1)
+                }}, {.ICON_ARROW_DOWN, nil, "Move down", nil, proc(state: ^GameState) {
                     if state.debug {
                         if state.undone < len(state.undo_history) {
                             a := &state.undo_history[len(state.undo_history) - 1 - state.undone]
@@ -119,7 +129,8 @@ config: []Config = {
                     } else {
                         state.camera_pos.rel_tile.y += 10
                     }
-                }}}},
+                }}},
+    },
     {{{.P, .PRESSED}}, {{.ICON_PENCIL, nil, "Pintbrush", nil, proc(state: ^GameState) {state.active_tool = .BRUSH}}}},
     {
         {{.R, .PRESSED}},
@@ -350,5 +361,17 @@ config: []Config = {
     {
         {{.F, .PRESSED}},
         {{nil, nil, "Toggle offline state", nil, proc(state: ^GameState) {state.offline = !state.offline}}},
+    },
+    {{{.V, .PRESSED}}, {{nil, nil, "Save or Load actions", nil, proc(state: ^GameState) {
+                    state.active_tool = .LOAD_SAVE
+                    state.available_files = list_files_in_dir(".", context.allocator)
+                }}}},
+    {
+        {{.ENTER, .PRESSED}},
+        {{nil, nil, "Drop current actions and load actions from selected file", nil, proc(state: ^GameState) {
+                    if load_save_override(state, state.available_files[state.selected_index]) {
+                        state.active_tool = .MOVE_TOKEN
+                    }
+                }}},
     },
 }

@@ -75,6 +75,8 @@ GameState :: struct {
     particles:              [1024]Particle,
     particle_index:         u32,
     id:                     u64,
+    available_files:        [dynamic]string,
+    selected_index:         int,
 }
 
 Widget :: enum {
@@ -175,7 +177,7 @@ tile_map_to_screen_coord_full :: proc(pos: TileMapPosition, state: ^GameState, t
 state: ^GameState
 tile_map: ^TileMap
 
-load_save_override :: proc(state: ^GameState, path := "./tiler_save") {
+load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
     data, ok := read_entire_file(path, context.temp_allocator)
     if ok {
         actions := load_from_serialized(data, context.allocator)
@@ -205,8 +207,12 @@ load_save_override :: proc(state: ^GameState, path := "./tiler_save") {
                     redo_action(state, tile_map, action)
                 }
             }
+
+            return true
         }
     }
+
+    return false
 }
 
 store_save :: proc(state: ^GameState, path := "./tiler_save") {
@@ -770,8 +776,9 @@ update :: proc() {
             icon = .ICON_LAYERS
         }
     case .HELP:
-        {
-        }
+        {}
+    case .LOAD_SAVE:
+        {}
     }
 
     if rl.IsMouseButtonReleased(.LEFT) {
@@ -1204,6 +1211,22 @@ update :: proc() {
             min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
             min_x = math.max(0, min_x)
             rl.DrawLineV({min_x, 0}, {min_x, f32(state.screen_height)}, {0, 0, 0, 20})
+        }
+    }
+
+
+    if state.active_tool == .LOAD_SAVE {
+        rl.DrawRectangleV({30, 30}, {f32(state.screen_width) - 60, f32(state.screen_height) - 60}, {0, 0, 0, 155})
+        offset: i32 = 100
+        for &file_in_cwd, i in state.available_files {
+            rl.DrawText(
+                strings.clone_to_cstring(file_in_cwd, context.temp_allocator) or_else BUILDER_FAILED,
+                100,
+                offset,
+                15,
+                i == state.selected_index ? rl.RED : rl.WHITE,
+            )
+            offset += 20
         }
     }
 
