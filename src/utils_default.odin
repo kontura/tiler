@@ -4,6 +4,7 @@
 package tiler
 
 import "core:fmt"
+import "core:mem"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
@@ -23,7 +24,7 @@ _write_entire_file :: proc(name: string, data: []byte, truncate := true) -> (suc
     return os.write_entire_file(name, data, truncate)
 }
 
-_list_files_in_dir :: proc(path: string) -> []string {
+_list_files_in_dir :: proc(path: string, allocator: mem.Allocator) -> [dynamic]string {
     f, err := os.open(path)
     defer os.close(f)
     if err != os.ERROR_NONE {
@@ -38,14 +39,14 @@ _list_files_in_dir :: proc(path: string) -> []string {
         os.exit(2)
     }
 
-    res := make([dynamic]string, context.temp_allocator)
+    res := make([dynamic]string, allocator = allocator)
 
     for fi in fis {
         _, name := filepath.split(fi.fullpath)
         if !fi.is_dir {
-            append(&res, strings.clone(name, allocator = context.temp_allocator))
+            append(&res, strings.clone(name, allocator = allocator))
         }
     }
 
-    return res[:]
+    return res
 }

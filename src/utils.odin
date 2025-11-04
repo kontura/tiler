@@ -18,6 +18,6 @@ write_entire_file :: proc(name: string, data: []byte, truncate := true) -> (succ
     return _write_entire_file(name, data, truncate)
 }
 
-list_files_in_dir :: proc(path: string) -> []string {
-    return _list_files_in_dir(path)
+list_files_in_dir :: proc(path: string, allocator := context.temp_allocator) -> [dynamic]string {
+    return _list_files_in_dir(path, allocator)
 }

@@ -9,6 +9,7 @@ package tiler
 import "base:runtime"
 import "core:c"
 import "core:log"
+import "core:mem"
 import "core:strings"
 
 // These will be linked in by emscripten.
@@ -45,22 +46,22 @@ Whence :: enum c.int {
     END,
 }
 
-_list_files_in_dir :: proc(path: string) -> []string {
-    data := make([dynamic]string, context.temp_allocator)
-    d := opendir(strings.clone_to_cstring(path, context.temp_allocator))
+_list_files_in_dir :: proc(path: string, allocator: mem.Allocator) -> [dynamic]string {
+    data := make([dynamic]string, allocator = allocator)
+    d := opendir(strings.clone_to_cstring(path, allocator = context.temp_allocator))
     if d != nil {
         dir := readdir(d)
         for dir != nil {
             // type 8 should be regular file
             if dir != nil && dir.d_type == 8 {
                 str := ([^]u8)(&dir.d_name)
-                append(&data, strings.clone_from_cstring(cstring(str), context.temp_allocator))
+                append(&data, strings.clone_from_cstring(cstring(str), allocator = allocator))
             }
             dir = readdir(d)
         }
     }
 
-    return data[:]
+    return data
 }
 
 // Similar to raylib's LoadFileData
