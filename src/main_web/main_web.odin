@@ -83,24 +83,12 @@ set_peer_rtc_connected :: proc "c" (peer_len: u32, peer_data: [^]u8) {
     peer_state.webrtc = .CONNECTED
 }
 
-parse_binary_message :: proc(msg: []u8) -> (type: u8, sender, target, payload: []u8) {
-    // 0 1 2 3 4 5 6 7 8 9
-    // 1 3 a b c 3 d e f x x x
-    type = msg[0]
-    sender_len := msg[1]
-    sender = msg[2:2 + sender_len]
-    target_len := msg[2 + sender_len]
-    target = msg[3 + sender_len:3 + sender_len + target_len]
-    payload = msg[3 + sender_len + target_len:]
-    return
-}
-
 @(export)
 process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     context = runtime.default_context()
     context.allocator = my_allocator
 
-    type, sender_bytes, target, payload := parse_binary_message(data[:data_len])
+    type, sender_bytes, target, payload := game.parse_binary_message(data[:data_len])
     sender := string(sender_bytes)
     sender_already_registered := sender in peers
     if !sender_already_registered {
