@@ -7,10 +7,26 @@ import "core:sort"
 import "core:strings"
 import "core:time"
 
+ActionType :: enum {
+    BRUSH,
+    RECTANGLE,
+    CIRCLE,
+    // All EDIT_TOKEN actions have to touch only the token,
+    // once they start changing other things (initiative tracker,..)
+    // it has to be separate action.
+    EDIT_TOKEN_INITIATIVE,
+    EDIT_TOKEN_NAME,
+    EDIT_TOKEN_SIZE,
+    EDIT_TOKEN_LIFE,
+    EDIT_TOKEN_POSITION,
+    WALL,
+    LIGHT_SOURCE,
+    CONE,
+}
 
 Action :: struct {
     // SYNCED
-    tool:                     Tool,
+    type:                     ActionType,
     start:                    TileMapPosition,
     end:                      TileMapPosition,
     color:                    [4]u8,
@@ -54,7 +70,7 @@ Action :: struct {
 
 duplicate_action :: proc(a: ^Action) -> Action {
     //TODO(amatej): Could we add some detection that all members are copied?
-    action: Action = make_action(a.tool, a.tile_history.allocator)
+    action: Action = make_action(a.type, a.tile_history.allocator)
     action.start = a.start
     action.end = a.end
     action.color = a.color
@@ -80,11 +96,11 @@ duplicate_action :: proc(a: ^Action) -> Action {
     return action
 }
 
-make_action :: proc(tool: Tool, allocator := context.allocator) -> Action {
+make_action :: proc(type: ActionType, allocator := context.allocator) -> Action {
     action: Action
     action.tile_history.allocator = allocator
     action.mine = true
-    action.tool = tool
+    action.type = type
 
     return action
 }
@@ -93,7 +109,7 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     hash: sha2.Context_256
     sha2.init_256(&hash)
 
-    sha2.update(&hash, mem.ptr_to_bytes(&action.tool))
+    sha2.update(&hash, mem.ptr_to_bytes(&action.type))
     sha2.update(&hash, mem.ptr_to_bytes(&action.start))
     sha2.update(&hash, mem.ptr_to_bytes(&action.end))
     sha2.update(&hash, mem.ptr_to_bytes(&action.color))
@@ -110,7 +126,7 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, mem.ptr_to_bytes(&action.timestamp))
     sha2.update(&hash, mem.ptr_to_bytes(&action.author_id))
 
-    if action.undo || action.tool == .BRUSH {
+    if action.undo || action.type == .BRUSH {
         tile_keys := make([dynamic][2]u32, allocator = context.temp_allocator)
         for k, _ in action.tile_history {
             append(&tile_keys, k)
@@ -181,7 +197,7 @@ delete_action :: proc(action: ^Action) {
 
 undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
     //make this into a revert, the way git does it, so add a new action with oposite values
-    switch action.tool {
+    switch action.type {
     case .RECTANGLE, .BRUSH, .CONE, .CIRCLE, .WALL:
         {
             for abs_tile, &tile in action.tile_history {
@@ -189,7 +205,7 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 set_tile(tile_map, abs_tile, tile_add(&old_tile, &tile))
             }
         }
-    case .MOVE_TOKEN, .TOUCH_MOVE:
+    case .EDIT_TOKEN_POSITION:
         {
             token, ok := &state.tokens[action.token_id]
             if ok {
@@ -207,7 +223,7 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 }
             }
         }
-    case .EDIT_TOKEN, .EDIT_TOKEN_LIFE:
+    case .EDIT_TOKEN_LIFE:
         {
             token, ok := &state.tokens[action.token_id]
             if ok {
@@ -245,12 +261,10 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 }
             }
         }
-    case .EDIT_BG, .LIGHT_SOURCE:
+    case .LIGHT_SOURCE:
         {
             fmt.println("TODO(amatej): missing implementation")
         }
-    case .COLOR_PICKER, .HELP, .TOUCH_ZOOM:
-        {}
     }
 
 }
@@ -260,7 +274,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
     // It cant work for undo because we woudn't know what was under the tiles,
     // we would have to redo from the start up to the undo action
     //fmt.println("redoing action: ", action)
-    switch action.tool {
+    switch action.type {
     case .RECTANGLE:
         {
             rectangle_tool(action.start, action.end, action.color, tile_map, action)
@@ -284,7 +298,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 set_tile(tile_map, abs_tile, tile_subtract(&old_tile, &tile))
             }
         }
-    case .MOVE_TOKEN, .TOUCH_MOVE:
+    case .EDIT_TOKEN_POSITION:
         {
             token, ok := &state.tokens[action.token_id]
             if ok {
@@ -305,7 +319,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 }
             }
         }
-    case .EDIT_TOKEN, .EDIT_TOKEN_LIFE:
+    case .EDIT_TOKEN_LIFE:
         {
             if action.token_life {
                 // life is true == token was created
@@ -363,12 +377,10 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 }
             }
         }
-    case .EDIT_BG, .LIGHT_SOURCE:
+    case .LIGHT_SOURCE:
         {
             fmt.println("TODO(amatej): missing implementation")
         }
-    case .COLOR_PICKER, .HELP, .TOUCH_ZOOM:
-        {}
     }
 }
 

@@ -212,10 +212,10 @@ store_save :: proc(state: ^GameState, path := "./tiler_save") {
     write_entire_file(path, serialize_actions(state.undo_history[:], context.temp_allocator))
 }
 
-load_from_serialized :: proc(data: []byte, allocator: mem.Allocator ) -> [dynamic]Action {
+load_from_serialized :: proc(data: []byte, allocator: mem.Allocator) -> [dynamic]Action {
     s: Serializer
     serializer_init_reader(&s, data)
-    actions := make([dynamic]Action, allocator=allocator)
+    actions := make([dynamic]Action, allocator = allocator)
     serialize(&s, &actions)
     return actions
 }
@@ -473,7 +473,7 @@ update :: proc() {
                     for token_id in state.selected_tokens {
                         token := &state.tokens[token_id]
                         if mouse_tile_pos.abs_tile != token.position.abs_tile {
-                            append(&state.undo_history, make_action(.MOVE_TOKEN))
+                            append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
                             action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                             move_token_tool(state, token, tile_map, mouse_pos, action, false)
                             action.performed = true
@@ -490,7 +490,7 @@ update :: proc() {
                         for token_id in state.selected_tokens {
                             token := &state.tokens[token_id]
                             if mouse_tile_pos.abs_tile != token.position.abs_tile {
-                                append(&state.undo_history, make_action(.MOVE_TOKEN))
+                                append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                 move_token_tool(state, token, tile_map, mouse_pos, action, true)
                                 moved = true
@@ -504,7 +504,7 @@ update :: proc() {
                         }
                     }
                     for token_id in state.selected_tokens {
-                        append(&state.temp_actions, make_action(.MOVE_TOKEN, context.temp_allocator))
+                        append(&state.temp_actions, make_action(.EDIT_TOKEN_POSITION, context.temp_allocator))
                         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
                         move_token_tool(state, &state.tokens[token_id], tile_map, mouse_pos, temp_action, true)
                     }
@@ -566,7 +566,7 @@ update :: proc() {
             }
             icon = .ICON_BOX_GRID_BIG
         }
-    case .EDIT_TOKEN, .EDIT_TOKEN_INITIATIVE, .EDIT_TOKEN_NAME, .EDIT_TOKEN_SIZE, .EDIT_TOKEN_LIFE:
+    case .EDIT_TOKEN:
         {
             #partial switch selected_widget {
             case .MAP:
@@ -580,7 +580,7 @@ update :: proc() {
                         // Trigger only once for each press
                         if rl.IsKeyPressed(key) {
                             if key == .DELETE {
-                                append(&state.undo_history, make_action(.EDIT_TOKEN))
+                                append(&state.undo_history, make_action(.EDIT_TOKEN_LIFE))
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                 token_kill(state, token, action)
                                 clear_selected_tokens(state)
@@ -655,7 +655,7 @@ update :: proc() {
                             players := [?]string{"Wesley", "AR100", "Daren", "Max", "Mardun", "Rodion"}
                             pos_offset: u32 = 0
                             for name in players {
-                                append(&state.undo_history, make_action(.EDIT_TOKEN))
+                                append(&state.undo_history, make_action(.EDIT_TOKEN_LIFE))
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                 token_pos := mouse_tile_pos
                                 token_pos.rel_tile = {0, 0}
@@ -668,7 +668,7 @@ update :: proc() {
                             }
                             state.needs_sync = true
                         } else {
-                            action := make_action(.EDIT_TOKEN)
+                            action := make_action(.EDIT_TOKEN_LIFE)
                             token_pos := mouse_tile_pos
                             token_pos.rel_tile = {0, 0}
                             token_spawn(state, &action, token_pos, state.selected_color)
@@ -684,7 +684,7 @@ update :: proc() {
                             token.position = mouse_tile_pos
                             token.color = c
                         }
-                        append(&state.temp_actions, make_action(.EDIT_TOKEN, context.temp_allocator))
+                        append(&state.temp_actions, make_action(.EDIT_TOKEN_LIFE, context.temp_allocator))
                         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
                         temp_action.token_id = 0
                         temp_action.token_life = true
@@ -1172,7 +1172,7 @@ update :: proc() {
                 action_index == len(state.undo_history) - 1 - state.undone ? " -> " : "    ",
                 action_index,
                 ": ",
-                a.tool,
+                a.type,
                 ", tile_history: ",
                 len(a.tile_history),
                 a.token_initiative_history,

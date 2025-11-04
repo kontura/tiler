@@ -14,14 +14,7 @@ Tool :: enum {
     RECTANGLE,
     COLOR_PICKER,
     CIRCLE,
-    // All EDIT_TOKEN actions have to touch only the token,
-    // once they start changing other things (initiative tracker,..)
-    // it has to be separate action.
     EDIT_TOKEN,
-    EDIT_TOKEN_INITIATIVE,
-    EDIT_TOKEN_NAME,
-    EDIT_TOKEN_SIZE,
-    EDIT_TOKEN_LIFE,
     MOVE_TOKEN,
     WALL,
     HELP,

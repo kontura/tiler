@@ -378,7 +378,7 @@ serialize_token :: proc(s: ^Serializer, token: ^Token, loc := #caller_location) 
 }
 
 serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_location) -> bool {
-    serialize(s, &action.tool, loc) or_return
+    serialize(s, &action.type, loc) or_return
     serialize(s, &action.start, loc) or_return
     serialize(s, &action.end, loc) or_return
     serialize(s, &action.color, loc) or_return
@@ -397,7 +397,7 @@ serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_locatio
     serialize(s, &action.author_id, loc) or_return
     serialize(s, &action.timestamp, loc) or_return
 
-    if action.undo || action.tool == .BRUSH {
+    if action.undo || action.type == .BRUSH {
         serialize(s, &action.tile_history, loc) or_return
     }
 
