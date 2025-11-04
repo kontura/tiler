@@ -122,7 +122,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     if type == 1 {
         bytes: []byte = payload[:len(payload)]
         // context.allocator allocated actions
-        actions := game.load_from_serialized(bytes)
+        actions := game.load_from_serialized(bytes, context.allocator)
         if len(actions) > 0 {
             for _, index in peer_state.last_known_actions {
                 game.delete_action(&peer_state.last_known_actions[index])

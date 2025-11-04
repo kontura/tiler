@@ -175,10 +175,36 @@ tile_map_to_screen_coord_full :: proc(pos: TileMapPosition, state: ^GameState, t
 state: ^GameState
 tile_map: ^TileMap
 
-load_save :: proc(path := "./tiler_save") {
+load_save_override :: proc(state: ^GameState, path := "./tiler_save") {
     data, ok := read_entire_file(path, context.temp_allocator)
     if ok {
-        load_from_serialized(data)
+        actions := load_from_serialized(data, context.allocator)
+
+        if len(actions) > 0 {
+            // undo and delete current actions
+            for i := len(state.undo_history) - 1; i >= 0; i -= 1 {
+                action := &state.undo_history[i]
+                if action.undo {
+                    redo_action(state, tile_map, action)
+                } else {
+                    undo_action(state, tile_map, action)
+                }
+            }
+            for i := 0; i < len(state.undo_history); i += 1 {
+                delete_action(&state.undo_history[i])
+            }
+            delete(state.undo_history)
+        }
+
+        state.undo_history = actions
+        for i := 0; i < len(state.undo_history); i += 1 {
+            action := &state.undo_history[i]
+            if action.undo {
+                undo_action(state, tile_map, action)
+            } else {
+                redo_action(state, tile_map, action)
+            }
+        }
     }
 }
 
@@ -186,15 +212,12 @@ store_save :: proc(state: ^GameState, path := "./tiler_save") {
     write_entire_file(path, serialize_actions(state.undo_history[:], context.temp_allocator))
 }
 
-load_from_serialized :: proc(data: []byte) {
+load_from_serialized :: proc(data: []byte, allocator: mem.Allocator ) -> [dynamic]Action {
     s: Serializer
     serializer_init_reader(&s, data)
-    actions: [dynamic]Action
+    actions := make([dynamic]Action, allocator=allocator)
     serialize(&s, &actions)
-    fmt.println(actions)
-    fmt.println(len(actions))
-    old_undone, new_redone := redo_unmatched_actions(state, tile_map, actions[:])
-    splice_dynamic_arrays_of_actions(&state.undo_history, &actions, old_undone, new_redone)
+    return actions
 }
 
 add_background :: proc(data: [^]u8, width: i32, height: i32) {
