@@ -175,14 +175,6 @@ tile_map_to_screen_coord_full :: proc(pos: TileMapPosition, state: ^GameState, t
 state: ^GameState
 tile_map: ^TileMap
 
-// Beware the returned data are temp only by default
-serialize_to_bytes :: proc(actions: ^[]Action, allocator := context.temp_allocator) -> []byte {
-    s: Serializer
-    serializer_init_writer(&s, allocator=allocator)
-    serialize(&s, &state.undo_history)
-    return s.data[:]
-}
-
 load_save :: proc(path := "./tiler_save") {
     data, ok := read_entire_file(path, context.temp_allocator)
     if ok {
@@ -190,8 +182,8 @@ load_save :: proc(path := "./tiler_save") {
     }
 }
 
-store_save :: proc(path := "./tiler_save") {
-    write_entire_file(path, serialize_to_bytes())
+store_save :: proc(state: ^GameState, path := "./tiler_save") {
+    write_entire_file(path, serialize_actions(state.undo_history[:], context.temp_allocator))
 }
 
 load_from_serialized :: proc(data: []byte) {
