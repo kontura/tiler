@@ -110,31 +110,33 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, mem.ptr_to_bytes(&action.timestamp))
     sha2.update(&hash, mem.ptr_to_bytes(&action.author_id))
 
-    tile_keys := make([dynamic][2]u32, allocator = context.temp_allocator)
-    for k, _ in action.tile_history {
-        append(&tile_keys, k)
-    }
-    sort.sort(sort.Interface {
-        len = proc(it: sort.Interface) -> int {
-            keys := cast(^[][2]u32)it.collection
-            return len(keys)
-        },
-        less = proc(it: sort.Interface, i, j: int) -> bool {
-            keys := cast(^[][2]u32)it.collection
-            i_key, j_key := keys[i], keys[j]
-            if i_key.x != j_key.x {
-                return i_key.x > j_key.x
-            }
-            return i_key.y > j_key.y
-        },
-        swap = proc(it: sort.Interface, i, j: int) {
-            keys := cast(^[][2]u32)it.collection
-            keys[i], keys[j] = keys[j], keys[i]
-        },
-        collection = &tile_keys,
-    })
-    for key in tile_keys {
-        sha2.update(&hash, mem.ptr_to_bytes(&action.tile_history[key]))
+    if action.undo || action.tool == .BRUSH {
+        tile_keys := make([dynamic][2]u32, allocator = context.temp_allocator)
+        for k, _ in action.tile_history {
+            append(&tile_keys, k)
+        }
+        sort.sort(sort.Interface {
+            len = proc(it: sort.Interface) -> int {
+                keys := cast(^[][2]u32)it.collection
+                return len(keys)
+            },
+            less = proc(it: sort.Interface, i, j: int) -> bool {
+                keys := cast(^[][2]u32)it.collection
+                i_key, j_key := keys[i], keys[j]
+                if i_key.x != j_key.x {
+                    return i_key.x > j_key.x
+                }
+                return i_key.y > j_key.y
+            },
+            swap = proc(it: sort.Interface, i, j: int) {
+                keys := cast(^[][2]u32)it.collection
+                keys[i], keys[j] = keys[j], keys[i]
+            },
+            collection = &tile_keys,
+        })
+        for key in tile_keys {
+            sha2.update(&hash, mem.ptr_to_bytes(&action.tile_history[key]))
+        }
     }
 
     if prev_action_hash != nil {
