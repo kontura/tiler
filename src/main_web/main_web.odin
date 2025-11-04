@@ -8,6 +8,7 @@ import "base:runtime"
 import "core:bytes"
 import "core:c"
 import "core:fmt"
+import "core:math"
 import "core:math/rand"
 import "core:mem"
 import "core:strings"
@@ -31,10 +32,12 @@ foreign _ {
 socket_ready: bool = false
 my_allocator: mem.Allocator
 peers: map[string]PeerState
+//TODO(amatej): replace with id in GameState
 my_id: [3]u8
 
 PeerState :: struct {
-    webrtc:         WEBRTC_STATE,
+    webrtc:             WEBRTC_STATE,
+    last_known_actions: [dynamic]game.Action,
 }
 
 WEBRTC_STATE :: enum u8 {
@@ -55,7 +58,7 @@ build_binary_msg_c :: proc "c" (
     out_data: ^rawptr,
 ) {
     context = web_context
-    msg := build_binary_message(2, peer_data[:peer_len], msg_data[:msg_len])
+    msg := game.build_binary_message(my_id, 2, peer_data[:peer_len], msg_data[:msg_len])
     out_len^ = u32(len(msg))
     out_data^ = &msg[0]
 }
@@ -63,7 +66,7 @@ build_binary_msg_c :: proc "c" (
 @(export)
 build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
     context = web_context
-    register := build_binary_message(1, nil, nil)
+    register := game.build_register_msg(my_id, game.state)
     out_len^ = u32(len(register))
     out_data^ = &register[0]
 }
@@ -78,19 +81,6 @@ set_peer_rtc_connected :: proc "c" (peer_len: u32, peer_data: [^]u8) {
     peer := string(peer_data[:peer_len])
     peer_state := &peers[peer]
     peer_state.webrtc = .CONNECTED
-}
-
-build_binary_message :: proc(type: u8, target: []u8, payload: []u8) -> []u8 {
-    msg := make([dynamic]u8, allocator = context.temp_allocator)
-    append(&msg, type)
-    append(&msg, 3)
-    append(&msg, my_id[0])
-    append(&msg, my_id[1])
-    append(&msg, my_id[2])
-    append(&msg, u8(len(target)))
-    append(&msg, ..target[:])
-    append(&msg, ..payload[:])
-    return msg[:]
 }
 
 parse_binary_message :: proc(msg: []u8) -> (type: u8, sender, target, payload: []u8) {
@@ -114,7 +104,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     sender := string(sender_bytes)
     sender_already_registered := sender in peers
     if !sender_already_registered {
-        peers[strings.clone(sender)] = {.WAITING}
+        peers[strings.clone(sender)] = {.WAITING, {}}
         peer_state := &peers[sender]
     }
 
@@ -130,13 +120,21 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     peer_state := &peers[sender]
 
     if type == 1 {
-        if len(target) != 0 {
-            bytes : []byte = payload[:len(payload)]
-            // context.allocator allocated actions
-            actions := game.load_from_serialized(bytes)
-            fmt.println("Got actions: ", actions)
-            game.merge_and_redo_actions(game.state, game.tile_map, actions)
-        } else {
+        bytes: []byte = payload[:len(payload)]
+        // context.allocator allocated actions
+        actions := game.load_from_serialized(bytes)
+        if len(actions) > 0 {
+            for _, index in peer_state.last_known_actions {
+                game.delete_action(&peer_state.last_known_actions[index])
+            }
+            clear(&peer_state.last_known_actions)
+            for &a in actions {
+                append(&peer_state.last_known_actions, game.duplicate_action(&a))
+            }
+        }
+        //TODO(amatej): check if this returns that we have newer then we got, if so we need_to_sync
+        game.merge_and_redo_actions(game.state, game.tile_map, actions)
+        if len(target) == 0 {
             fmt.println("Registering: ", sender)
             make_webrtc_offer(&sender_bytes[0], u32(len(sender_bytes)))
             peer_state.webrtc = .OFFERED
@@ -215,17 +213,26 @@ main_update :: proc "c" () -> bool {
         if socket_ready {
             for peer, &peer_state in peers {
                 peer_bytes := transmute([]u8)peer
-                binary : []u8
-                if len(game.state.undo_history) > 0 {
-                    //TODO(amatej): for now send all actions
-                    actions := game.state.undo_history[:]
-                    serialized_actions := game.serialize_to_bytes(&actions)
-                    binary = build_binary_message(1, peer_bytes, serialized_actions)
-                } else {
-                    // If we don't have any actions just send 0 for now
-                    binary = build_binary_message(1, peer_bytes, {0})
-                }
+                binary: []u8
+                _, to_send := game.find_first_not_matching_action(
+                    peer_state.last_known_actions[:],
+                    game.state.undo_history[:],
+                )
+                serialized_actions := game.serialize_actions(game.state.undo_history[to_send:], context.temp_allocator)
+                binary = game.build_binary_message(my_id, 1, peer_bytes, serialized_actions)
                 send_binary_to_peer(&peer_bytes[0], u32(len(peer_bytes)), &binary[0], u32(len(binary)))
+                if len(game.state.undo_history[to_send:]) > 0 {
+                    for _, index in peer_state.last_known_actions {
+                        game.delete_action(&peer_state.last_known_actions[index])
+                    }
+                    clear(&peer_state.last_known_actions)
+                    if len(game.state.undo_history[to_send:]) > 0 {
+                        append(
+                            &peer_state.last_known_actions,
+                            game.duplicate_action(&game.state.undo_history[len(game.state.undo_history) - 1]),
+                        )
+                    }
+                }
             }
         }
         game.state.needs_sync = false
