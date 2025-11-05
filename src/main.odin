@@ -769,7 +769,7 @@ update :: proc() {
         }
     case .HELP:
         {}
-    case .LOAD_SAVE:
+    case .LOAD_GAME:
         {}
     }
 
@@ -1199,7 +1199,7 @@ update :: proc() {
     }
 
 
-    if state.active_tool == .LOAD_SAVE {
+    if state.active_tool == .LOAD_GAME {
         rl.DrawRectangleV({30, 30}, {f32(state.screen_width) - 60, f32(state.screen_height) - 60}, {0, 0, 0, 155})
         offset: i32 = 100
         for &file_in_cwd, i in state.available_files {

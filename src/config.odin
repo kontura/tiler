@@ -91,7 +91,7 @@ config: []Config = {
             {
                 .ICON_ARROW_UP,
                 "Select previous",
-                proc(state: ^GameState) -> bool {return tool_is(state, .LOAD_SAVE)},
+                proc(state: ^GameState) -> bool {return tool_is(state, .LOAD_GAME)},
                 proc(state: ^GameState) {
                     state.selected_index -= 1
                     state.selected_index = math.max(state.selected_index, 0)
@@ -126,7 +126,7 @@ config: []Config = {
             {
                 .ICON_ARROW_DOWN,
                 "Select next",
-                proc(state: ^GameState) -> bool {return tool_is(state, .LOAD_SAVE)},
+                proc(state: ^GameState) -> bool {return tool_is(state, .LOAD_GAME)},
                 proc(state: ^GameState) {
                     state.selected_index += 1
                     state.selected_index = math.min(state.selected_index, len(state.available_files) - 1)
@@ -369,7 +369,7 @@ config: []Config = {
     },
     {{{.F, .PRESSED}}, {{nil, "Toggle offline state", nil, proc(state: ^GameState) {state.offline = !state.offline}}}},
     {{{.V, .PRESSED}}, {{nil, "Save or Load actions", nil, proc(state: ^GameState) {
-                    state.active_tool = .LOAD_SAVE
+                    state.active_tool = .LOAD_GAME
                     state.available_files = list_files_in_dir("/persist/", context.allocator)
                 }}}},
     {

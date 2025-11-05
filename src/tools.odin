@@ -23,7 +23,7 @@ Tool :: enum {
     EDIT_BG,
     LIGHT_SOURCE,
     CONE,
-    LOAD_SAVE,
+    LOAD_GAME,
 }
 
 dist :: proc(p1: [2]$T, p2: [2]T) -> f32 {
