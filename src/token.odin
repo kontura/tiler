@@ -22,18 +22,18 @@ get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) ->
     center = tile_map_to_screen_coord(token.position, state, tile_map)
     if math.mod_f32(token.size, 2) <= 0.5 {
         center -= {f32(tile_map.tile_side_in_pixels) / 2, f32(tile_map.tile_side_in_pixels) / 2}
-        radius = f32(tile_map.tile_side_in_pixels) / 2 * token.size
-    } else {
-        radius = f32(tile_map.tile_side_in_pixels) / 2 * token.size
     }
+    radius = f32(tile_map.tile_side_in_pixels) / 2 * token.size
 
     return center, radius
 }
 
 get_token_texture_pos_size :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (pos: [2]f32, scale: f32) {
     pos = tile_map_to_screen_coord(token.position, state, tile_map)
-    pos -= f32(tile_map.tile_side_in_pixels) / 2
-    pos -= f32(token.size / 2) * f32(tile_map.tile_side_in_pixels)
+    if math.mod_f32(token.size, 2) <= 0.5 {
+        pos -= f32(tile_map.tile_side_in_pixels) / 2.0
+    }
+    pos -= token.size / f32(2.0) * f32(tile_map.tile_side_in_pixels)
     // We assume token textures are squares
     scale = f32(tile_map.tile_side_in_pixels) * token.size / f32(token.texture.width)
 
