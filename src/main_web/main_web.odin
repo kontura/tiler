@@ -180,7 +180,7 @@ main_start :: proc "c" (path_len: u32, path_data: [^]u8, mobile: bool) {
     connect_signaling_websocket()
 
     //TODO(amatej): load saves
-    //mount_idbfs()
+    mount_idbfs()
     game.init(string(path_data[:path_len]), mobile)
 }
 

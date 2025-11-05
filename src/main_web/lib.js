@@ -12,7 +12,7 @@ addToLibrary({
                     console.error("error syncing", err);
                 } else {
                     console.log("fs sync to great succ.");
-                        Module.ccall('load_save', null, [], []);
+                    //Module.ccall('load_save', null, [], []);
                 }
         });
     },
