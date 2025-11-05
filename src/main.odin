@@ -359,7 +359,7 @@ update :: proc() {
                 state.tool_start_position = mouse_pos
             }
         } else if rl.IsMouseButtonDown(.RIGHT) {
-            state.camera_pos.rel_tile -= rl.GetMouseDelta()
+            state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
         }
         tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMove())
     }
