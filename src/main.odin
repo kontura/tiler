@@ -1012,7 +1012,7 @@ update :: proc() {
                 get_token_name_temp(&token),
                 i32(pos.x) - tile_map.tile_side_in_pixels / 2,
                 i32(pos.y) + tile_map.tile_side_in_pixels / 2,
-                18,
+                tile_map.tile_side_in_pixels / 2,
                 rl.WHITE,
             )
             if (token.moved != 0) {
