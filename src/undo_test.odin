@@ -75,7 +75,7 @@ create_spawn_token_action :: proc(
     Action,
     u64,
 ) {
-    action := make_action(.EDIT_TOKEN, allocator)
+    action := make_action(.EDIT_TOKEN_LIFE, allocator)
     id := token_spawn(state, &action, pos, [4]u8{0, 0, 0, 0}, "", initiative)
     return action, id
 }
@@ -401,15 +401,15 @@ splice_dynamic_arrays_of_actions_test :: proc(t: ^testing.T) {
     append(&a, temp_action)
 
     b: [dynamic]Action
-    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     append(&b, temp_action)
-    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     append(&b, temp_action)
 
     splice_dynamic_arrays_of_actions(&a, &b, 1, 1)
     testing.expect_value(t, len(a), 2)
-    testing.expect_value(t, a[0].tool, Tool.EDIT_TOKEN_INITIATIVE)
-    testing.expect_value(t, a[1].tool, Tool.MOVE_TOKEN)
+    testing.expect_value(t, a[0].type, ActionType.EDIT_TOKEN_INITIATIVE)
+    testing.expect_value(t, a[1].type, ActionType.EDIT_TOKEN_POSITION)
 
     for _, i in a {
         delete_action(&a[i])
@@ -426,17 +426,17 @@ splice_dynamic_arrays_of_actions_test2 :: proc(t: ^testing.T) {
     append(&a, temp_action)
 
     b: [dynamic]Action
-    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     append(&b, temp_action)
-    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     append(&b, temp_action)
 
     splice_dynamic_arrays_of_actions(&a, &b, 0, 2)
     testing.expect_value(t, len(a), 4)
-    testing.expect_value(t, a[0].tool, Tool.EDIT_TOKEN_INITIATIVE)
-    testing.expect_value(t, a[1].tool, Tool.EDIT_TOKEN_INITIATIVE)
-    testing.expect_value(t, a[2].tool, Tool.MOVE_TOKEN)
-    testing.expect_value(t, a[3].tool, Tool.MOVE_TOKEN)
+    testing.expect_value(t, a[0].type, ActionType.EDIT_TOKEN_INITIATIVE)
+    testing.expect_value(t, a[1].type, ActionType.EDIT_TOKEN_INITIATIVE)
+    testing.expect_value(t, a[2].type, ActionType.EDIT_TOKEN_POSITION)
+    testing.expect_value(t, a[3].type, ActionType.EDIT_TOKEN_POSITION)
 
     for _, i in a {
         delete_action(&a[i])
@@ -455,14 +455,14 @@ splice_dynamic_arrays_of_actions_test3 :: proc(t: ^testing.T) {
     append(&a, temp_action)
 
     b: [dynamic]Action
-    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     append(&b, temp_action)
     temp_action = make_action(.CONE, context.temp_allocator)
     append(&b, temp_action)
 
     splice_dynamic_arrays_of_actions(&a, &b, 3, 1)
     testing.expect_value(t, len(a), 1)
-    testing.expect_value(t, a[0].tool, Tool.CONE)
+    testing.expect_value(t, a[0].type, ActionType.CONE)
 
     for _, i in a {
         delete_action(&a[i])
@@ -481,18 +481,18 @@ splice_dynamic_arrays_of_actions_test4 :: proc(t: ^testing.T) {
     append(&a, temp_action)
 
     b: [dynamic]Action
-    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     append(&b, temp_action)
     temp_action = make_action(.CONE, context.temp_allocator)
     append(&b, temp_action)
 
     splice_dynamic_arrays_of_actions(&a, &b, 0, 2)
     testing.expect_value(t, len(a), 5)
-    testing.expect_value(t, a[0].tool, Tool.EDIT_TOKEN_INITIATIVE)
-    testing.expect_value(t, a[1].tool, Tool.BRUSH)
-    testing.expect_value(t, a[2].tool, Tool.CIRCLE)
-    testing.expect_value(t, a[3].tool, Tool.MOVE_TOKEN)
-    testing.expect_value(t, a[4].tool, Tool.CONE)
+    testing.expect_value(t, a[0].type, ActionType.EDIT_TOKEN_INITIATIVE)
+    testing.expect_value(t, a[1].type, ActionType.BRUSH)
+    testing.expect_value(t, a[2].type, ActionType.CIRCLE)
+    testing.expect_value(t, a[3].type, ActionType.EDIT_TOKEN_POSITION)
+    testing.expect_value(t, a[4].type, ActionType.CONE)
 
     for _, i in a {
         delete_action(&a[i])
@@ -503,7 +503,7 @@ splice_dynamic_arrays_of_actions_test4 :: proc(t: ^testing.T) {
 @(test)
 find_common_parent_action_test :: proc(t: ^testing.T) {
     a: [dynamic]Action
-    temp_action := make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action := make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     temp_action.hash = 1
     append(&a, temp_action)
     temp_action = make_action(.BRUSH, context.temp_allocator)
@@ -514,7 +514,7 @@ find_common_parent_action_test :: proc(t: ^testing.T) {
     append(&a, temp_action)
 
     b: [dynamic]Action
-    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     temp_action.hash = 1
     append(&b, temp_action)
     temp_action = make_action(.CONE, context.temp_allocator)
@@ -532,7 +532,7 @@ find_common_parent_action_test :: proc(t: ^testing.T) {
 @(test)
 find_common_parent_action_test2 :: proc(t: ^testing.T) {
     a: [dynamic]Action
-    temp_action := make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action := make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     temp_action.hash = 1
     append(&a, temp_action)
     temp_action = make_action(.BRUSH, context.temp_allocator)
@@ -549,7 +549,7 @@ find_common_parent_action_test2 :: proc(t: ^testing.T) {
     append(&a, temp_action)
 
     b: [dynamic]Action
-    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     temp_action.hash = 1
     append(&b, temp_action)
     temp_action = make_action(.BRUSH, context.temp_allocator)
@@ -570,7 +570,7 @@ find_common_parent_action_test2 :: proc(t: ^testing.T) {
 @(test)
 inject_action_test :: proc(t: ^testing.T) {
     a: [dynamic]Action
-    temp_action := make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action := make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     temp_action.timestamp = {10}
     temp_action.author_id = 1
     append(&a, temp_action)
@@ -591,7 +591,7 @@ inject_action_test :: proc(t: ^testing.T) {
     temp_action.author_id = 1
     append(&a, temp_action)
 
-    temp_action = make_action(.MOVE_TOKEN, context.temp_allocator)
+    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     temp_action.timestamp = {23}
     temp_action.author_id = 1
 
@@ -648,21 +648,21 @@ merge_and_redo_actions_test :: proc(t: ^testing.T) {
     append(&state.undo_history, spawn_action1)
     testing.expect_value(t, token.position.abs_tile, [2]u32{0, 0})
 
-    append(&state.undo_history, make_action(.MOVE_TOKEN))
+    append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
     action2: ^Action = &state.undo_history[len(state.undo_history) - 1]
     action2.hash = 2
     action2.timestamp = {2}
     move_token_tool(&state, token, &tile_map, {20, 20}, action2, false)
     testing.expect_value(t, token.position.abs_tile, [2]u32{99, 99})
 
-    append(&state.undo_history, make_action(.MOVE_TOKEN))
+    append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
     action3 := &state.undo_history[len(state.undo_history) - 1]
     action3.hash = 3
     action3.timestamp = {3}
     move_token_tool(&state, token, &tile_map, {200, 200}, action3, false)
     testing.expect_value(t, token.position.abs_tile, [2]u32{105, 105})
 
-    append(&state.undo_history, make_action(.MOVE_TOKEN))
+    append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
     action4 := &state.undo_history[len(state.undo_history) - 1]
     action4.hash = 4
     action4.timestamp = {4}
@@ -672,7 +672,7 @@ merge_and_redo_actions_test :: proc(t: ^testing.T) {
     new_actions: [dynamic]Action
     append(&new_actions, duplicate_action(action3))
 
-    action1 := make_action(.MOVE_TOKEN)
+    action1 := make_action(.EDIT_TOKEN_POSITION)
     action1.hash = 5
     action1.timestamp = {5}
     action1.token_id = token_id
@@ -696,7 +696,7 @@ merge_and_redo_actions_test :: proc(t: ^testing.T) {
 
 @(test)
 action_hash_test :: proc(t: ^testing.T) {
-    action1 := make_action(.MOVE_TOKEN, context.temp_allocator)
+    action1 := make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     action1.timestamp = {5}
     action1.token_life = true
     action1.token_size = 2
@@ -705,7 +705,7 @@ action_hash_test :: proc(t: ^testing.T) {
     action1.start = {{105, 105}, {0, 0}}
     action1.end = {{17, 17}, {0, 0}}
 
-    action2 := make_action(.MOVE_TOKEN, context.temp_allocator)
+    action2 := make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     action2.timestamp = {5}
     action2.token_life = true
     action2.token_size = 2
@@ -721,7 +721,7 @@ action_hash_test :: proc(t: ^testing.T) {
 
 @(test)
 action_hash_test_multiple_spawn :: proc(t: ^testing.T) {
-    action1 := make_action(.MOVE_TOKEN, context.temp_allocator)
+    action1 := make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     action1.timestamp = {5}
     action1.token_life = true
     action1.token_size = 2
@@ -731,7 +731,7 @@ action_hash_test_multiple_spawn :: proc(t: ^testing.T) {
     action1.start = {{105, 105}, {0, 0}}
     action1.end = {{17, 17}, {0, 0}}
 
-    action2 := make_action(.MOVE_TOKEN, context.temp_allocator)
+    action2 := make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
     action2.timestamp = {5}
     action2.token_life = true
     action2.token_size = 2
