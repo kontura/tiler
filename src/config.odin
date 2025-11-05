@@ -17,8 +17,6 @@ Config :: struct {
     // The order of bindings matter we execute only the first tool matching binding
     bindings:     []struct {
         icon:      rl.GuiIconName,
-        //TODO(amatej): reorder? maybe the two maybes should be after each other
-        tool:      Maybe(Tool),
         help:      string,
         condition: Maybe(proc(_: ^GameState) -> bool),
         action:    proc(_: ^GameState),
@@ -31,6 +29,14 @@ move_left :: proc(state: ^GameState) {
 
 move_right :: proc(state: ^GameState) {
     state.camera_pos.rel_tile.x += 10
+}
+
+tool_is :: proc(state: ^GameState, tool: Tool) -> bool {
+    if state.active_tool == tool {
+        return true
+    } else {
+        return false
+    }
 }
 
 are_tokens_selected :: proc(state: ^GameState) -> bool {
@@ -77,18 +83,22 @@ select_next_init_token :: proc(state: ^GameState, init_start: i32, init_index_st
 }
 
 config: []Config = {
-    {key_triggers = {{.LEFT, .PRESSED}}, bindings = {{.ICON_ARROW_LEFT, nil, "Move to the left", nil, move_left}}},
-    {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, nil, "Move to the right", nil, move_right}}},
+    {key_triggers = {{.LEFT, .PRESSED}}, bindings = {{.ICON_ARROW_LEFT, "Move to the left", nil, move_left}}},
+    {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, "Move to the right", nil, move_right}}},
     {
         key_triggers = {{.UP, .PRESSED}},
         bindings     = {
-            {.ICON_ARROW_UP, .LOAD_SAVE, "Select previous", nil, proc(state: ^GameState) {
-                    state.selected_index -= 1
-                    state.selected_index = math.max(state.selected_index, 0)
-                }},
             {
                 .ICON_ARROW_UP,
-                nil,
+                "Select previous",
+                proc(state: ^GameState) -> bool {return tool_is(state, .LOAD_SAVE)},
+                proc(state: ^GameState) {
+                    state.selected_index -= 1
+                    state.selected_index = math.max(state.selected_index, 0)
+                },
+            },
+            {
+                .ICON_ARROW_UP,
                 "Move up",
                 nil,
                 proc(state: ^GameState) {
@@ -112,10 +122,17 @@ config: []Config = {
     },
     {
         key_triggers = {{.DOWN, .PRESSED}},
-        bindings = {{.ICON_ARROW_DOWN, .LOAD_SAVE, "Select next", nil, proc(state: ^GameState) {
+        bindings = {
+            {
+                .ICON_ARROW_DOWN,
+                "Select next",
+                proc(state: ^GameState) -> bool {return tool_is(state, .LOAD_SAVE)},
+                proc(state: ^GameState) {
                     state.selected_index += 1
                     state.selected_index = math.min(state.selected_index, len(state.available_files) - 1)
-                }}, {.ICON_ARROW_DOWN, nil, "Move down", nil, proc(state: ^GameState) {
+                },
+            },
+            {.ICON_ARROW_DOWN, "Move down", nil, proc(state: ^GameState) {
                     if state.debug {
                         if state.undone < len(state.undo_history) {
                             a := &state.undo_history[len(state.undo_history) - 1 - state.undone]
@@ -129,38 +146,32 @@ config: []Config = {
                     } else {
                         state.camera_pos.rel_tile.y += 10
                     }
-                }}},
+                }},
+        },
     },
-    {{{.P, .PRESSED}}, {{.ICON_PENCIL, nil, "Pintbrush", nil, proc(state: ^GameState) {state.active_tool = .BRUSH}}}},
-    {
-        {{.R, .PRESSED}},
-        {{.ICON_BOX, nil, "Rectangle tool", nil, proc(state: ^GameState) {state.active_tool = .RECTANGLE}}},
-    },
+    {{{.P, .PRESSED}}, {{.ICON_PENCIL, "Pintbrush", nil, proc(state: ^GameState) {state.active_tool = .BRUSH}}}},
+    {{{.R, .PRESSED}}, {{.ICON_BOX, "Rectangle tool", nil, proc(state: ^GameState) {state.active_tool = .RECTANGLE}}}},
     {
         {{.C, .PRESSED}},
-        {{.ICON_PLAYER_RECORD, nil, "Circle tool", nil, proc(state: ^GameState) {state.active_tool = .CIRCLE}}},
+        {{.ICON_PLAYER_RECORD, "Circle tool", nil, proc(state: ^GameState) {state.active_tool = .CIRCLE}}},
     },
-    {
-        {{.W, .PRESSED}},
-        {{.ICON_BOX_GRID_BIG, nil, "Wall tool", nil, proc(state: ^GameState) {state.active_tool = .WALL}}},
-    },
+    {{{.W, .PRESSED}}, {{.ICON_BOX_GRID_BIG, "Wall tool", nil, proc(state: ^GameState) {state.active_tool = .WALL}}}},
     {
         {{.S, .PRESSED}},
-        {{.ICON_PLAYER, nil, "Edit tokens tool", nil, proc(state: ^GameState) {state.active_tool = .EDIT_TOKEN}}},
+        {{.ICON_PLAYER, "Edit tokens tool", nil, proc(state: ^GameState) {state.active_tool = .EDIT_TOKEN}}},
     },
     {
         {{.B, .PRESSED}},
-        {{.ICON_LAYERS, nil, "Edit background tool", nil, proc(state: ^GameState) {state.active_tool = .EDIT_BG}}},
+        {{.ICON_LAYERS, "Edit background tool", nil, proc(state: ^GameState) {state.active_tool = .EDIT_BG}}},
     },
     {
         {{.M, .PRESSED}},
-        {{.ICON_TARGET_MOVE, nil, "Move tokens tool", nil, proc(state: ^GameState) {state.active_tool = .MOVE_TOKEN}}},
+        {{.ICON_TARGET_MOVE, "Move tokens tool", nil, proc(state: ^GameState) {state.active_tool = .MOVE_TOKEN}}},
     },
     {
         {{.I, .PRESSED}},
         {
             {
-                nil,
                 nil,
                 "Toggle initiative drawing",
                 nil,
@@ -170,19 +181,29 @@ config: []Config = {
     },
     {
         {{.G, .PRESSED}},
-        {{nil, nil, "Toggle grid drawing", nil, proc(state: ^GameState) {state.draw_grid = !state.draw_grid}}},
+        {{nil, "Toggle grid drawing", nil, proc(state: ^GameState) {state.draw_grid = !state.draw_grid}}},
     },
     {
         {{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}},
-        {{.ICON_FILE_SAVE, nil, "Save game", nil, proc(state: ^GameState) {state.save = .REQUESTED}}},
+        {
+            {
+                .ICON_FILE_SAVE,
+                "Quick save",
+                nil,
+                proc(state: ^GameState) {
+                    //TODO(amatej): generate with timestamp
+                    store_save(state, "/persist/tiler_save")
+                    state.timeout = 60
+                },
+            },
+        },
     },
     {
         {{.D, .PRESSED}},
         {
             {
                 nil,
-                nil,
-                "Toggle debug info (freezes syncing, allows walking current action history)",
+                "Toggle debug info (allows walking current action history)",
                 nil,
                 proc(state: ^GameState) {
                     if state.debug {
@@ -204,7 +225,7 @@ config: []Config = {
             },
         },
     },
-    {{{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_UNDO, nil, "Undo last action", nil, proc(state: ^GameState) {
+    {{{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_UNDO, "Undo last action", nil, proc(state: ^GameState) {
                     #reverse for &action in state.undo_history {
                         if action.mine && !action.reverted {
                             undo_action(state, tile_map, &action)
@@ -218,7 +239,7 @@ config: []Config = {
                         }
                     }
                 }}}},
-    {{{.A, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_REDO, nil, "Redo all actions", nil, proc(state: ^GameState) {
+    {{{.A, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_REDO, "Redo all actions", nil, proc(state: ^GameState) {
                     tokens_reset(state)
                     tilemap_clear(tile_map)
 
@@ -231,31 +252,31 @@ config: []Config = {
                     }
                     fmt.println("redone all")
                 }}}},
-    {{{.LEFT_CONTROL, .PRESSED}}, {{.ICON_COLOR_PICKER, nil, "Active colorpicker", nil, proc(state: ^GameState) {
+    {{{.LEFT_CONTROL, .PRESSED}}, {{.ICON_COLOR_PICKER, "Active colorpicker", nil, proc(state: ^GameState) {
                     if state.previous_tool == nil {
                         state.previous_tool = state.active_tool
                         state.active_tool = .COLOR_PICKER
                     }}}}},
-    {{{.LEFT_CONTROL, .RELEASED}}, {{nil, nil, "Deactive colorpicker", nil, proc(state: ^GameState) {
+    {{{.LEFT_CONTROL, .RELEASED}}, {{nil, "Deactive colorpicker", nil, proc(state: ^GameState) {
                     if state.previous_tool != nil {
                         state.active_tool = state.previous_tool.?
                         state.previous_tool = nil
                     }}}}},
-    {{{.SLASH, .PRESSED}}, {{.ICON_HELP, nil, "Active help", nil, proc(state: ^GameState) {
+    {{{.SLASH, .PRESSED}}, {{.ICON_HELP, "Active help", nil, proc(state: ^GameState) {
                     if state.previous_tool == nil {
                         state.previous_tool = state.active_tool
                         state.active_tool = .HELP
                     }}}}},
-    {{{.SLASH, .RELEASED}}, {{nil, nil, "Deactive help", nil, proc(state: ^GameState) {
+    {{{.SLASH, .RELEASED}}, {{nil, "Deactive help", nil, proc(state: ^GameState) {
                     if state.previous_tool != nil {
                         state.active_tool = state.previous_tool.?
                         state.previous_tool = nil
                     }}}}},
     {
         {{.O, .PRESSED}},
-        {{.ICON_CURSOR_POINTER, nil, "Cone tool", nil, proc(state: ^GameState) {state.active_tool = .CONE}}},
+        {{.ICON_CURSOR_POINTER, "Cone tool", nil, proc(state: ^GameState) {state.active_tool = .CONE}}},
     },
-    {{{.E, .PRESSED}}, {{nil, nil, "Print all actions to console", nil, proc(state: ^GameState) {
+    {{{.E, .PRESSED}}, {{nil, "Print all actions to console", nil, proc(state: ^GameState) {
                     for &action, index in state.undo_history {
                         fmt.println(index, ". ", action)
                     }
@@ -265,9 +286,8 @@ config: []Config = {
         {
             {
                 nil,
-                .MOVE_TOKEN,
                 "Move selected tokens down",
-                nil,
+                proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {0, 1})},
             },
         },
@@ -277,9 +297,8 @@ config: []Config = {
         {
             {
                 nil,
-                .MOVE_TOKEN,
                 "Move selected tokens up",
-                nil,
+                proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {0, -1})},
             },
         },
@@ -289,9 +308,8 @@ config: []Config = {
         {
             {
                 nil,
-                .MOVE_TOKEN,
                 "Move selected tokens left",
-                nil,
+                proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {-1, 0})},
             },
         },
@@ -301,14 +319,12 @@ config: []Config = {
         {
             {
                 nil,
-                .MOVE_TOKEN,
                 "Move selected tokens right",
-                are_tokens_selected,
+                proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {1, 0})},
             },
             {
                 .ICON_CURSOR_SCALE_LEFT,
-                nil,
                 "Light source tool",
                 nil,
                 proc(state: ^GameState) {state.active_tool = .LIGHT_SOURCE},
@@ -318,21 +334,14 @@ config: []Config = {
     {
         {{.ESCAPE, .PRESSED}},
         {
-            {
-                nil,
-                nil,
-                "Deselected tokens",
-                are_tokens_selected,
-                proc(state: ^GameState) {clear_selected_tokens(state)},
-            },
-            {nil, nil, "Quit", nil, proc(state: ^GameState) {state.should_run = false}},
+            {nil, "Deselected tokens", are_tokens_selected, proc(state: ^GameState) {clear_selected_tokens(state)}},
+            {nil, "Quit", nil, proc(state: ^GameState) {state.should_run = false}},
         },
     },
     {
         {{.TAB, .PRESSED}},
         {
             {
-                nil,
                 nil,
                 "Select next token",
                 nil,
@@ -358,18 +367,21 @@ config: []Config = {
             },
         },
     },
-    {
-        {{.F, .PRESSED}},
-        {{nil, nil, "Toggle offline state", nil, proc(state: ^GameState) {state.offline = !state.offline}}},
-    },
-    {{{.V, .PRESSED}}, {{nil, nil, "Save or Load actions", nil, proc(state: ^GameState) {
+    {{{.F, .PRESSED}}, {{nil, "Toggle offline state", nil, proc(state: ^GameState) {state.offline = !state.offline}}}},
+    {{{.V, .PRESSED}}, {{nil, "Save or Load actions", nil, proc(state: ^GameState) {
                     state.active_tool = .LOAD_SAVE
-                    state.available_files = list_files_in_dir(".", context.allocator)
+                    state.available_files = list_files_in_dir("/persist/", context.allocator)
                 }}}},
     {
         {{.ENTER, .PRESSED}},
-        {{nil, nil, "Drop current actions and load actions from selected file", nil, proc(state: ^GameState) {
-                    if load_save_override(state, state.available_files[state.selected_index]) {
+        {{nil, "Drop current actions and load actions from selected file", nil, proc(state: ^GameState) {
+                    save_name := fmt.aprint(
+                        "/persist/",
+                        state.available_files[state.selected_index],
+                        sep = "",
+                        allocator = context.temp_allocator,
+                    )
+                    if load_save_override(state, save_name) {
                         state.active_tool = .MOVE_TOKEN
                     }
                 }}},

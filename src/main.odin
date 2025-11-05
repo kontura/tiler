@@ -820,10 +820,6 @@ update :: proc() {
                 if triggered {
                     for binding in c.bindings {
                         picked_binding := true
-                        tool, tool_ok := binding.tool.?
-                        if tool_ok {
-                            picked_binding = picked_binding && tool == state.active_tool
-                        }
                         cond_proc, cond_ok := binding.condition.?
                         if cond_ok {
                             picked_binding = picked_binding && cond_proc(state)
@@ -1241,10 +1237,6 @@ update :: proc() {
             for &bind in c.bindings {
                 if bind.icon != nil {
                     rl.GuiDrawIcon(bind.icon, 500, offset, 1, rl.WHITE)
-                }
-                if bind.tool != nil {
-                    tool_str, ok := fmt.enum_value_to_string(bind.tool.?)
-                    rl.DrawText(strings.clone_to_cstring(tool_str, context.temp_allocator), 340, offset, 18, rl.WHITE)
                 }
                 rl.DrawText(strings.clone_to_cstring(bind.help, context.temp_allocator), 540, offset, 18, rl.WHITE)
 
