@@ -226,12 +226,6 @@ main_update :: proc "c" () -> bool {
         game.state.needs_sync = false
     }
 
-    //if game.state.save == game.SaveStatus.REQUESTED {
-    //    game.state.bytes_count = store_save()
-    //    game.state.timeout = 60
-    //    game.state.save = game.SaveStatus.DONE
-    //}
-
     free_all(context.temp_allocator)
     return true
 }
@@ -247,48 +241,3 @@ web_window_size_changed :: proc "c" (w: c.int, h: c.int) {
     context = web_context
     game.parent_window_size_changed(int(w), int(h))
 }
-
-//@(export)
-//load_save :: proc "c" () {
-//    context = web_context
-//    save_name := fmt.aprint("/persist/", game.state.path, sep = "", allocator = context.temp_allocator)
-//    data, ok := game.read_entire_file(save_name, context.temp_allocator)
-//    if ok {
-//        result := am.AMloadIncremental(doc, &data[0], len(data))
-//        am.AMresultFree(result)
-//        update_game_state_from_doc(doc)
-//    }
-//}
-//
-//@(export)
-//store_save :: proc "c" () -> uint {
-//    context = runtime.default_context()
-//    context.allocator = my_allocator
-//    count: uint
-//    if doc != nil {
-//        // We have to use incremental save because normal
-//        // AMsave has to wierd memory problem probably
-//        // cause by rust.
-//        // To simulate always full save clone the doc first.
-//        clone_result := am.AMclone(doc)
-//        defer am.AMresultFree(clone_result)
-//        clone_doc: am.AMdocPtr
-//        clone_item, _ := am.result_to_item(clone_result)
-//        if !am.AMitemToDoc(clone_item, &clone_doc) {
-//            assert(false)
-//        }
-//
-//        result := am.AMsaveIncremental(clone_doc)
-//        defer am.AMresultFree(result)
-//        am.verify_result(result)
-//        item, _ := am.result_to_item(result)
-//        if am.AMitemValType(item) == .AM_VAL_TYPE_BYTES {
-//            fmt.println("writing incremental bytes")
-//            bytes := am.item_to_or_report(item, am.AMbyteSpan)
-//            count = bytes.count
-//            save_name := fmt.aprint("/persist/", game.state.path, sep = "", allocator = context.temp_allocator)
-//            game.write_entire_file(save_name, bytes.src[:bytes.count])
-//        }
-//    }
-//    return count
-//}

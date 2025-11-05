@@ -21,12 +21,6 @@ SELECTED_TRANSPARENT_COLOR: [4]u8 : {0, 255, 0, 180}
 
 INITIATIVE_COUNT: i32 : 50
 
-SaveStatus :: enum {
-    NONE,
-    REQUESTED,
-    DONE,
-}
-
 //TODO(amatej): make GameState and TileMap not global
 GameState :: struct {
     screen_width:           i32,
@@ -48,8 +42,6 @@ GameState :: struct {
     previous_touch_dist:    f32,
     previous_touch_pos:     [2]f32,
     previous_touch_count:   i32,
-    save:                   SaveStatus,
-    bytes_count:            uint,
     timeout:                uint,
     //TODO(amatej): debug should be a tool
     debug:                  bool,
@@ -1137,14 +1129,10 @@ update :: proc() {
         rl.DrawCircleV(pos, particle.size, color.xyzw)
     }
 
-    if state.save == .DONE {
-        msg := fmt.caprint("Saved! (byte count: ", state.bytes_count, ")", allocator = context.temp_allocator)
+    if state.timeout > 0 {
+        msg := fmt.caprint("Saved!", allocator = context.temp_allocator)
         rl.DrawText(msg, 100, 100, 100, rl.BLUE)
-        if state.timeout > 0 {
-            state.timeout -= 1
-        } else {
-            state.save = .NONE
-        }
+        state.timeout -= 1
     }
     if state.offline {
         msg := fmt.caprint("Offline", allocator = context.temp_allocator)
