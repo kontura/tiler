@@ -196,100 +196,73 @@ delete_action :: proc(action: ^Action) {
     delete(action.new_name)
 }
 
-undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
-    //make this into a revert, the way git does it, so add a new action with oposite values
-    switch action.type {
-    case .RECTANGLE, .BRUSH, .CONE, .CIRCLE, .WALL:
-        {
-            for abs_tile, &tile in action.tile_history {
-                old_tile := get_tile(tile_map, abs_tile)
-                set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
-            }
-        }
-    case .EDIT_TOKEN_POSITION:
-        {
-            token, ok := &state.tokens[action.token_id]
-            if ok {
-                token.position = action.start
-            }
-        }
-    case .EDIT_TOKEN_INITIATIVE:
-        {
-            token, ok := &state.tokens[action.token_id]
-            if ok {
-                old_init, old_init_index, ok := get_token_init_pos(state, token.id)
-                if ok {
-                    move_initiative_token(
-                        state,
-                        token.id,
-                        action.token_initiative_start.x,
-                        action.token_initiative_start.y,
-                    )
-                }
-            }
-        }
-    case .EDIT_TOKEN_LIFE:
-        {
-            token, ok := &state.tokens[action.token_id]
-            if ok {
-                if action.token_life {
-                    // life is true == token was created (undo is deleteing it)
-                    remove_token_by_id_from_initiative(state, token.id)
-                    token.alive = false
-                } else {
-                    // life is false == token was deleted (undo is creating it)
-                    token.alive = true
-                    add_at_initiative(state, token.id, action.token_initiative_end.x, action.token_initiative_end.y)
-                }
-            }
-        }
-    case .EDIT_TOKEN_SIZE:
-        {
-            token, ok := &state.tokens[action.token_id]
-            if ok {
-                token.size -= f32(action.token_size)
-            }
-        }
-    case .EDIT_TOKEN_NAME:
-        {
-            token, ok := &state.tokens[action.token_id]
-            if ok {
-                if action.new_name != action.old_name {
-                    delete(token.name)
-                    token.name = strings.clone(action.old_name)
-                    set_texture_based_on_name(state, token)
-                }
-            }
-        }
-    case .LIGHT_SOURCE:
-        {
-            fmt.println("TODO(amatej): missing implementation")
-        }
-    }
+revert_action :: proc(action: ^Action, allocator := context.allocator) -> Action {
+    reverted := duplicate_action(action, allocator)
+    reverted.start, reverted.end = reverted.end, reverted.start
+    //TODO(amatej): color is not delta and I don't have the starting color
 
+    reverted.token_initiative_start, reverted.token_initiative_end =
+        reverted.token_initiative_end, reverted.token_initiative_start
+
+    reverted.token_life = !reverted.token_life
+    reverted.token_size *= -1
+    reverted.new_name, reverted.old_name = reverted.old_name, reverted.new_name
+
+    return reverted
+}
+
+undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
+    reverted := revert_action(action, context.temp_allocator)
+    redo_action(state, tile_map, &reverted)
 }
 
 redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
-    // Optimization for redo
-    // It cant work for undo because we woudn't know what was under the tiles,
-    // we would have to redo from the start up to the undo action
-    //fmt.println("redoing action: ", action)
     switch action.type {
     case .RECTANGLE:
         {
-            rectangle_tool(action.start, action.end, action.color, tile_map, action)
+            // Some actions can have tile_history (its needed for undo),
+            // if present its faster than doing the tool
+            if len(action.tile_history) > 0 {
+                for abs_tile, &tile in action.tile_history {
+                    old_tile := get_tile(tile_map, abs_tile)
+                    set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
+                }
+            } else {
+                rectangle_tool(action.start, action.end, action.color, tile_map, action)
+            }
         }
     case .CIRCLE:
         {
-            draw_tile_circle(tile_map, action.start, auto_cast action.radius, action.color, action)
+            if len(action.tile_history) > 0 {
+                for abs_tile, &tile in action.tile_history {
+                    old_tile := get_tile(tile_map, abs_tile)
+                    set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
+                }
+            } else {
+                draw_tile_circle(tile_map, action.start, auto_cast action.radius, action.color, action)
+            }
         }
     case .CONE:
         {
-            draw_cone_tiles(tile_map, action.start, action.end, action.color, action)
+            if len(action.tile_history) > 0 {
+                for abs_tile, &tile in action.tile_history {
+                    old_tile := get_tile(tile_map, abs_tile)
+                    set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
+                }
+            } else {
+                draw_cone_tiles(tile_map, action.start, action.end, action.color, action)
+            }
         }
     case .WALL:
         {
-            wall_tool(tile_map, action.start, action.end, action.color, action)
+            if len(action.tile_history) > 0 {
+                for abs_tile, &tile in action.tile_history {
+                    old_tile := get_tile(tile_map, abs_tile)
+                    set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
+                }
+            } else {
+                wall_tool(tile_map, action.start, action.end, action.color, action)
+            }
         }
     case .BRUSH:
         {

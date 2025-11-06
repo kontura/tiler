@@ -63,15 +63,6 @@ delete_token :: proc(token: ^Token) {
 //TODO(amatej): should this be a tool
 token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
     init, init_index, ok := remove_token_by_id_from_initiative(state, token.id)
-    assert(
-        ok,
-        fmt.aprint(
-            "tried to kill: ",
-            token.id,
-            " and cant find it in initiative.",
-            allocator = context.temp_allocator,
-        ),
-    )
     token.alive = false
     if action != nil {
         action.token_id = token.id
@@ -79,21 +70,34 @@ token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
         action.performed = true
         action.token_initiative_end = {init, init_index}
     }
-    for i := 0; i < 80 * int(token.size) * int(token.size); i += 1 {
-        angle := rand.float32() * 2 * math.PI
-        rand_radius := math.sqrt(rand.float32()) * f32(token.size) * tile_map.tile_side_in_feet / 2
-        random_pos_in_token_circle := token.position
-        random_pos_in_token_circle.rel_tile.x += rand_radius * math.cos(angle)
-        random_pos_in_token_circle.rel_tile.y += rand_radius * math.sin(angle)
-        random_pos_in_token_circle = recanonicalize_position(tile_map, random_pos_in_token_circle)
-        particle_emit(
-            state,
-            random_pos_in_token_circle,
-            PARTICLE_BASE_VELOCITY + f32(token.size) * 4,
-            PARTICLE_LIFETIME + f32(token.size) / 4,
-            token.color,
-            PARTICLE_SIZE,
+    // token with id 0 is special temp token, it is not in initiative
+    // and we don't want to emit particles
+    if token.id != 0 {
+        assert(
+            ok,
+            fmt.aprint(
+                "tried to kill: ",
+                token.id,
+                " and cant find it in initiative.",
+                allocator = context.temp_allocator,
+            ),
         )
+        for i := 0; i < 80 * int(token.size) * int(token.size); i += 1 {
+            angle := rand.float32() * 2 * math.PI
+            rand_radius := math.sqrt(rand.float32()) * f32(token.size) * tile_map.tile_side_in_feet / 2
+            random_pos_in_token_circle := token.position
+            random_pos_in_token_circle.rel_tile.x += rand_radius * math.cos(angle)
+            random_pos_in_token_circle.rel_tile.y += rand_radius * math.sin(angle)
+            random_pos_in_token_circle = recanonicalize_position(tile_map, random_pos_in_token_circle)
+            particle_emit(
+                state,
+                random_pos_in_token_circle,
+                PARTICLE_BASE_VELOCITY + f32(token.size) * 4,
+                PARTICLE_LIFETIME + f32(token.size) / 4,
+                token.color,
+                PARTICLE_SIZE,
+            )
+        }
     }
 }
 
