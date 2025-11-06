@@ -1194,7 +1194,6 @@ update :: proc() {
                 a.type,
                 ", tile_history: ",
                 len(a.tile_history),
-                a.token_initiative_history,
                 allocator = context.temp_allocator,
             )
             rl.DrawText(

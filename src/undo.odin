@@ -26,51 +26,51 @@ ActionType :: enum {
 
 Action :: struct {
     // SYNCED
-    type:                     ActionType,
-    start:                    TileMapPosition,
-    end:                      TileMapPosition,
-    color:                    [4]u8,
-    radius:                   f64,
-    token_id:                 u64,
+    type:                   ActionType,
+    start:                  TileMapPosition,
+    end:                    TileMapPosition,
+    color:                  [4]u8,
+    radius:                 f64,
+    token_id:               u64,
 
     // Whether this action should be undone (this is an undo action)
-    undo:                     bool,
-    token_initiative_history: [2]i32,
-    token_initiative_start:   [2]i32,
-    token_life:               bool,
-    token_size:               f64,
+    undo:                   bool,
+    token_initiative_end:   [2]i32,
+    token_initiative_start: [2]i32,
+    token_life:             bool,
+    token_size:             f64,
 
     // This can work for only one token
     // But will we ever rename more tokens at once>
-    old_name:                 string,
-    new_name:                 string,
-    hash:                     [32]u8,
-    timestamp:                time.Time,
-    author_id:                u64,
+    old_name:               string,
+    new_name:               string,
+    hash:                   [32]u8,
+    timestamp:              time.Time,
+    author_id:              u64,
 
     // NOT SYNCED
 
     // Whether this action can be reverted.
     // Actions that have already been reverted or are reverting
     // actions cannot be reverted again.
-    reverted:                 bool,
+    reverted:               bool,
 
     // Whether this action was made by me, not other peers
-    mine:                     bool,
+    mine:                   bool,
 
     // This is not synchronized, its local to each peer.
     // Determines if this action was already perfomed.
-    performed:                bool,
+    performed:              bool,
     // tile delta old_tile - new_tile (this could be a nice cache? because unding an action
     // stored in input format would require to redo all actions from the start, but once done
     // we could store more state in this so we don't have to always redo) Although undo is typically
     // done just once? But the starting actions we get re-done many times..
-    tile_history:             map[[2]u32]Tile,
+    tile_history:           map[[2]u32]Tile,
 }
 
-duplicate_action :: proc(a: ^Action) -> Action {
+duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
     //TODO(amatej): Could we add some detection that all members are copied?
-    action: Action = make_action(a.type, a.tile_history.allocator)
+    action: Action = make_action(a.type, allocator = allocator)
     action.start = a.start
     action.end = a.end
     action.color = a.color
@@ -82,13 +82,14 @@ duplicate_action :: proc(a: ^Action) -> Action {
     action.hash = a.hash
     action.author_id = a.author_id
     action.timestamp = a.timestamp
-    action.token_initiative_history = a.token_initiative_history
+    action.token_initiative_end = a.token_initiative_end
     action.token_initiative_start = a.token_initiative_start
     action.token_life = a.token_life
     action.token_size = a.token_size
     action.token_id = a.token_id
-    action.old_name = strings.clone(a.old_name)
-    action.new_name = strings.clone(a.new_name)
+    action.old_name = strings.clone(a.old_name, allocator)
+    action.new_name = strings.clone(a.new_name, allocator)
+    action.tile_history = make(map[[2]u32]Tile, allocator = allocator)
     for pos, &hist in a.tile_history {
         action.tile_history[pos] = hist
     }
@@ -117,7 +118,7 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, mem.ptr_to_bytes(&action.token_id))
 
     sha2.update(&hash, mem.ptr_to_bytes(&action.undo))
-    sha2.update(&hash, mem.ptr_to_bytes(&action.token_initiative_history))
+    sha2.update(&hash, mem.ptr_to_bytes(&action.token_initiative_end))
     sha2.update(&hash, mem.ptr_to_bytes(&action.token_initiative_start))
     sha2.update(&hash, mem.ptr_to_bytes(&action.token_life))
     sha2.update(&hash, mem.ptr_to_bytes(&action.token_size))
@@ -218,8 +219,12 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             if ok {
                 old_init, old_init_index, ok := get_token_init_pos(state, token.id)
                 if ok {
-                    new_init_pos := [2]i32{old_init, old_init_index} + action.token_initiative_history
-                    move_initiative_token(state, token.id, old_init, old_init_index, new_init_pos.x, new_init_pos.y)
+                    move_initiative_token(
+                        state,
+                        token.id,
+                        action.token_initiative_start.x,
+                        action.token_initiative_start.y,
+                    )
                 }
             }
         }
@@ -234,12 +239,7 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 } else {
                     // life is false == token was deleted (undo is creating it)
                     token.alive = true
-                    add_at_initiative(
-                        state,
-                        token.id,
-                        action.token_initiative_history.x,
-                        action.token_initiative_history.y,
-                    )
+                    add_at_initiative(state, token.id, action.token_initiative_end.x, action.token_initiative_end.y)
                 }
             }
         }
@@ -314,8 +314,12 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 //TODO(amatej): first move the token to action.token_initiative_start[token_id]
                 //              similarly to what MOVE_TOKEN does
                 if ok && old == action.token_initiative_start {
-                    new_init_pos := [2]i32{old_init, old_init_index} - action.token_initiative_history
-                    move_initiative_token(state, token.id, old_init, old_init_index, new_init_pos.x, new_init_pos.y)
+                    move_initiative_token(
+                        state,
+                        token.id,
+                        action.token_initiative_end.x,
+                        action.token_initiative_end.y,
+                    )
                 }
             }
         }
@@ -326,12 +330,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 token, ok := &state.tokens[action.token_id]
                 if ok {
                     token.alive = true
-                    add_at_initiative(
-                        state,
-                        token.id,
-                        action.token_initiative_history.x,
-                        action.token_initiative_history.y,
-                    )
+                    add_at_initiative(state, token.id, action.token_initiative_end.x, action.token_initiative_end.y)
                 } else {
                     if action.token_id == u64(len(state.tokens)) {
                         token_spawn(
@@ -340,7 +339,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                             action.start,
                             action.color,
                             action.new_name,
-                            action.token_initiative_history,
+                            action.token_initiative_end,
                         )
                     } else {
                         fmt.println(

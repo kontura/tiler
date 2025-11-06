@@ -387,7 +387,7 @@ serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_locatio
 
     serialize(s, &action.undo, loc) or_return
 
-    serialize(s, &action.token_initiative_history, loc) or_return
+    serialize(s, &action.token_initiative_end, loc) or_return
     serialize(s, &action.token_initiative_start, loc) or_return
     serialize(s, &action.token_life, loc) or_return
     serialize(s, &action.token_size, loc) or_return

@@ -212,7 +212,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     testing.expect_value(t, state.initiative_to_tokens[20][0], token_id2)
     testing.expect_value(t, state.initiative_to_tokens[22][0], token_id3)
     testing.expect_value(t, temp_action.token_id, token_id1)
-    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{15, 0})
+    testing.expect_value(t, temp_action.token_initiative_end, [2]i32{3, 0})
 
     temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 290 screen pos targers initiative "20"
@@ -230,7 +230,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     testing.expect_value(t, state.initiative_to_tokens[3][1], token_id2)
     testing.expect_value(t, state.initiative_to_tokens[22][0], token_id3)
     testing.expect_value(t, temp_action.token_id, token_id2)
-    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{17, -1})
+    testing.expect_value(t, temp_action.token_initiative_end, [2]i32{3, 1})
 
     temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 345 screen pos targers initiative "22"
@@ -248,7 +248,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     testing.expect_value(t, state.initiative_to_tokens[3][1], token_id2)
     testing.expect_value(t, state.initiative_to_tokens[3][2], token_id3)
     testing.expect_value(t, temp_action.token_id, token_id3)
-    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{19, -2})
+    testing.expect_value(t, temp_action.token_initiative_end, [2]i32{3, 2})
 
     state2, tile_map2 := setup()
     redo_unmatched_actions(&state2, &tile_map2, state.undo_history[:])
@@ -350,7 +350,7 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, state.initiative_to_tokens[3][0], token_id1)
     testing.expect_value(t, state.initiative_to_tokens[13][0], token_id2)
     testing.expect_value(t, temp_action.token_id, token_id2)
-    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{-10, 0})
+    testing.expect_value(t, temp_action.token_initiative_end, [2]i32{13, 0})
 
     temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 220 screen pos targers initiative "13"
@@ -363,7 +363,7 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, state.initiative_to_tokens[13][0], token_id2)
     testing.expect_value(t, state.initiative_to_tokens[13][1], token_id1)
     testing.expect_value(t, temp_action.token_id, token_id1)
-    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{-10, -1})
+    testing.expect_value(t, temp_action.token_initiative_end, [2]i32{13, 1})
 
     temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 351 screen pos targers initiative "22"
@@ -377,7 +377,7 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, state.initiative_to_tokens[13][0], token_id1)
     testing.expect_value(t, state.initiative_to_tokens[22][0], token_id2)
     testing.expect_value(t, temp_action.token_id, token_id2)
-    testing.expect_value(t, temp_action.token_initiative_history, [2]i32{-9, 0})
+    testing.expect_value(t, temp_action.token_initiative_end, [2]i32{22, 0})
 
     state2, tile_map2 := setup()
     redo_unmatched_actions(&state2, &tile_map2, state.undo_history[:])
@@ -726,7 +726,7 @@ action_hash_test_multiple_spawn :: proc(t: ^testing.T) {
     action1.token_life = true
     action1.token_size = 2
     action1.token_id = 1
-    action1.token_initiative_history = {1, 1}
+    action1.token_initiative_end = {1, 1}
     action1.new_name = "test"
     action1.start = {{105, 105}, {0, 0}}
     action1.end = {{17, 17}, {0, 0}}
@@ -736,7 +736,7 @@ action_hash_test_multiple_spawn :: proc(t: ^testing.T) {
     action2.token_life = true
     action2.token_size = 2
     action2.token_id = 1
-    action2.token_initiative_history = {1, 1}
+    action2.token_initiative_end = {1, 1}
     action2.new_name = "test"
     action2.start = {{105, 105}, {0, 0}}
     action2.end = {{17, 17}, {0, 0}}

@@ -263,9 +263,9 @@ add_at_initiative :: proc(state: ^GameState, token_id: u64, initiative: i32, ini
     inject_at(tokens, init_index, token_id)
 }
 
-move_initiative_token :: proc(state: ^GameState, token_id: u64, old_init, old_index, new_init, new_index: i32) {
-    new_index := new_index
-    if (new_init != old_init || new_index != old_index) {
+move_initiative_token :: proc(state: ^GameState, token_id: u64, new_init, new_index: i32) {
+    old_init, old_index, ok := get_token_init_pos(state, token_id)
+    if (ok && new_init != old_init || new_index != old_index) {
         t := &state.tokens[token_id]
         t.initiative = new_init
         ordered_remove(&state.initiative_to_tokens[old_init], old_index)
@@ -282,10 +282,10 @@ move_initiative_token_tool :: proc(state: ^GameState, start_pos, end_pos: f32, a
         if (new_init == old_init && old_index < new_index) {
             new_index = new_index - 1
         }
-        move_initiative_token(state, selected_token, old_init, old_index, new_init, new_index)
+        move_initiative_token(state, selected_token, new_init, new_index)
         if action != nil {
             action.token_id = selected_token
-            action.token_initiative_history = [2]i32{old_init - new_init, old_index - new_index}
+            action.token_initiative_end = [2]i32{new_init, new_index}
             action.token_initiative_start = [2]i32{old_init, old_index}
         }
     }
