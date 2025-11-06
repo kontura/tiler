@@ -33,8 +33,6 @@ Action :: struct {
     radius:                 f64,
     token_id:               u64,
 
-    // Whether this action should be undone (this is an undo action)
-    undo:                   bool,
     token_initiative_end:   [2]i32,
     token_initiative_start: [2]i32,
     token_life:             bool,
@@ -75,7 +73,6 @@ duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
     action.end = a.end
     action.color = a.color
     action.radius = a.radius
-    action.undo = a.undo
     action.reverted = a.reverted
     action.mine = a.mine
     action.performed = a.performed
@@ -117,7 +114,6 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, mem.ptr_to_bytes(&action.radius))
     sha2.update(&hash, mem.ptr_to_bytes(&action.token_id))
 
-    sha2.update(&hash, mem.ptr_to_bytes(&action.undo))
     sha2.update(&hash, mem.ptr_to_bytes(&action.token_initiative_end))
     sha2.update(&hash, mem.ptr_to_bytes(&action.token_initiative_start))
     sha2.update(&hash, mem.ptr_to_bytes(&action.token_life))
@@ -127,7 +123,7 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, mem.ptr_to_bytes(&action.timestamp))
     sha2.update(&hash, mem.ptr_to_bytes(&action.author_id))
 
-    if action.undo || action.type == .BRUSH {
+    if action.type == .BRUSH {
         tile_keys := make([dynamic][2]u32, allocator = context.temp_allocator)
         for k, _ in action.tile_history {
             append(&tile_keys, k)
@@ -394,11 +390,7 @@ merge_and_redo_actions :: proc(state: ^GameState, tile_map: ^TileMap, actions: [
     //fmt.println("new_to_merge: ", new_to_merge, " old_to_merge: ", old_to_merge)
     for i := len(state.undo_history) - 1; i >= old_to_merge; i -= 1 {
         action := &state.undo_history[i]
-        if action.undo {
-            redo_action(state, tile_map, action)
-        } else {
-            undo_action(state, tile_map, action)
-        }
+        undo_action(state, tile_map, action)
     }
 
     // We don't need these actions they are already done and are duplicates
@@ -410,11 +402,7 @@ merge_and_redo_actions :: proc(state: ^GameState, tile_map: ^TileMap, actions: [
     }
     for i := old_to_merge; i < len(state.undo_history); i += 1 {
         action := &state.undo_history[i]
-        if action.undo {
-            undo_action(state, tile_map, action)
-        } else {
-            redo_action(state, tile_map, action)
-        }
+        redo_action(state, tile_map, action)
         if i == 0 {
             action.hash = compute_hash_with_prev(action, nil)
         } else {
@@ -445,20 +433,12 @@ redo_unmatched_actions :: proc(
             break
         }
         old_undone += 1
-        if performed_action.undo {
-            redo_action(state, tile_map, &performed_action)
-        } else {
-            undo_action(state, tile_map, &performed_action)
-        }
+        undo_action(state, tile_map, &performed_action)
     }
 
     for ; do_new_from < len(new_actions); do_new_from += 1 {
         new_redone += 1
-        if new_actions[do_new_from].undo {
-            undo_action(state, tile_map, &new_actions[do_new_from])
-        } else {
-            redo_action(state, tile_map, &new_actions[do_new_from])
-        }
+        redo_action(state, tile_map, &new_actions[do_new_from])
     }
 
     return old_undone, new_redone

@@ -385,8 +385,6 @@ serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_locatio
     serialize(s, &action.radius, loc) or_return
     serialize(s, &action.token_id, loc) or_return
 
-    serialize(s, &action.undo, loc) or_return
-
     serialize(s, &action.token_initiative_end, loc) or_return
     serialize(s, &action.token_initiative_start, loc) or_return
     serialize(s, &action.token_life, loc) or_return
@@ -397,7 +395,7 @@ serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_locatio
     serialize(s, &action.author_id, loc) or_return
     serialize(s, &action.timestamp, loc) or_return
 
-    if action.undo || action.type == .BRUSH {
+    if action.type == .BRUSH {
         serialize(s, &action.tile_history, loc) or_return
     }
 

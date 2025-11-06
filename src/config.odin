@@ -100,11 +100,7 @@ options_menu: []MenuItem = {{"Toggle Draw Grid", proc(state: ^GameState) {
 main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
             for i := len(state.undo_history) - 1; i >= 0; i -= 1 {
                 action := &state.undo_history[i]
-                if action.undo {
-                    redo_action(state, tile_map, action)
-                } else {
-                    undo_action(state, tile_map, action)
-                }
+                undo_action(state, tile_map, action)
             }
             for i := 0; i < len(state.undo_history); i += 1 {
                 delete_action(&state.undo_history[i])
@@ -171,11 +167,7 @@ config: []Config = {
                     if state.debug {
                         if state.undone > 0 {
                             a := &state.undo_history[len(state.undo_history) - state.undone]
-                            if a.undo {
-                                undo_action(state, tile_map, a)
-                            } else {
-                                redo_action(state, tile_map, a)
-                            }
+                            redo_action(state, tile_map, a)
                             state.undone -= 1
                         }
                     } else {
@@ -206,11 +198,7 @@ config: []Config = {
                     if state.debug {
                         if state.undone < len(state.undo_history) {
                             a := &state.undo_history[len(state.undo_history) - 1 - state.undone]
-                            if a.undo {
-                                redo_action(state, tile_map, a)
-                            } else {
-                                undo_action(state, tile_map, a)
-                            }
+                            undo_action(state, tile_map, a)
                             state.undone += 1
                         }
                     } else {
@@ -265,11 +253,7 @@ config: []Config = {
                         // When exiting debug mode ensure all actions are done, we don't want to get into inconsistent state
                         for state.undone > 0 {
                             a := &state.undo_history[len(state.undo_history) - state.undone]
-                            if a.undo {
-                                undo_action(state, tile_map, a)
-                            } else {
-                                redo_action(state, tile_map, a)
-                            }
+                            redo_action(state, tile_map, a)
                             state.undone -= 1
                         }
                         state.debug = false
@@ -283,11 +267,11 @@ config: []Config = {
     {{{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_UNDO, "Undo last action", nil, proc(state: ^GameState) {
                     #reverse for &action in state.undo_history {
                         if action.mine && !action.reverted {
-                            undo_action(state, tile_map, &action)
+                            reverted := revert_action(&action)
+                            redo_action(state, tile_map, &reverted)
+                            reverted.reverted = true
                             action.reverted = true
-                            append(&state.undo_history, duplicate_action(&action))
-                            undo_action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                            undo_action.undo = true
+                            append(&state.undo_history, reverted)
                             finish_last_undo_history_action(state)
                             state.needs_sync = true
                             break
@@ -299,11 +283,7 @@ config: []Config = {
                     tilemap_clear(tile_map)
 
                     for &action in state.undo_history {
-                        if action.undo {
-                            undo_action(state, tile_map, &action)
-                        } else {
-                            redo_action(state, tile_map, &action)
-                        }
+                        redo_action(state, tile_map, &action)
                     }
                     fmt.println("redone all")
                 }}}},

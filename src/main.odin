@@ -178,11 +178,7 @@ load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
             // undo and delete current actions
             for i := len(state.undo_history) - 1; i >= 0; i -= 1 {
                 action := &state.undo_history[i]
-                if action.undo {
-                    redo_action(state, tile_map, action)
-                } else {
-                    undo_action(state, tile_map, action)
-                }
+                undo_action(state, tile_map, action)
             }
             for i := 0; i < len(state.undo_history); i += 1 {
                 delete_action(&state.undo_history[i])
@@ -193,11 +189,7 @@ load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
             state.undo_history = actions
             for i := 0; i < len(state.undo_history); i += 1 {
                 action := &state.undo_history[i]
-                if action.undo {
-                    undo_action(state, tile_map, action)
-                } else {
-                    redo_action(state, tile_map, action)
-                }
+                redo_action(state, tile_map, action)
             }
 
             return true
