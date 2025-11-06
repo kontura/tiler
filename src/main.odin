@@ -67,7 +67,7 @@ GameState :: struct {
     particles:              [1024]Particle,
     particle_index:         u32,
     id:                     u64,
-    available_files:        [dynamic]string,
+    menu_items:             [dynamic]string,
     selected_index:         int,
 }
 
@@ -207,8 +207,8 @@ load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
     return false
 }
 
-store_save :: proc(state: ^GameState, path := "./tiler_save") {
-    write_entire_file(path, serialize_actions(state.undo_history[:], context.temp_allocator))
+store_save :: proc(state: ^GameState, path := "./tiler_save") -> bool {
+    return write_entire_file(path, serialize_actions(state.undo_history[:], context.temp_allocator))
 }
 
 load_from_serialized :: proc(data: []byte, allocator: mem.Allocator) -> [dynamic]Action {
@@ -767,9 +767,36 @@ update :: proc() {
             }
             icon = .ICON_LAYERS
         }
-    case .HELP:
-        {}
-    case .LOAD_GAME:
+    case .NEW_SAVE_GAME:
+        {
+            key := rl.GetKeyPressed()
+            // Trigger only once for each press
+            if rl.IsKeyPressed(key) {
+                byte: u8 = u8(key)
+                if byte != 0 {
+                    builder: strings.Builder
+                    strings.write_string(&builder, state.menu_items[0])
+                    #partial switch key {
+                    case .BACKSPACE:
+                        strings.pop_rune(&builder)
+                        delete(state.menu_items[0])
+                        state.menu_items[0] = strings.to_string(builder)
+                        state.key_consumed = true
+                    case .RIGHT_SHIFT, .LEFT_SHIFT, .ENTER, .ESCAPE:
+                        {
+                        }
+                    case:
+                        strings.write_byte(&builder, byte)
+                        delete(state.menu_items[0])
+                        state.menu_items[0] = strings.to_string(builder)
+                        state.key_consumed = true
+                    }
+
+                }
+            }
+
+        }
+    case .LOAD_GAME, .SAVE_GAME, .OPTIONS_MENU, .MAIN_MENU, .HELP:
         {}
     }
 
@@ -1199,12 +1226,25 @@ update :: proc() {
     }
 
 
-    if state.active_tool == .LOAD_GAME {
+    if state.active_tool == .LOAD_GAME ||
+       state.active_tool == .SAVE_GAME ||
+       state.active_tool == .NEW_SAVE_GAME ||
+       state.active_tool == .MAIN_MENU ||
+       state.active_tool == .OPTIONS_MENU {
         rl.DrawRectangleV({30, 30}, {f32(state.screen_width) - 60, f32(state.screen_height) - 60}, {0, 0, 0, 155})
         offset: i32 = 100
-        for &file_in_cwd, i in state.available_files {
+        for &item, i in state.menu_items {
+            text := item
+            if state.active_tool == .NEW_SAVE_GAME {
+                text = fmt.aprint(
+                    item,
+                    "|",
+                    sep = "",
+                    allocator = context.temp_allocator,
+                )
+            }
             rl.DrawText(
-                strings.clone_to_cstring(file_in_cwd, context.temp_allocator) or_else BUILDER_FAILED,
+                strings.clone_to_cstring(text, context.temp_allocator) or_else BUILDER_FAILED,
                 100,
                 offset,
                 15,

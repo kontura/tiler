@@ -1,6 +1,8 @@
 package tiler
 import "core:fmt"
 import "core:math"
+import "core:os"
+import "core:strings"
 import rl "vendor:raylib"
 
 KeyAction :: enum {
@@ -21,6 +23,11 @@ Config :: struct {
         condition: Maybe(proc(_: ^GameState) -> bool),
         action:    proc(_: ^GameState),
     },
+}
+
+MenuItem :: struct {
+    name:   string,
+    action: proc(_: ^GameState),
 }
 
 move_left :: proc(state: ^GameState) {
@@ -82,6 +89,59 @@ select_next_init_token :: proc(state: ^GameState, init_start: i32, init_index_st
     }
 }
 
+
+options_menu: []MenuItem = {{"Toggle Draw Grid", proc(state: ^GameState) {
+            state.draw_grid = !state.draw_grid
+
+        }}, {"Toggle Draw Initiative", proc(state: ^GameState) {
+            state.draw_initiative = !state.draw_initiative
+        }}}
+
+main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
+            for i := len(state.undo_history) - 1; i >= 0; i -= 1 {
+                action := &state.undo_history[i]
+                if action.undo {
+                    redo_action(state, tile_map, action)
+                } else {
+                    undo_action(state, tile_map, action)
+                }
+            }
+            for i := 0; i < len(state.undo_history); i += 1 {
+                delete_action(&state.undo_history[i])
+            }
+            clear(&state.undo_history)
+            state.active_tool = .MOVE_TOKEN
+        }}, {"Load Game", proc(state: ^GameState) {
+            state.active_tool = .LOAD_GAME
+            for &item in state.menu_items {
+                delete(item)
+            }
+            clear(&state.menu_items)
+            state.menu_items = list_files_in_dir("/persist/", context.allocator)
+            state.selected_index = 0
+        }}, {"Save Game", proc(state: ^GameState) {
+            state.active_tool = .SAVE_GAME
+            for &item in state.menu_items {
+                delete(item)
+            }
+            clear(&state.menu_items)
+            state.menu_items = list_files_in_dir("/persist/", context.allocator)
+            inject_at(&state.menu_items, 0, strings.clone("<NEW SAVE>"))
+            state.selected_index = 0
+        }}, {"Options", proc(state: ^GameState) {
+            state.active_tool = .OPTIONS_MENU
+            for &item in state.menu_items {
+                delete(item)
+            }
+            clear(&state.menu_items)
+            for &item in options_menu {
+                append(&state.menu_items, strings.clone(item.name))
+            }
+            state.selected_index = 0
+        }}, {"Quit Game", proc(state: ^GameState) {
+            os.exit(0)
+        }}}
+
 config: []Config = {
     {key_triggers = {{.LEFT, .PRESSED}}, bindings = {{.ICON_ARROW_LEFT, "Move to the left", nil, move_left}}},
     {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, "Move to the right", nil, move_right}}},
@@ -91,7 +151,12 @@ config: []Config = {
             {
                 .ICON_ARROW_UP,
                 "Select previous",
-                proc(state: ^GameState) -> bool {return tool_is(state, .LOAD_GAME)},
+                proc(state: ^GameState) -> bool {return(
+                        tool_is(state, .LOAD_GAME) ||
+                        tool_is(state, .MAIN_MENU) ||
+                        tool_is(state, .SAVE_GAME) ||
+                        tool_is(state, .OPTIONS_MENU) \
+                    )},
                 proc(state: ^GameState) {
                     state.selected_index -= 1
                     state.selected_index = math.max(state.selected_index, 0)
@@ -126,10 +191,15 @@ config: []Config = {
             {
                 .ICON_ARROW_DOWN,
                 "Select next",
-                proc(state: ^GameState) -> bool {return tool_is(state, .LOAD_GAME)},
+                proc(state: ^GameState) -> bool {return(
+                        tool_is(state, .LOAD_GAME) ||
+                        tool_is(state, .MAIN_MENU) ||
+                        tool_is(state, .SAVE_GAME) ||
+                        tool_is(state, .OPTIONS_MENU) \
+                    )},
                 proc(state: ^GameState) {
                     state.selected_index += 1
-                    state.selected_index = math.min(state.selected_index, len(state.available_files) - 1)
+                    state.selected_index = math.min(state.selected_index, len(state.menu_items) - 1)
                 },
             },
             {.ICON_ARROW_DOWN, "Move down", nil, proc(state: ^GameState) {
@@ -167,21 +237,6 @@ config: []Config = {
     {
         {{.M, .PRESSED}},
         {{.ICON_TARGET_MOVE, "Move tokens tool", nil, proc(state: ^GameState) {state.active_tool = .MOVE_TOKEN}}},
-    },
-    {
-        {{.I, .PRESSED}},
-        {
-            {
-                nil,
-                "Toggle initiative drawing",
-                nil,
-                proc(state: ^GameState) {state.draw_initiative = !state.draw_initiative},
-            },
-        },
-    },
-    {
-        {{.G, .PRESSED}},
-        {{nil, "Toggle grid drawing", nil, proc(state: ^GameState) {state.draw_grid = !state.draw_grid}}},
     },
     {
         {{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}},
@@ -335,7 +390,26 @@ config: []Config = {
         {{.ESCAPE, .PRESSED}},
         {
             {nil, "Deselected tokens", are_tokens_selected, proc(state: ^GameState) {clear_selected_tokens(state)}},
-            {nil, "Quit", nil, proc(state: ^GameState) {state.should_run = false}},
+            {nil, "Main Menu", nil, proc(state: ^GameState) {
+                    if state.active_tool == .MAIN_MENU {
+                        state.active_tool = state.previous_tool.?
+                    } else {
+                        if !(state.active_tool == .OPTIONS_MENU ||
+                               state.active_tool == .SAVE_GAME ||
+                               state.active_tool == .NEW_SAVE_GAME ||
+                               state.active_tool == .LOAD_GAME) {
+                            state.previous_tool = state.active_tool
+                        }
+                        state.active_tool = .MAIN_MENU
+                        for &item in state.menu_items {
+                            delete(item)
+                        }
+                        clear(&state.menu_items)
+                        for &item in main_menu {
+                            append(&state.menu_items, strings.clone(item.name))
+                        }
+                    }
+                }},
         },
     },
     {
@@ -368,22 +442,60 @@ config: []Config = {
         },
     },
     {{{.F, .PRESSED}}, {{nil, "Toggle offline state", nil, proc(state: ^GameState) {state.offline = !state.offline}}}},
-    {{{.V, .PRESSED}}, {{nil, "Save or Load actions", nil, proc(state: ^GameState) {
-                    state.active_tool = .LOAD_GAME
-                    state.available_files = list_files_in_dir("/persist/", context.allocator)
-                }}}},
-    {
-        {{.ENTER, .PRESSED}},
-        {{nil, "Drop current actions and load actions from selected file", nil, proc(state: ^GameState) {
-                    save_name := fmt.aprint(
-                        "/persist/",
-                        state.available_files[state.selected_index],
-                        sep = "",
-                        allocator = context.temp_allocator,
-                    )
-                    if load_save_override(state, save_name) {
-                        state.active_tool = .MOVE_TOKEN
+    {{{.ENTER, .PRESSED}}, {{nil, "Confirm", nil, proc(state: ^GameState) {
+                    #partial switch state.active_tool {
+                    case .LOAD_GAME:
+                        {
+                            save_name := fmt.aprint(
+                                "/persist/",
+                                state.menu_items[state.selected_index],
+                                sep = "",
+                                allocator = context.temp_allocator,
+                            )
+                            if load_save_override(state, save_name) {
+                                state.active_tool = state.previous_tool.?
+                            }
+                        }
+                    case .SAVE_GAME:
+                        {
+                            if state.selected_index == 0 {
+                                state.active_tool = .NEW_SAVE_GAME
+                                delete(state.menu_items[0])
+                                state.menu_items[0] = strings.clone("")
+                            } else {
+                                save_name := fmt.aprint(
+                                    "/persist/",
+                                    state.menu_items[state.selected_index],
+                                    sep = "",
+                                    allocator = context.temp_allocator,
+                                )
+                                if store_save(state, save_name) {
+                                    state.active_tool = state.previous_tool.?
+                                    state.timeout = 60
+                                }
+                            }
+                        }
+                    case .NEW_SAVE_GAME:
+                        {
+                            save_name := fmt.aprint(
+                                "/persist/",
+                                state.menu_items[0],
+                                sep = "",
+                                allocator = context.temp_allocator,
+                            )
+                            if store_save(state, save_name) {
+                                state.active_tool = state.previous_tool.?
+                                state.timeout = 60
+                            }
+                        }
+                    case .MAIN_MENU:
+                        {
+                            main_menu[state.selected_index].action(state)
+                        }
+                    case .OPTIONS_MENU:
+                        {
+                            options_menu[state.selected_index].action(state)
+                        }
                     }
-                }}},
-    },
+                }}}},
 }

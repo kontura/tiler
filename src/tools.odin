@@ -24,6 +24,10 @@ Tool :: enum {
     LIGHT_SOURCE,
     CONE,
     LOAD_GAME,
+    SAVE_GAME,
+    NEW_SAVE_GAME,
+    OPTIONS_MENU,
+    MAIN_MENU,
 }
 
 dist :: proc(p1: [2]$T, p2: [2]T) -> f32 {
