@@ -202,7 +202,7 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         {
             for abs_tile, &tile in action.tile_history {
                 old_tile := get_tile(tile_map, abs_tile)
-                set_tile(tile_map, abs_tile, tile_add(&old_tile, &tile))
+                set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
             }
         }
     case .EDIT_TOKEN_POSITION:
@@ -295,7 +295,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         {
             for abs_tile, &tile in action.tile_history {
                 old_tile := get_tile(tile_map, abs_tile)
-                set_tile(tile_map, abs_tile, tile_subtract(&old_tile, &tile))
+                set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
             }
         }
     case .EDIT_TOKEN_POSITION:

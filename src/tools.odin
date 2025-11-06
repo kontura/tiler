@@ -85,7 +85,7 @@ wall_tool :: proc(tile_map: ^TileMap, start, end: TileMapPosition, color: [4]u8,
             new_tile := old_tile
             new_tile.walls += {Direction.TOP}
             new_tile.wall_colors[Direction.TOP] = color
-            action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
+            action.tile_history[{x, y}] = tile_xor(&old_tile, &new_tile)
             set_tile(tile_map, {x, y}, new_tile)
         }
     } else {
@@ -96,7 +96,7 @@ wall_tool :: proc(tile_map: ^TileMap, start, end: TileMapPosition, color: [4]u8,
             new_tile := old_tile
             new_tile.walls += {Direction.LEFT}
             new_tile.wall_colors[Direction.LEFT] = color
-            action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
+            action.tile_history[{x, y}] = tile_xor(&old_tile, &new_tile)
             set_tile(tile_map, {x, y}, new_tile)
         }
     }
@@ -164,7 +164,7 @@ draw_tile_circle :: proc(tile_map: ^TileMap, center: TileMapPosition, radius: f3
                     old_tile.walls,
                     old_tile.wall_colors,
                 )
-                action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
+                action.tile_history[{x, y}] = tile_xor(&old_tile, &new_tile)
                 set_tile(tile_map, {x, y}, new_tile)
             }
         }
@@ -200,7 +200,7 @@ rectangle_tool :: proc(
                 old_tile.wall_colors,
             )
             if action != nil {
-                action.tile_history[{x, y}] = tile_subtract(&old_tile, &new_tile)
+                action.tile_history[{x, y}] = tile_xor(&old_tile, &new_tile)
             }
             set_tile(tile_map, {x, y}, new_tile)
         }
@@ -377,9 +377,9 @@ DDA :: proc(state: ^GameState, tile_map: ^TileMap, p0: [2]u32, p1: [2]u32, temp_
         old_tile := get_tile(tile_map, pos)
         new_tile := old_tile
         new_tile.color = color_over(GREEN_HIGHLIGH_PATH, old_tile.color)
-        tile_delta := tile_subtract(&old_tile, &new_tile)
+        tile_delta := tile_xor (&old_tile, &new_tile)
         if (pos in temp_action.tile_history) {
-            temp_action.tile_history[pos] = tile_add(&temp_action.tile_history[pos], &tile_delta)
+            temp_action.tile_history[pos] = tile_xor(&temp_action.tile_history[pos], &tile_delta)
         } else {
             temp_action.tile_history[pos] = tile_delta
         }
@@ -503,7 +503,7 @@ draw_cone_tiles :: proc(
                     old_tile.wall_colors,
                 )
                 if action != nil {
-                    action.tile_history[tile_pos.abs_tile] = tile_subtract(&old_tile, &new_tile)
+                    action.tile_history[tile_pos.abs_tile] = tile_xor(&old_tile, &new_tile)
                 }
                 set_tile(tile_map, tile_pos.abs_tile, new_tile)
             }
