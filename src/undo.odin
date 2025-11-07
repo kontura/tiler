@@ -392,8 +392,11 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 // life is true == token was created
                 token, ok := &state.tokens[action.token_id]
                 if ok {
-                    token.alive = true
-                    add_at_initiative(state, token.id, action.token_initiative_end.x, action.token_initiative_end.y)
+                    // guard againts adding the same token id into initiative multiple times
+                    if token.alive == false {
+                        token.alive = true
+                        add_at_initiative(state, token.id, action.token_initiative_end.x, action.token_initiative_end.y)
+                    }
                 } else {
                     if action.token_id == u64(len(state.tokens)) {
                         token_spawn(
