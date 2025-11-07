@@ -139,6 +139,20 @@ remove_token_by_id_from_initiative :: proc(state: ^GameState, token_id: u64) -> 
     return 0, 0, false
 }
 
+remove_all_tokens_by_id_from_initiative :: proc(state: ^GameState, token_id: u64) -> i32 {
+    count : i32 = 0
+    for initiative, &tokens in state.initiative_to_tokens {
+        for id, index in tokens {
+            if id == token_id {
+                ordered_remove(&tokens, index)
+                count += 1
+            }
+        }
+    }
+
+    return count
+}
+
 set_texture_based_on_name :: proc(state: ^GameState, token: ^Token) {
     lowercase_name := strings.to_lower(token.name, context.temp_allocator)
     for key, &value in state.textures {

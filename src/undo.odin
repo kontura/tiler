@@ -278,18 +278,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         {
             token, ok := &state.tokens[action.token_id]
             if ok {
-                old_init, old_init_index, ok := get_token_init_pos(state, token.id)
-                old: [2]i32 = {old_init, old_init_index}
-                //TODO(amatej): first move the token to action.token_initiative_start[token_id]
-                //              similarly to what MOVE_TOKEN does
-                if ok && old == action.token_initiative_start {
-                    move_initiative_token(
-                        state,
-                        token.id,
-                        action.token_initiative_end.x,
-                        action.token_initiative_end.y,
-                    )
-                }
+                move_initiative_token(state, token.id, action.token_initiative_end.x, action.token_initiative_end.y)
             }
         }
     case .EDIT_TOKEN_LIFE:

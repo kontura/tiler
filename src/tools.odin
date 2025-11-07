@@ -2,6 +2,7 @@ package tiler
 
 import "core:fmt"
 import "core:math"
+import "core:time"
 import "core:math/rand"
 import "core:strings"
 import rl "vendor:raylib"
@@ -265,10 +266,18 @@ add_at_initiative :: proc(state: ^GameState, token_id: u64, initiative: i32, ini
 
 move_initiative_token :: proc(state: ^GameState, token_id: u64, new_init, new_index: i32) {
     old_init, old_index, ok := get_token_init_pos(state, token_id)
-    if (ok && new_init != old_init || new_index != old_index) {
+    if (ok && (new_init != old_init || new_index != old_index)) {
         t := &state.tokens[token_id]
         t.initiative = new_init
-        ordered_remove(&state.initiative_to_tokens[old_init], old_index)
+
+        if remove_all_tokens_by_id_from_initiative(state, token_id) != 1 {
+            builder := strings.builder_make(context.temp_allocator)
+            strings.write_string(&builder, "/persist/DEBUG-duplicate-id-initiative-")
+            s, _ := time.time_to_rfc3339(time.now(), 0, false, context.temp_allocator)
+            strings.write_string(&builder, s)
+            store_save(state, strings.to_string(builder))
+        }
+
         add_at_initiative(state, token_id, new_init, new_index)
     }
 
@@ -377,7 +386,7 @@ DDA :: proc(state: ^GameState, tile_map: ^TileMap, p0: [2]u32, p1: [2]u32, temp_
         old_tile := get_tile(tile_map, pos)
         new_tile := old_tile
         new_tile.color = color_over(GREEN_HIGHLIGH_PATH, old_tile.color)
-        tile_delta := tile_xor (&old_tile, &new_tile)
+        tile_delta := tile_xor(&old_tile, &new_tile)
         if (pos in temp_action.tile_history) {
             temp_action.tile_history[pos] = tile_xor(&temp_action.tile_history[pos], &tile_delta)
         } else {
