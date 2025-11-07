@@ -3,6 +3,7 @@ import "core:fmt"
 import "core:math"
 import "core:os"
 import "core:strings"
+import "core:time"
 import rl "vendor:raylib"
 
 KeyAction :: enum {
@@ -220,21 +221,14 @@ config: []Config = {
         {{.M, .PRESSED}},
         {{.ICON_TARGET_MOVE, "Move tokens tool", nil, proc(state: ^GameState) {state.active_tool = .MOVE_TOKEN}}},
     },
-    {
-        {{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}},
-        {
-            {
-                .ICON_FILE_SAVE,
-                "Quick save",
-                nil,
-                proc(state: ^GameState) {
-                    //TODO(amatej): generate with timestamp
-                    store_save(state, "/persist/tiler_save")
+    {{{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_FILE_SAVE, "Quick save", nil, proc(state: ^GameState) {
+                    builder := strings.builder_make(context.temp_allocator)
+                    strings.write_string(&builder, "/persist/autosave-")
+                    s, _ := time.time_to_rfc3339(time.now(), 0, false, context.temp_allocator)
+                    strings.write_string(&builder, s)
+                    store_save(state, strings.to_string(builder))
                     state.timeout = 60
-                },
-            },
-        },
-    },
+                }}}},
     {
         {{.D, .PRESSED}},
         {
