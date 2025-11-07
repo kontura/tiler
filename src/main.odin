@@ -189,6 +189,7 @@ load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
                 delete_action(&state.undo_history[i])
             }
             delete(state.undo_history)
+            tokens_reset(state)
 
             // set and redo loaded actions
             state.undo_history = actions
