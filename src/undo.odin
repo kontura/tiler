@@ -32,7 +32,6 @@ Action :: struct {
     color:                  [4]u8,
     radius:                 f64,
     token_id:               u64,
-
     token_initiative_end:   [2]i32,
     token_initiative_start: [2]i32,
     token_life:             bool,
@@ -64,6 +63,117 @@ Action :: struct {
     // Not synced, used only for undo (this is fine because in order to do undo we
     // have to first redo and this populated tile_history)
     tile_history:           map[[2]u32]Tile,
+}
+
+to_string_action :: proc(action: ^Action, allocator := context.allocator) -> string {
+    builder := strings.builder_make(allocator)
+    at, _ := fmt.enum_value_to_string(action.type)
+    strings.write_string(&builder, at)
+    switch action.type {
+    case .BRUSH:
+        {
+            strings.write_string(&builder, ", tile_history len: ")
+            strings.write_int(&builder, len(action.tile_history))
+        }
+    case .RECTANGLE, .CONE, .WALL:
+        {
+            start_text := fmt.aprint(action.start, allocator = context.temp_allocator)
+            end_text := fmt.aprint(action.end, allocator = context.temp_allocator)
+            color_text := fmt.aprint(action.color, allocator = context.temp_allocator)
+            strings.write_string(&builder, " (")
+            strings.write_string(&builder, color_text)
+            strings.write_string(&builder, ") ")
+            strings.write_string(&builder, ", ")
+            strings.write_string(&builder, start_text)
+            strings.write_string(&builder, " - ")
+            strings.write_string(&builder, end_text)
+            strings.write_string(&builder, ", tile_history len: ")
+            strings.write_int(&builder, len(action.tile_history))
+        }
+    case .CIRCLE:
+        {
+            start_text := fmt.aprint(action.start, allocator = context.temp_allocator)
+            radius_text := fmt.aprint(action.radius, allocator = context.temp_allocator)
+            color_text := fmt.aprint(action.color, allocator = context.temp_allocator)
+            strings.write_string(&builder, " (")
+            strings.write_string(&builder, color_text)
+            strings.write_string(&builder, ") ")
+            strings.write_string(&builder, ", ")
+            strings.write_string(&builder, start_text)
+            strings.write_string(&builder, ": ")
+            strings.write_string(&builder, radius_text)
+            strings.write_string(&builder, ", tile_history len: ")
+            strings.write_int(&builder, len(action.tile_history))
+        }
+    case .EDIT_TOKEN_POSITION:
+        {
+            start_text := fmt.aprint(action.start, allocator = context.temp_allocator)
+            end_text := fmt.aprint(action.end, allocator = context.temp_allocator)
+            strings.write_string(&builder, " ( ")
+            strings.write_u64(&builder, action.token_id)
+            strings.write_string(&builder, " ), ")
+            strings.write_string(&builder, start_text)
+            strings.write_string(&builder, " -> ")
+            strings.write_string(&builder, end_text)
+        }
+    case .EDIT_TOKEN_INITIATIVE:
+        {
+            start_text := fmt.aprint(action.token_initiative_start, allocator = context.temp_allocator)
+            end_text := fmt.aprint(action.token_initiative_end, allocator = context.temp_allocator)
+            strings.write_string(&builder, " ( ")
+            strings.write_u64(&builder, action.token_id)
+            strings.write_string(&builder, " ), ")
+            strings.write_string(&builder, start_text)
+            strings.write_string(&builder, " -> ")
+            strings.write_string(&builder, end_text)
+        }
+    case .EDIT_TOKEN_LIFE:
+        {
+            strings.write_string(&builder, " ( ")
+            strings.write_u64(&builder, action.token_id)
+            if len(action.new_name) > 0 {
+                strings.write_string(&builder, " -  ")
+                strings.write_string(&builder, action.new_name)
+            }
+            strings.write_string(&builder, " ), ")
+            if action.token_life {
+                strings.write_string(&builder, "SPAWN ( ")
+                pos_start_text := fmt.aprint(action.start, allocator = context.temp_allocator)
+                init_end_text := fmt.aprint(action.token_initiative_end, allocator = context.temp_allocator)
+                color_text := fmt.aprint(action.color, allocator = context.temp_allocator)
+                strings.write_string(&builder, pos_start_text)
+                strings.write_string(&builder, ", ")
+                strings.write_string(&builder, color_text)
+                strings.write_string(&builder, ", ")
+                strings.write_string(&builder, init_end_text)
+                strings.write_string(&builder, " )")
+            } else {
+                strings.write_string(&builder, "KILL")
+            }
+        }
+    case .EDIT_TOKEN_SIZE:
+        {
+            token_size_text := fmt.aprint(action.token_size, allocator = context.temp_allocator)
+            strings.write_string(&builder, " ( ")
+            strings.write_u64(&builder, action.token_id)
+            strings.write_string(&builder, " ), ")
+            strings.write_string(&builder, token_size_text)
+        }
+    case .EDIT_TOKEN_NAME:
+        {
+            strings.write_string(&builder, " ( ")
+            strings.write_u64(&builder, action.token_id)
+            strings.write_string(&builder, " ), ")
+            strings.write_string(&builder, action.old_name)
+            strings.write_string(&builder, " -> ")
+            strings.write_string(&builder, action.new_name)
+        }
+    case .LIGHT_SOURCE:
+        {
+            strings.write_string(&builder, "TODO(amatej): missing")
+        }
+    }
+    return strings.to_string(builder)
 }
 
 duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
