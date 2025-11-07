@@ -129,7 +129,6 @@ circle_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, 
     action.start = start_mouse_tile
     action.color = state.selected_color
     action.radius = auto_cast max_dist_in_feet
-    action.performed = true
 
     draw_tile_circle(tile_map, start_mouse_tile, max_dist_in_feet, state.selected_color, action)
 
@@ -435,7 +434,6 @@ cone_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, ac
     action.start = start_mouse_tile
     action.end = end_pos_tile
     action.color = state.selected_color
-    action.performed = true
 
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.aprintf("%.1f", max_dist_in_feet, allocator = context.temp_allocator))

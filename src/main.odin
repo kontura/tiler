@@ -384,7 +384,6 @@ update :: proc() {
                         new_tile := old_tile
                         new_tile.color = state.selected_color
                         action.tile_history[mouse_tile_pos.abs_tile] = tile_xor(&old_tile, &new_tile)
-                        action.performed = true
                         set_tile(tile_map, mouse_tile_pos.abs_tile, new_tile)
                     }
                     finish_last_undo_history_action(state)
@@ -403,7 +402,6 @@ update :: proc() {
                 if (state.tool_start_position != nil) {
                     append(&state.undo_history, make_action(.CONE))
                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                    action.performed = true
                     tooltip = cone_tool(state, tile_map, mouse_pos, action)
                     finish_last_undo_history_action(state)
                     state.needs_sync = true
@@ -435,7 +433,6 @@ update :: proc() {
                         tile_map,
                     )
                     end_mouse_tile: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
-                    action.performed = true
                     tooltip = rectangle_tool(start_mouse_tile, end_mouse_tile, state.selected_color, tile_map, action)
                     state.needs_sync = true
                     finish_last_undo_history_action(state)
@@ -473,7 +470,6 @@ update :: proc() {
                             append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
                             action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                             move_token_tool(state, token, tile_map, mouse_pos, action, false)
-                            action.performed = true
                             state.needs_sync = true
                             finish_last_undo_history_action(state)
                         }
@@ -491,7 +487,6 @@ update :: proc() {
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                 move_token_tool(state, token, tile_map, mouse_pos, action, true)
                                 moved = true
-                                action.performed = true
                                 state.needs_sync = true
                                 finish_last_undo_history_action(state)
                             }
@@ -554,7 +549,6 @@ update :: proc() {
                     )
                     end_mouse_tile: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
                     tooltip = wall_tool(tile_map, start_mouse_tile, end_mouse_tile, state.selected_color, action)
-                    action.performed = true
                     state.needs_sync = true
                     finish_last_undo_history_action(state)
                 }
@@ -600,7 +594,6 @@ update :: proc() {
                                                 token.size -= 1
                                                 append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
                                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                                action.performed = true
                                                 action.token_id = token.id
                                                 action.token_size = -1
                                                 finish_last_undo_history_action(state)
@@ -614,7 +607,6 @@ update :: proc() {
                                                 token.size += 1
                                                 append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
                                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                                action.performed = true
                                                 action.token_id = token.id
                                                 action.token_size = 1
                                                 finish_last_undo_history_action(state)
@@ -630,7 +622,6 @@ update :: proc() {
 
                                     append(&state.undo_history, make_action(.EDIT_TOKEN_NAME))
                                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                    action.performed = true
                                     action.token_id = token.id
                                     action.old_name = strings.clone(token.name)
                                     action.new_name = strings.clone(strings.to_string(builder))
@@ -660,7 +651,6 @@ update :: proc() {
 
                                 token_spawn(state, action, token_pos, state.selected_color, name)
                                 pos_offset += 2
-                                action.performed = true
                                 finish_last_undo_history_action(state)
                             }
                             state.needs_sync = true
@@ -699,7 +689,6 @@ update :: proc() {
                             append(&state.undo_history, make_action(.EDIT_TOKEN_INITIATIVE))
                             action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                             move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, action)
-                            action.performed = true
                             state.needs_sync = true
                             finish_last_undo_history_action(state)
                         }
@@ -1179,7 +1168,7 @@ update :: proc() {
                     30,
                     30 + 30 * (i32(len(state.undo_history)) - i32(action_index)),
                     15,
-                    a.performed ? rl.GREEN : rl.RED,
+                    a.mine ? rl.GREEN : rl.RED,
                 )
             }
         }

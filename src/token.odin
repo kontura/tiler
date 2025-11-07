@@ -67,7 +67,6 @@ token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
     if action != nil {
         action.token_id = token.id
         action.token_life = false
-        action.performed = true
         action.token_initiative_end = {init, init_index}
     }
     // token with id 0 is special temp token, it is not in initiative
@@ -188,7 +187,6 @@ token_spawn :: proc(
     if action != nil {
         action.token_id = t.id
         action.token_life = true
-        action.performed = true
         action.color = color
         init_pos, init_index, ok := get_token_init_pos(state, t.id)
         // the newly created token has to be in initiative

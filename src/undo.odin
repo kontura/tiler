@@ -55,10 +55,6 @@ Action :: struct {
     // Whether this action was made by me, not other peers
     mine:                   bool,
 
-    // This is not synchronized, its local to each peer.
-    // Determines if this action was already perfomed.
-    performed:              bool,
-
     // Tile xor delta
     // Not synced, used only for undo (this is fine because in order to do undo we
     // have to first redo and this populated tile_history)
@@ -185,7 +181,6 @@ duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
     action.radius = a.radius
     action.reverted = a.reverted
     action.mine = a.mine
-    action.performed = a.performed
     action.hash = a.hash
     action.author_id = a.author_id
     action.timestamp = a.timestamp
