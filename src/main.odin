@@ -21,6 +21,12 @@ SELECTED_TRANSPARENT_COLOR: [4]u8 : {0, 255, 0, 180}
 
 INITIATIVE_COUNT: i32 : 50
 
+DebugMode :: enum {
+    OFF,
+    ACTIONS,
+    TOKENS,
+}
+
 //TODO(amatej): make GameState and TileMap not global
 GameState :: struct {
     screen_width:           i32,
@@ -43,8 +49,7 @@ GameState :: struct {
     previous_touch_pos:     [2]f32,
     previous_touch_count:   i32,
     timeout:                uint,
-    //TODO(amatej): debug should be a tool
-    debug:                  bool,
+    debug:                  DebugMode,
     should_run:             bool,
     undone:                 int,
     light_source:           [2]f32,
@@ -1154,48 +1159,55 @@ update :: proc() {
         rl.DrawText(msg, 10, 10, 18, rl.RED)
     }
     // draw debug info
-    if state.debug {
-        live_t := 0
-        keys := make([dynamic]u64, len(state.tokens), allocator = context.temp_allocator)
-        i := 0
-        for key, _ in state.tokens {
-            keys[i] = key
-            i += 1
-        }
-        slice.sort(keys[:])
-        for token_id in keys {
-            t := &state.tokens[token_id]
-            if t.alive {
-                live_t += 1
+    #partial switch state.debug {
+    case .ACTIONS:
+        {
+            total_actions := fmt.caprint("Total actions: ", len(state.undo_history), allocator = context.temp_allocator)
+            rl.DrawText(total_actions, 30, 30, 18, rl.GREEN)
+            for action_index := len(state.undo_history) - 1; action_index >= 0; action_index -= 1 {
+                a := &state.undo_history[action_index]
+                a_text := fmt.caprint(
+                    action_index == len(state.undo_history) - 1 - state.undone ? " -> " : "    ",
+                    action_index,
+                    ": ",
+                    to_string_action(a),
+                    allocator = context.temp_allocator,
+                )
+                rl.DrawText(
+                    a_text,
+                    30,
+                    30 + 30 * (i32(len(state.undo_history)) - i32(action_index)),
+                    15,
+                    a.performed ? rl.GREEN : rl.RED,
+                )
             }
-            token_text := fmt.caprint(get_token_name_temp(t), ": ", t.position, allocator = context.temp_allocator)
-            rl.DrawText(token_text, 530, 60 + 30 * (i32(live_t)), 15, rl.BLUE)
         }
-        total_tokens_live := fmt.caprint("Total live tokens: ", live_t, allocator = context.temp_allocator)
-        total_tokens := fmt.caprint("Total tokens: ", len(state.tokens), allocator = context.temp_allocator)
-        rl.DrawText(total_tokens_live, 430, 30, 18, rl.BLUE)
-        rl.DrawText(total_tokens, 430, 50, 18, rl.BLUE)
-        total_actions := fmt.caprint("Total actions: ", len(state.undo_history), allocator = context.temp_allocator)
-        rl.DrawText(total_actions, 30, 30, 18, rl.GREEN)
-        for action_index := len(state.undo_history) - 1; action_index >= 0; action_index -= 1 {
-            a := &state.undo_history[action_index]
-            a_text := fmt.caprint(
-                action_index == len(state.undo_history) - 1 - state.undone ? " -> " : "    ",
-                action_index,
-                ": ",
-                a.type,
-                ", tile_history: ",
-                len(a.tile_history),
-                allocator = context.temp_allocator,
-            )
-            rl.DrawText(
-                a_text,
-                30,
-                30 + 30 * (i32(len(state.undo_history)) - i32(action_index)),
-                15,
-                a.performed ? rl.GREEN : rl.RED,
-            )
+    case .TOKENS:
+        {
+            live_t := 0
+            keys := make([dynamic]u64, len(state.tokens), allocator = context.temp_allocator)
+            i := 0
+            for key, _ in state.tokens {
+                keys[i] = key
+                i += 1
+            }
+            slice.sort(keys[:])
+            for token_id in keys {
+                t := &state.tokens[token_id]
+                if t.alive {
+                    live_t += 1
+                }
+                token_text := fmt.caprint(get_token_name_temp(t), ": ", t.position, allocator = context.temp_allocator)
+                rl.DrawText(token_text, 530, 60 + 30 * (i32(live_t)), 15, rl.BLUE)
+            }
+            total_tokens_live := fmt.caprint("Total live tokens: ", live_t, allocator = context.temp_allocator)
+            total_tokens := fmt.caprint("Total tokens: ", len(state.tokens), allocator = context.temp_allocator)
+            rl.DrawText(total_tokens_live, 430, 30, 18, rl.BLUE)
+            rl.DrawText(total_tokens, 430, 50, 18, rl.BLUE)
         }
+
+    }
+    if state.debug != .OFF {
         dt := rl.GetFrameTime()
         fps := 1 / dt
         fps_text := fmt.caprint("fps", ": ", fps, allocator = context.temp_allocator)

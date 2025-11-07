@@ -143,7 +143,7 @@ config: []Config = {
     {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, "Move to the right", nil, move_right}}},
     {
         key_triggers = {{.UP, .PRESSED}},
-        bindings     = {
+        bindings = {
             {
                 .ICON_ARROW_UP,
                 "Select previous",
@@ -158,13 +158,8 @@ config: []Config = {
                     state.selected_index = math.max(state.selected_index, 0)
                 },
             },
-            {
-                .ICON_ARROW_UP,
-                "Move up",
-                nil,
-                proc(state: ^GameState) {
-                    // TODO(amatej): convert to a tool
-                    if state.debug {
+            {.ICON_ARROW_UP, "Move up", nil, proc(state: ^GameState) {
+                    if state.debug == .ACTIONS {
                         if state.undone > 0 {
                             a := &state.undo_history[len(state.undo_history) - state.undone]
                             redo_action(state, tile_map, a)
@@ -173,8 +168,7 @@ config: []Config = {
                     } else {
                         state.camera_pos.rel_tile.y -= 10
                     }
-                },
-            },
+                }},
         },
     },
     {
@@ -195,7 +189,7 @@ config: []Config = {
                 },
             },
             {.ICON_ARROW_DOWN, "Move down", nil, proc(state: ^GameState) {
-                    if state.debug {
+                    if state.debug == .ACTIONS {
                         if state.undone < len(state.undo_history) {
                             a := &state.undo_history[len(state.undo_history) - 1 - state.undone]
                             undo_action(state, tile_map, a)
@@ -249,16 +243,26 @@ config: []Config = {
                 "Toggle debug info (allows walking current action history)",
                 nil,
                 proc(state: ^GameState) {
-                    if state.debug {
-                        // When exiting debug mode ensure all actions are done, we don't want to get into inconsistent state
-                        for state.undone > 0 {
-                            a := &state.undo_history[len(state.undo_history) - state.undone]
-                            redo_action(state, tile_map, a)
-                            state.undone -= 1
+                    switch state.debug {
+                    case .OFF:
+                        {
+                            state.debug = .ACTIONS
                         }
-                        state.debug = false
-                    } else {
-                        state.debug = true
+                    case .ACTIONS:
+                        {
+                            // When exiting debug mode ensure all actions are done, we don't want to get into inconsistent state
+                            for state.undone > 0 {
+                                a := &state.undo_history[len(state.undo_history) - state.undone]
+                                redo_action(state, tile_map, a)
+                                state.undone -= 1
+                            }
+                            state.debug = .TOKENS
+                        }
+                    case .TOKENS:
+                        {
+                            state.debug = .OFF
+                        }
+
                     }
                 },
             },

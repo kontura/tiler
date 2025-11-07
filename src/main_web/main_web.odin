@@ -189,7 +189,7 @@ main_update :: proc "c" () -> bool {
     context = web_context
     game.update()
 
-    if game.state.debug {
+    if game.state.debug != .OFF {
         p := make(map[string]bool, allocator = context.temp_allocator)
         for peer, &peer_state in peers {
             p[peer] = peer_state.webrtc == .CONNECTED ? true : false
