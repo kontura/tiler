@@ -55,9 +55,9 @@ Action :: struct {
     // Whether this action was made by me, not other peers
     mine:                   bool,
 
-    // Tile xor delta
+    // Tile xor value
     // Not synced, used only for undo (this is fine because in order to do undo we
-    // have to first redo and this populated tile_history)
+    // have to first redo and this populates tile_history)
     tile_history:           map[[2]u32]Tile,
 }
 
