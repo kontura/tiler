@@ -74,6 +74,7 @@ GameState :: struct {
     id:                     u64,
     menu_items:             [dynamic]string,
     selected_index:         int,
+    my_action_count:        u64,
 }
 
 Widget :: enum {

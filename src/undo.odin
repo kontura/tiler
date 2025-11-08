@@ -42,8 +42,8 @@ Action :: struct {
     old_name:               string,
     new_name:               string,
     hash:                   [32]u8,
-    timestamp:              time.Time,
     author_id:              u64,
+    authors_index:          u64,
 
     // NOT SYNCED
 
@@ -183,7 +183,7 @@ duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
     action.mine = a.mine
     action.hash = a.hash
     action.author_id = a.author_id
-    action.timestamp = a.timestamp
+    action.authors_index = a.authors_index
     action.token_initiative_end = a.token_initiative_end
     action.token_initiative_start = a.token_initiative_start
     action.token_life = a.token_life
@@ -225,7 +225,7 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, mem.ptr_to_bytes(&action.token_size))
     sha2.update(&hash, transmute([]u8)(action.old_name))
     sha2.update(&hash, transmute([]u8)(action.new_name))
-    sha2.update(&hash, mem.ptr_to_bytes(&action.timestamp))
+    sha2.update(&hash, mem.ptr_to_bytes(&action.authors_index))
     sha2.update(&hash, mem.ptr_to_bytes(&action.author_id))
 
     if action.type == .BRUSH {
@@ -278,7 +278,8 @@ serialize_actions :: proc(actions: []Action, allocator := context.allocator) -> 
 finish_last_undo_history_action :: proc(state: ^GameState) {
     if len(state.undo_history) > 0 {
         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-        action.timestamp = time.now()
+        action.authors_index = u64(len(state.undo_history))
+        state.my_action_count += 1
         action.author_id = state.id
 
         if len(state.undo_history) > 1 {
@@ -468,13 +469,13 @@ find_first_not_matching_action :: proc(actions_a: []Action, actions_b: []Action)
     return 0, 0
 }
 
-// Inject based on timestamp and if identical lexicographically based on author_id
+// Inject based on authors_index and if identical lexicographically based on author_id
 // If both author_id and timestamp are identical don't inject
 // returns true if action was injected, false otherwise
 inject_action :: proc(actions: ^[dynamic]Action, start_at: int, action: ^Action) -> bool {
     for i := start_at; i < len(actions); i += 1 {
         old_action := &actions[i]
-        if old_action.timestamp._nsec == action.timestamp._nsec {
+        if old_action.authors_index == action.authors_index {
             // if autorhor and timestamp are both identical return without injecting (duplicate action)
             if old_action.author_id == action.author_id {
                 return false
@@ -484,7 +485,7 @@ inject_action :: proc(actions: ^[dynamic]Action, start_at: int, action: ^Action)
                 inject_at(actions, i, action^)
                 return true
             }
-        } else if old_action.timestamp._nsec > action.timestamp._nsec {
+        } else if old_action.authors_index > action.authors_index {
             inject_at(actions, i, action^)
             return true
         }
@@ -493,14 +494,22 @@ inject_action :: proc(actions: ^[dynamic]Action, start_at: int, action: ^Action)
     return true
 }
 
-merge_and_redo_actions :: proc(state: ^GameState, tile_map: ^TileMap, actions: [dynamic]Action) {
-    //fmt.println(actions[:])
-    //fmt.println(state.undo_history[:])
+// returns true if at least one already present action changed hash
+merge_and_redo_actions :: proc(
+    state: ^GameState,
+    tile_map: ^TileMap,
+    actions: [dynamic]Action,
+) -> (
+    hashes_changed: bool,
+) {
+    fmt.println(actions[:])
     new_to_merge, old_to_merge := find_first_not_matching_action(actions[:], state.undo_history[:])
-    //fmt.println("new_to_merge: ", new_to_merge, " old_to_merge: ", old_to_merge)
+    fmt.println("new_to_merge: ", new_to_merge, " old_to_merge: ", old_to_merge)
+    hashes_changed = false
     for i := len(state.undo_history) - 1; i >= old_to_merge; i -= 1 {
         action := &state.undo_history[i]
         undo_action(state, tile_map, action)
+        hashes_changed = true
     }
 
     // We don't need these actions they are already done and are duplicates
@@ -509,6 +518,7 @@ merge_and_redo_actions :: proc(state: ^GameState, tile_map: ^TileMap, actions: [
     }
     for i := new_to_merge; i < len(actions); i += 1 {
         if !inject_action(&state.undo_history, old_to_merge, &actions[i]) {
+            fmt.println("DROPPING DUPLICATE ACTION: ", actions[i])
             delete_action(&actions[i])
         }
     }
@@ -523,4 +533,5 @@ merge_and_redo_actions :: proc(state: ^GameState, tile_map: ^TileMap, actions: [
         }
     }
     delete(actions)
+    return hashes_changed
 }
