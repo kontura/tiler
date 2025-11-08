@@ -29,6 +29,16 @@ teardown :: proc(state: ^GameState, tile_map: ^TileMap) {
     delete(tile_map.tile_chunks)
 }
 
+duplicate_actions :: proc(orig: []Action) -> [dynamic]Action {
+    res : [dynamic]Action
+
+    for &a in orig {
+        append(&res, duplicate_action(&a))
+    }
+
+    return res
+}
+
 @(test)
 basic_rectangle_test :: proc(t: ^testing.T) {
     state, tile_map := setup()
@@ -251,7 +261,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     testing.expect_value(t, temp_action.token_initiative_end, [2]i32{3, 2})
 
     state2, tile_map2 := setup()
-    redo_unmatched_actions(&state2, &tile_map2, state.undo_history[:])
+    merge_and_redo_actions(&state2, &tile_map2, duplicate_actions(state.undo_history[:]))
     testing.expect_value(t, len(state2.tokens), 4)
     testing.expect_value(t, len(state2.initiative_to_tokens), 4)
     testing.expect_value(t, len(state2.initiative_to_tokens[18]), 0)
@@ -267,7 +277,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
 }
 
 @(test)
-redo_unmatched_actions_test :: proc(t: ^testing.T) {
+merge_and_redo_actions_duplicate :: proc(t: ^testing.T) {
     state, tile_map := setup()
 
     action := make_action(.RECTANGLE)
@@ -277,49 +287,24 @@ redo_unmatched_actions_test :: proc(t: ^testing.T) {
     // perform for the first time
     rectangle_tool(start_tile, end_tile, [4]u8{255, 0, 0, 155}, &tile_map, &action)
 
-    // perform for the second time since state.undo_history is empty
-    redo_unmatched_actions(&state, &tile_map, {action})
-
-    testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{227, 11, 11, 255})
-    testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{227, 11, 11, 255})
+    testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{185, 30, 30, 255})
+    testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{185, 30, 30, 255})
     testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 255})
 
     append(&state.undo_history, action)
-    // don't perfrom because undo history has the action
-    redo_unmatched_actions(&state, &tile_map, {action})
+    finish_last_undo_history_action(&state)
 
-    testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{227, 11, 11, 255})
-    testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{227, 11, 11, 255})
+    new_actions: [dynamic]Action
+    append(&new_actions, duplicate_action(&state.undo_history[0]))
+
+    // don't perfrom because undo history has hash identical the action
+    merge_and_redo_actions(&state, &tile_map, new_actions)
+
+    testing.expect_value(t, len(state.undo_history), 1)
+    testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{185, 30, 30, 255})
+    testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{185, 30, 30, 255})
     testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 255})
 
-    action2 := action
-    action2.hash = 2
-    redo_action(&state, &tile_map, &action2)
-    // do the one extra unmatching action2
-    redo_unmatched_actions(&state, &tile_map, {action, action2})
-
-    testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{250, 1, 1, 255})
-    testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{250, 1, 1, 255})
-    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 255})
-
-    append(&state.undo_history, action2)
-    // don't perfrom because undo history has both actions
-    redo_unmatched_actions(&state, &tile_map, {action, action2})
-
-    testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{250, 1, 1, 255})
-    testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{250, 1, 1, 255})
-    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 255})
-
-    // redo on empty state and tile_map to simulate syncing peer (does the action twice)
-    state2, tile_map2 := setup()
-    redo_unmatched_actions(&state2, &tile_map2, {action, action2})
-    testing.expect_value(t, get_tile(&tile_map2, {0, 0}).color, [4]u8{227, 11, 11, 255})
-    testing.expect_value(t, get_tile(&tile_map2, {2, 2}).color, [4]u8{227, 11, 11, 255})
-    testing.expect_value(t, get_tile(&tile_map2, {3, 3}).color, [4]u8{77, 77, 77, 255})
-    teardown(&state2, &tile_map2)
-
-    // pop the action2 because it is a shallow clone of action1, this avoids double free
-    pop(&state.undo_history)
     teardown(&state, &tile_map)
 }
 
@@ -380,7 +365,7 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, temp_action.token_initiative_end, [2]i32{22, 0})
 
     state2, tile_map2 := setup()
-    redo_unmatched_actions(&state2, &tile_map2, state.undo_history[:])
+    merge_and_redo_actions(&state2, &tile_map2, duplicate_actions(state.undo_history[:]))
     testing.expect_value(t, len(state2.initiative_to_tokens), 3)
     testing.expect_value(t, len(state2.initiative_to_tokens[3]), 0)
     testing.expect_value(t, len(state2.initiative_to_tokens[13]), 1)
@@ -390,114 +375,6 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     teardown(&state2, &tile_map2)
 
     teardown(&state, &tile_map)
-}
-
-@(test)
-splice_dynamic_arrays_of_actions_test :: proc(t: ^testing.T) {
-    a: [dynamic]Action
-    temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
-    append(&a, temp_action)
-    temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
-    append(&a, temp_action)
-
-    b: [dynamic]Action
-    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
-    append(&b, temp_action)
-    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
-    append(&b, temp_action)
-
-    splice_dynamic_arrays_of_actions(&a, &b, 1, 1)
-    testing.expect_value(t, len(a), 2)
-    testing.expect_value(t, a[0].type, ActionType.EDIT_TOKEN_INITIATIVE)
-    testing.expect_value(t, a[1].type, ActionType.EDIT_TOKEN_POSITION)
-
-    for _, i in a {
-        delete_action(&a[i])
-    }
-    delete(a)
-}
-
-@(test)
-splice_dynamic_arrays_of_actions_test2 :: proc(t: ^testing.T) {
-    a: [dynamic]Action
-    temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
-    append(&a, temp_action)
-    temp_action = make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
-    append(&a, temp_action)
-
-    b: [dynamic]Action
-    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
-    append(&b, temp_action)
-    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
-    append(&b, temp_action)
-
-    splice_dynamic_arrays_of_actions(&a, &b, 0, 2)
-    testing.expect_value(t, len(a), 4)
-    testing.expect_value(t, a[0].type, ActionType.EDIT_TOKEN_INITIATIVE)
-    testing.expect_value(t, a[1].type, ActionType.EDIT_TOKEN_INITIATIVE)
-    testing.expect_value(t, a[2].type, ActionType.EDIT_TOKEN_POSITION)
-    testing.expect_value(t, a[3].type, ActionType.EDIT_TOKEN_POSITION)
-
-    for _, i in a {
-        delete_action(&a[i])
-    }
-    delete(a)
-}
-
-@(test)
-splice_dynamic_arrays_of_actions_test3 :: proc(t: ^testing.T) {
-    a: [dynamic]Action
-    temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
-    append(&a, temp_action)
-    temp_action = make_action(.BRUSH, context.temp_allocator)
-    append(&a, temp_action)
-    temp_action = make_action(.CIRCLE, context.temp_allocator)
-    append(&a, temp_action)
-
-    b: [dynamic]Action
-    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
-    append(&b, temp_action)
-    temp_action = make_action(.CONE, context.temp_allocator)
-    append(&b, temp_action)
-
-    splice_dynamic_arrays_of_actions(&a, &b, 3, 1)
-    testing.expect_value(t, len(a), 1)
-    testing.expect_value(t, a[0].type, ActionType.CONE)
-
-    for _, i in a {
-        delete_action(&a[i])
-    }
-    delete(a)
-}
-
-@(test)
-splice_dynamic_arrays_of_actions_test4 :: proc(t: ^testing.T) {
-    a: [dynamic]Action
-    temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
-    append(&a, temp_action)
-    temp_action = make_action(.BRUSH, context.temp_allocator)
-    append(&a, temp_action)
-    temp_action = make_action(.CIRCLE, context.temp_allocator)
-    append(&a, temp_action)
-
-    b: [dynamic]Action
-    temp_action = make_action(.EDIT_TOKEN_POSITION, context.temp_allocator)
-    append(&b, temp_action)
-    temp_action = make_action(.CONE, context.temp_allocator)
-    append(&b, temp_action)
-
-    splice_dynamic_arrays_of_actions(&a, &b, 0, 2)
-    testing.expect_value(t, len(a), 5)
-    testing.expect_value(t, a[0].type, ActionType.EDIT_TOKEN_INITIATIVE)
-    testing.expect_value(t, a[1].type, ActionType.BRUSH)
-    testing.expect_value(t, a[2].type, ActionType.CIRCLE)
-    testing.expect_value(t, a[3].type, ActionType.EDIT_TOKEN_POSITION)
-    testing.expect_value(t, a[4].type, ActionType.CONE)
-
-    for _, i in a {
-        delete_action(&a[i])
-    }
-    delete(a)
 }
 
 @(test)
