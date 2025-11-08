@@ -216,12 +216,10 @@ main_update :: proc "c" () -> bool {
                         game.delete_action(&peer_state.last_known_actions[index])
                     }
                     clear(&peer_state.last_known_actions)
-                    if len(game.state.undo_history[to_send:]) > 0 {
-                        append(
-                            &peer_state.last_known_actions,
-                            game.duplicate_action(&game.state.undo_history[len(game.state.undo_history) - 1]),
-                        )
-                    }
+                    append(
+                        &peer_state.last_known_actions,
+                        game.duplicate_action(&game.state.undo_history[len(game.state.undo_history) - 1]),
+                    )
                 }
             }
         }
