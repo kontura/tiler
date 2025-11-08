@@ -1153,9 +1153,14 @@ update :: proc() {
     #partial switch state.debug {
     case .ACTIONS:
         {
-            total_actions := fmt.caprint("Total actions: ", len(state.undo_history), allocator = context.temp_allocator)
+            total_actions := fmt.caprint(
+                "Total actions: ",
+                len(state.undo_history),
+                allocator = context.temp_allocator,
+            )
             rl.DrawText(total_actions, 30, 30, 18, rl.GREEN)
-            for action_index := len(state.undo_history) - 1; action_index >= 0; action_index -= 1 {
+            count: i32 = 1
+            for action_index := len(state.undo_history) - 1 - state.undone; action_index >= 0; action_index -= 1 {
                 a := &state.undo_history[action_index]
                 a_text := fmt.caprint(
                     action_index == len(state.undo_history) - 1 - state.undone ? " -> " : "    ",
@@ -1164,13 +1169,8 @@ update :: proc() {
                     to_string_action(a),
                     allocator = context.temp_allocator,
                 )
-                rl.DrawText(
-                    a_text,
-                    30,
-                    30 + 30 * (i32(len(state.undo_history)) - i32(action_index)),
-                    15,
-                    a.mine ? rl.GREEN : rl.RED,
-                )
+                rl.DrawText(a_text, 50, 30 + 30 * count, 15, a.mine ? rl.GREEN : rl.RED)
+                count += 1
             }
         }
     case .TOKENS:
@@ -1188,7 +1188,7 @@ update :: proc() {
                 if t.alive {
                     live_t += 1
                 }
-                token_text := fmt.caprint(get_token_name_temp(t), ": ", t.position, allocator = context.temp_allocator)
+                token_text := fmt.caprint(get_token_name_temp(t), ": ", t.position, t.initiative, allocator = context.temp_allocator)
                 rl.DrawText(token_text, 530, 60 + 30 * (i32(live_t)), 15, rl.BLUE)
             }
             total_tokens_live := fmt.caprint("Total live tokens: ", live_t, allocator = context.temp_allocator)
@@ -1230,12 +1230,7 @@ update :: proc() {
         for &item, i in state.menu_items {
             text := item
             if state.active_tool == .NEW_SAVE_GAME {
-                text = fmt.aprint(
-                    item,
-                    "|",
-                    sep = "",
-                    allocator = context.temp_allocator,
-                )
+                text = fmt.aprint(item, "|", sep = "", allocator = context.temp_allocator)
             }
             rl.DrawText(
                 strings.clone_to_cstring(text, context.temp_allocator) or_else BUILDER_FAILED,
