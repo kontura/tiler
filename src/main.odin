@@ -573,7 +573,7 @@ update :: proc() {
                             if key == .DELETE {
                                 append(&state.undo_history, make_action(.EDIT_TOKEN_LIFE))
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                token_kill(state, token, action)
+                                token_kill(state, tile_map, token, action)
                                 clear_selected_tokens(state)
                                 state.needs_sync = true
                                 finish_last_undo_history_action(state)

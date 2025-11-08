@@ -420,7 +420,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 // life is false == token was deleted
                 token, ok := &state.tokens[action.token_id]
                 if ok {
-                    token_kill(state, token, nil)
+                    token_kill(state, tile_map, token, nil)
                 }
             }
         }

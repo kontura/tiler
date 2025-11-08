@@ -61,7 +61,7 @@ delete_token :: proc(token: ^Token) {
 }
 
 //TODO(amatej): should this be a tool
-token_kill :: proc(state: ^GameState, token: ^Token, action: ^Action) {
+token_kill :: proc(state: ^GameState, tile_map: ^TileMap, token: ^Token, action: ^Action) {
     init, init_index, ok := remove_token_by_id_from_initiative(state, token.id)
     token.alive = false
     if action != nil {
