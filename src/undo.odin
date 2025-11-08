@@ -395,7 +395,12 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     // guard againts adding the same token id into initiative multiple times
                     if token.alive == false {
                         token.alive = true
-                        add_at_initiative(state, token.id, action.token_initiative_end.x, action.token_initiative_end.y)
+                        add_at_initiative(
+                            state,
+                            token.id,
+                            action.token_initiative_end.x,
+                            action.token_initiative_end.y,
+                        )
                     }
                 } else {
                     if action.token_id == u64(len(state.tokens)) {
