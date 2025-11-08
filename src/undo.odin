@@ -469,20 +469,28 @@ find_first_not_matching_action :: proc(actions_a: []Action, actions_b: []Action)
 }
 
 // Inject based on timestamp and if identical lexicographically based on author_id
-inject_action :: proc(actions: ^[dynamic]Action, start_at: int, action: ^Action) {
+// If both author_id and timestamp are identical don't inject
+// returns true if action was injected, false otherwise
+inject_action :: proc(actions: ^[dynamic]Action, start_at: int, action: ^Action) -> bool {
     for i := start_at; i < len(actions); i += 1 {
         old_action := &actions[i]
         if old_action.timestamp._nsec == action.timestamp._nsec {
+            // if autorhor and timestamp are both identical return without injecting (duplicate action)
+            if old_action.author_id == action.author_id {
+                return false
+            }
+
             if old_action.author_id > action.author_id {
                 inject_at(actions, i, action^)
-                return
+                return true
             }
         } else if old_action.timestamp._nsec > action.timestamp._nsec {
             inject_at(actions, i, action^)
-            return
+            return true
         }
     }
     append(actions, action^)
+    return true
 }
 
 merge_and_redo_actions :: proc(state: ^GameState, tile_map: ^TileMap, actions: [dynamic]Action) {
@@ -500,7 +508,9 @@ merge_and_redo_actions :: proc(state: ^GameState, tile_map: ^TileMap, actions: [
         delete_action(&actions[i])
     }
     for i := new_to_merge; i < len(actions); i += 1 {
-        inject_action(&state.undo_history, old_to_merge, &actions[i])
+        if !inject_action(&state.undo_history, old_to_merge, &actions[i]) {
+            delete_action(&actions[i])
+        }
     }
     for i := old_to_merge; i < len(state.undo_history); i += 1 {
         action := &state.undo_history[i]

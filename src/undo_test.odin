@@ -200,10 +200,13 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
 
     spawn_action1, token_id1 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {18, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action1)
+    finish_last_undo_history_action(&state)
     spawn_action2, token_id2 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {20, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action2)
+    finish_last_undo_history_action(&state)
     spawn_action3, token_id3 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {22, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action3)
+    finish_last_undo_history_action(&state)
 
     temp_action := make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator)
     // 260 screen pos targers initiative "18"
@@ -211,6 +214,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     // these numbers are chosen by empirically
     move_initiative_token_tool(&state, 260, 40, &temp_action)
     append(&state.undo_history, temp_action)
+    finish_last_undo_history_action(&state)
 
     testing.expect_value(t, len(state.tokens), 4)
     testing.expect_value(t, len(state.initiative_to_tokens), 4)
@@ -229,6 +233,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     // 69 screen pos targers initiative "3", after token_id1
     move_initiative_token_tool(&state, 290, 69, &temp_action)
     append(&state.undo_history, temp_action)
+    finish_last_undo_history_action(&state)
 
     testing.expect_value(t, len(state.tokens), 4)
     testing.expect_value(t, len(state.initiative_to_tokens), 4)
@@ -247,6 +252,7 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     // 103 screen pos targers initiative "3", after token_id2
     move_initiative_token_tool(&state, 345, 103, &temp_action)
     append(&state.undo_history, temp_action)
+    finish_last_undo_history_action(&state)
 
     testing.expect_value(t, len(state.tokens), 4)
     testing.expect_value(t, len(state.initiative_to_tokens), 4)
@@ -284,7 +290,6 @@ merge_and_redo_actions_duplicate :: proc(t: ^testing.T) {
     action.hash = 1
     start_tile: TileMapPosition = {{0, 0}, {0, 0}}
     end_tile: TileMapPosition = {{2, 2}, {0, 0}}
-    // perform for the first time
     rectangle_tool(start_tile, end_tile, [4]u8{255, 0, 0, 155}, &tile_map, &action)
 
     testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{185, 30, 30, 255})
@@ -309,13 +314,47 @@ merge_and_redo_actions_duplicate :: proc(t: ^testing.T) {
 }
 
 @(test)
+merge_and_redo_actions_duplicate_with_different_hash :: proc(t: ^testing.T) {
+    state, tile_map := setup()
+
+    action := make_action(.RECTANGLE)
+    action.hash = 1
+    start_tile: TileMapPosition = {{0, 0}, {0, 0}}
+    end_tile: TileMapPosition = {{2, 2}, {0, 0}}
+    rectangle_tool(start_tile, end_tile, [4]u8{255, 0, 0, 155}, &tile_map, &action)
+
+    testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{185, 30, 30, 255})
+    testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{185, 30, 30, 255})
+    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 255})
+
+    append(&state.undo_history, action)
+    finish_last_undo_history_action(&state)
+
+    new_actions: [dynamic]Action
+    append(&new_actions, duplicate_action(&state.undo_history[0]))
+    new_actions[0].hash = 1
+
+    // don't merge and perfrom because undo history has identical the action (same author, same timestamp)
+    merge_and_redo_actions(&state, &tile_map, new_actions)
+
+    testing.expect_value(t, len(state.undo_history), 1)
+    testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{185, 30, 30, 255})
+    testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{185, 30, 30, 255})
+    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 255})
+
+    teardown(&state, &tile_map)
+}
+
+@(test)
 multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     state, tile_map := setup()
 
     spawn_action1, token_id1 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {3, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action1)
+    finish_last_undo_history_action(&state)
     spawn_action2, token_id2 := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {3, 0}, context.temp_allocator)
     append(&state.undo_history, spawn_action2)
+    finish_last_undo_history_action(&state)
 
     testing.expect_value(t, len(state.initiative_to_tokens), 1)
     testing.expect_value(t, len(state.initiative_to_tokens[3]), 2)
@@ -328,6 +367,7 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     // these numbers are chosen by empirically
     move_initiative_token_tool(&state, 40, 230, &temp_action)
     append(&state.undo_history, temp_action)
+    finish_last_undo_history_action(&state)
 
     testing.expect_value(t, len(state.initiative_to_tokens), 2)
     testing.expect_value(t, len(state.initiative_to_tokens[3]), 1)
@@ -341,6 +381,7 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     // 220 screen pos targers initiative "13"
     move_initiative_token_tool(&state, 40, 220, &temp_action)
     append(&state.undo_history, temp_action)
+    finish_last_undo_history_action(&state)
 
     testing.expect_value(t, len(state.initiative_to_tokens), 2)
     testing.expect_value(t, len(state.initiative_to_tokens[13]), 2)
@@ -354,6 +395,7 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     // 351 screen pos targers initiative "22"
     move_initiative_token_tool(&state, 200, 351, &temp_action)
     append(&state.undo_history, temp_action)
+    finish_last_undo_history_action(&state)
 
     testing.expect_value(t, len(state.initiative_to_tokens), 3)
     testing.expect_value(t, len(state.initiative_to_tokens[3]), 0)
