@@ -206,6 +206,8 @@ main_update :: proc "c" () -> bool {
                     peer_state.last_known_actions[:],
                     game.state.undo_history[:],
                 )
+                // send one more action if there is one, so that we can find common parent action (by hash)
+                to_send = math.max(0, to_send - 1)
                 serialized_actions := game.serialize_actions(game.state.undo_history[to_send:], context.temp_allocator)
                 binary = game.build_binary_message(my_id, 1, peer_bytes, serialized_actions)
                 send_binary_to_peer(&peer_bytes[0], u32(len(peer_bytes)), &binary[0], u32(len(binary)))
