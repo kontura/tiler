@@ -687,6 +687,119 @@ merge_and_redo_actions_test_got_only_newer :: proc(t: ^testing.T) {
     teardown(&state, &tile_map)
 }
 
+@(test)
+merge_and_redo_actions_test_common_parent :: proc(t: ^testing.T) {
+    state, tile_map := setup()
+
+    spawn_action1, token_id := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {18, 0}, context.temp_allocator)
+    token := &state.tokens[token_id]
+    append(&state.undo_history, spawn_action1)
+    finish_last_undo_history_action(&state)
+    testing.expect_value(t, token.position.abs_tile, [2]u32{0, 0})
+
+    append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
+    action2: ^Action = &state.undo_history[len(state.undo_history) - 1]
+    finish_last_undo_history_action(&state)
+    move_token_tool(&state, token, &tile_map, {20, 20}, action2, false)
+    testing.expect_value(t, token.position.abs_tile, [2]u32{99, 99})
+
+    append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
+    action3 := &state.undo_history[len(state.undo_history) - 1]
+    finish_last_undo_history_action(&state)
+    move_token_tool(&state, token, &tile_map, {200, 200}, action3, false)
+    testing.expect_value(t, token.position.abs_tile, [2]u32{105, 105})
+
+    append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
+    action4 := &state.undo_history[len(state.undo_history) - 1]
+    finish_last_undo_history_action(&state)
+    move_token_tool(&state, token, &tile_map, {300, 300}, action4, false)
+    testing.expect_value(t, token.position.abs_tile, [2]u32{108, 108})
+
+    new_actions: [dynamic]Action
+    append(&new_actions, state.undo_history[len(state.undo_history) - 1])
+
+    action1 := make_action(.EDIT_TOKEN_POSITION)
+    action1.hash = 5
+    action1.authors_index = 5
+    action1.author_id = 2
+    action1.token_id = token_id
+    action1.start = {{105, 105}, {0, 0}}
+    action1.end = {{17, 17}, {0, 0}}
+    append(&new_actions, action1)
+
+    // We have a common parent action so no hash update
+    testing.expect_value(t, merge_and_redo_actions(&state, &tile_map, new_actions), false)
+
+    testing.expect_value(t, len(state.undo_history), 5)
+    testing.expect_value(t, state.undo_history[0].authors_index, 1)
+    testing.expect_value(t, state.undo_history[1].authors_index, 2)
+    testing.expect_value(t, state.undo_history[2].authors_index, 3)
+    testing.expect_value(t, state.undo_history[3].authors_index, 4)
+    testing.expect_value(t, state.undo_history[4].authors_index, 5)
+
+    testing.expect_value(t, token.position.abs_tile, [2]u32{17, 17})
+
+    teardown(&state, &tile_map)
+}
+
+@(test)
+merge_and_redo_actions_test_incomaptible :: proc(t: ^testing.T) {
+    state1, tile_map1 := setup(1)
+
+    action11, token_id1 := create_spawn_token_action(&state1, {{0, 0}, {0, 0}}, {18, 0}, context.temp_allocator)
+    token1 := &state1.tokens[token_id1]
+    append(&state1.undo_history, action11)
+    finish_last_undo_history_action(&state1)
+    testing.expect_value(t, token1.position.abs_tile, [2]u32{0, 0})
+
+    append(&state1.undo_history, make_action(.EDIT_TOKEN_POSITION))
+    action12: ^Action = &state1.undo_history[len(state1.undo_history) - 1]
+    move_token_tool(&state1, token1, &tile_map1, {20, 20}, action12, false)
+    finish_last_undo_history_action(&state1)
+    testing.expect_value(t, token1.position.abs_tile, [2]u32{99, 99})
+
+    append(&state1.undo_history, make_action(.EDIT_TOKEN_POSITION))
+    action13 := &state1.undo_history[len(state1.undo_history) - 1]
+    move_token_tool(&state1, token1, &tile_map1, {200, 200}, action13, false)
+    finish_last_undo_history_action(&state1)
+    testing.expect_value(t, token1.position.abs_tile, [2]u32{105, 105})
+
+    state2, tile_map2 := setup(2)
+
+    action21, token_id2 := create_spawn_token_action(&state2, {{2, 2}, {0, 0}}, {18, 0}, context.temp_allocator)
+    token2 := &state2.tokens[token_id2]
+    append(&state2.undo_history, action21)
+    finish_last_undo_history_action(&state2)
+    testing.expect_value(t, token2.position.abs_tile, [2]u32{2, 2})
+
+    append(&state2.undo_history, make_action(.EDIT_TOKEN_POSITION))
+    action22: ^Action = &state2.undo_history[len(state2.undo_history) - 1]
+    move_token_tool(&state2, token2, &tile_map2, {40, 40}, action22, false)
+    finish_last_undo_history_action(&state2)
+    testing.expect_value(t, token2.position.abs_tile, [2]u32{100, 100})
+
+    append(&state2.undo_history, make_action(.EDIT_TOKEN_POSITION))
+    action23 := &state2.undo_history[len(state2.undo_history) - 1]
+    move_token_tool(&state2, token2, &tile_map2, {100, 100}, action23, false)
+    finish_last_undo_history_action(&state2)
+    testing.expect_value(t, token2.position.abs_tile, [2]u32{102, 102})
+
+    state2_actions := duplicate_actions(state2.undo_history[:])
+
+    // We have nothing in common
+    testing.expect_value(t, merge_and_redo_actions(&state1, &tile_map1, state2_actions), true)
+
+    testing.expect_value(t, token1.id, token2.id)
+    testing.expect_value(t, len(state1.undo_history), 6)
+    testing.expect_value(t, len(state1.tokens), 2)
+    testing.expect_value(t, 0 in state1.tokens, true)
+    testing.expect_value(t, 1 in state1.tokens, true)
+
+    testing.expect_value(t, state1.tokens[1].position.abs_tile, [2]u32{102, 102})
+
+    teardown(&state1, &tile_map1)
+    teardown(&state2, &tile_map2)
+}
 
 @(test)
 action_hash_test :: proc(t: ^testing.T) {
