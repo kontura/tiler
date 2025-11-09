@@ -1188,13 +1188,26 @@ update :: proc() {
                 if t.alive {
                     live_t += 1
                 }
-                token_text := fmt.caprint(get_token_name_temp(t), ": ", t.position, t.initiative, allocator = context.temp_allocator)
+                token_text := fmt.caprint(
+                    get_token_name_temp(t),
+                    ": ",
+                    t.position,
+                    t.initiative,
+                    allocator = context.temp_allocator,
+                )
                 rl.DrawText(token_text, 530, 60 + 30 * (i32(live_t)), 15, rl.BLUE)
             }
             total_tokens_live := fmt.caprint("Total live tokens: ", live_t, allocator = context.temp_allocator)
             total_tokens := fmt.caprint("Total tokens: ", len(state.tokens), allocator = context.temp_allocator)
             rl.DrawText(total_tokens_live, 430, 30, 18, rl.BLUE)
             rl.DrawText(total_tokens, 430, 50, 18, rl.BLUE)
+
+            i = 0
+            for init, &tokens in state.initiative_to_tokens {
+                init_tokens := fmt.caprint(init, ": ", tokens, allocator = context.temp_allocator)
+                rl.DrawText(init_tokens, 150, 60 + 30 * i32(i), 15, rl.BLUE)
+                i += 1
+            }
         }
 
     }
