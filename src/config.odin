@@ -99,10 +99,8 @@ options_menu: []MenuItem = {{"Toggle Draw Grid", proc(state: ^GameState) {
         }}}
 
 main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
-            for i := len(state.undo_history) - 1; i >= 0; i -= 1 {
-                action := &state.undo_history[i]
-                undo_action(state, tile_map, action)
-            }
+            tilemap_clear(tile_map)
+            tokens_reset(state)
             for i := 0; i < len(state.undo_history); i += 1 {
                 delete_action(&state.undo_history[i])
             }
