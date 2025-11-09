@@ -85,8 +85,7 @@ set_peer_rtc_connected :: proc "c" (peer_len: u32, peer_data: [^]u8) {
 
 @(export)
 process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
-    context = runtime.default_context()
-    context.allocator = my_allocator
+    context = web_context
 
     type, sender_bytes, target, payload := game.parse_binary_message(data[:data_len])
     sender := string(sender_bytes)
@@ -145,7 +144,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
 
 @(export)
 paste_image :: proc "c" (data: [^]u8, width: i32, height: i32) {
-    context = runtime.default_context()
+    context = web_context
 
     game.add_background(data, width, height)
 
