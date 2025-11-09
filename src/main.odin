@@ -1242,7 +1242,7 @@ update :: proc() {
         offset: i32 = 100
         for &item, i in state.menu_items {
             text := item
-            if state.active_tool == .NEW_SAVE_GAME {
+            if state.active_tool == .NEW_SAVE_GAME && i == 0 {
                 text = fmt.aprint(item, "|", sep = "", allocator = context.temp_allocator)
             }
             rl.DrawText(
