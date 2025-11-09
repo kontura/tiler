@@ -3,13 +3,14 @@ package tiler
 import "core:fmt"
 import "core:testing"
 
-setup :: proc() -> (GameState, TileMap) {
-    state: GameState
-    tile_map: TileMap
-    game_state_init(&state, false, 100, 100, "root")
-    tile_map_init(&tile_map, false)
+setup :: proc(id: u64 = 1) -> (GameState, TileMap) {
+    my_state: GameState
+    my_tile_map: TileMap
+    game_state_init(&my_state, false, 100, 100, "root")
+    my_state.id = id
+    tile_map_init(&my_tile_map, false)
 
-    return state, tile_map
+    return my_state, my_tile_map
 }
 
 teardown :: proc(state: ^GameState, tile_map: ^TileMap) {
