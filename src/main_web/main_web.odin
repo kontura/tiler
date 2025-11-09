@@ -119,9 +119,10 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
             for &a in actions {
                 append(&peer_state.last_known_actions, game.duplicate_action(&a))
             }
+            if game.merge_and_redo_actions(game.state, game.tile_map, actions) {
+                game.state.needs_sync = true
+            }
         }
-        //TODO(amatej): check if this returns that we have newer then we got, if so we need_to_sync
-        game.merge_and_redo_actions(game.state, game.tile_map, actions)
         if len(target) == 0 {
             fmt.println("Registering: ", sender)
             make_webrtc_offer(&sender_bytes[0], u32(len(sender_bytes)))
