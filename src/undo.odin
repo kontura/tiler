@@ -61,7 +61,7 @@ Action :: struct {
     tile_history:           map[[2]u32]Tile,
 }
 
-to_string_action :: proc(action: ^Action, allocator := context.allocator) -> string {
+to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -> string {
     builder := strings.builder_make(allocator)
     at, _ := fmt.enum_value_to_string(action.type)
     strings.write_string(&builder, at)
