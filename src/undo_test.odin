@@ -30,7 +30,7 @@ teardown :: proc(state: ^GameState, tile_map: ^TileMap) {
 }
 
 duplicate_actions :: proc(orig: []Action) -> [dynamic]Action {
-    res : [dynamic]Action
+    res: [dynamic]Action
 
     for &a in orig {
         append(&res, duplicate_action(&a))
@@ -267,7 +267,11 @@ multiple_tokens_initiative_move_test :: proc(t: ^testing.T) {
     testing.expect_value(t, temp_action.token_initiative_end, [2]i32{3, 2})
 
     state2, tile_map2 := setup()
-    testing.expect_value(t, merge_and_redo_actions(&state2, &tile_map2, duplicate_actions(state.undo_history[:])), false)
+    testing.expect_value(
+        t,
+        merge_and_redo_actions(&state2, &tile_map2, duplicate_actions(state.undo_history[:])),
+        false,
+    )
     testing.expect_value(t, len(state2.tokens), 4)
     testing.expect_value(t, len(state2.initiative_to_tokens), 4)
     testing.expect_value(t, len(state2.initiative_to_tokens[18]), 0)
@@ -287,7 +291,6 @@ merge_and_redo_actions_duplicate :: proc(t: ^testing.T) {
     state, tile_map := setup()
 
     action := make_action(.RECTANGLE)
-    action.hash = 1
     start_tile: TileMapPosition = {{0, 0}, {0, 0}}
     end_tile: TileMapPosition = {{2, 2}, {0, 0}}
     rectangle_tool(start_tile, end_tile, [4]u8{255, 0, 0, 155}, &tile_map, &action)
@@ -302,7 +305,7 @@ merge_and_redo_actions_duplicate :: proc(t: ^testing.T) {
     new_actions: [dynamic]Action
     append(&new_actions, duplicate_action(&state.undo_history[0]))
 
-    // don't perfrom because undo history has hash identical the action
+    // Don't perfrom because undo history has hash and authors_index and author_id identical action
     testing.expect_value(t, merge_and_redo_actions(&state, &tile_map, new_actions), false)
 
     testing.expect_value(t, len(state.undo_history), 1)
@@ -407,7 +410,11 @@ multiple_tokens_initiative_moves_test :: proc(t: ^testing.T) {
     testing.expect_value(t, temp_action.token_initiative_end, [2]i32{22, 0})
 
     state2, tile_map2 := setup()
-    testing.expect_value(t, merge_and_redo_actions(&state2, &tile_map2, duplicate_actions(state.undo_history[:])), false)
+    testing.expect_value(
+        t,
+        merge_and_redo_actions(&state2, &tile_map2, duplicate_actions(state.undo_history[:])),
+        false,
+    )
     testing.expect_value(t, len(state2.initiative_to_tokens), 3)
     testing.expect_value(t, len(state2.initiative_to_tokens[3]), 0)
     testing.expect_value(t, len(state2.initiative_to_tokens[13]), 1)
@@ -537,7 +544,6 @@ merge_and_redo_single_action_test :: proc(t: ^testing.T) {
     state, tile_map := setup()
 
     spawn_action1, token_id := create_spawn_token_action(&state, {{0, 0}, {0, 0}}, {18, 0}, context.temp_allocator)
-    spawn_action1.authors_index = 1
     token := &state.tokens[token_id]
     append(&state.undo_history, spawn_action1)
     finish_last_undo_history_action(&state)
@@ -665,7 +671,8 @@ merge_and_redo_actions_test_got_only_newer :: proc(t: ^testing.T) {
     action1.end = {{17, 17}, {0, 0}}
     append(&new_actions, action1)
 
-    testing.expect_value(t, merge_and_redo_actions(&state, &tile_map, new_actions), false)
+    // We don't have a common parent action so we have to redo all
+    testing.expect_value(t, merge_and_redo_actions(&state, &tile_map, new_actions), true)
 
     testing.expect_value(t, len(state.undo_history), 5)
     testing.expect_value(t, state.undo_history[0].authors_index, 1)
