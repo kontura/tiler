@@ -1320,6 +1320,10 @@ shutdown :: proc() {
     delete(state.selected_tokens)
     delete(state.tokens)
 
+    for &item in state.menu_items {
+        delete(item)
+    }
+    delete(state.menu_items)
     for _, index in state.undo_history {
         delete_action(&state.undo_history[index])
     }
