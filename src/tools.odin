@@ -2,9 +2,9 @@ package tiler
 
 import "core:fmt"
 import "core:math"
-import "core:time"
 import "core:math/rand"
 import "core:strings"
+import "core:time"
 import rl "vendor:raylib"
 
 GREEN_HIGHLIGH: [4]u8 : {0, 255, 0, 30}
@@ -260,7 +260,25 @@ add_at_initiative :: proc(state: ^GameState, token_id: u64, initiative: i32, ini
         state.initiative_to_tokens[initiative] = make([dynamic]u64)
     }
     tokens := &state.initiative_to_tokens[initiative]
-    inject_at(tokens, init_index, token_id)
+    // If the action is inconsistent (possibly due to syncing problems)
+    // in a way that it tries to add token at a position bigger than
+    // len of tokens just append it. Otherwise it would enlarge the
+    // tokens array filling it with zeros.
+    if int(init_index) > len(tokens) {
+        fmt.eprintln(
+            "add_at_initiative: tried to move: ",
+            token_id,
+            " to initiative: ",
+            initiative,
+            " index: ",
+            init_index,
+            " but initiativet array len is only: ",
+            len(tokens),
+        )
+        inject_at(tokens, len(tokens), token_id)
+    } else {
+        inject_at(tokens, init_index, token_id)
+    }
 }
 
 move_initiative_token :: proc(state: ^GameState, token_id: u64, new_init, new_index: i32) {
