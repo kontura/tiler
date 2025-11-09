@@ -31,6 +31,9 @@ foreign _ {
 
 socket_ready: bool = false
 my_allocator: mem.Allocator
+when ODIN_DEBUG {
+    track: mem.Tracking_Allocator
+}
 peers: map[string]PeerState
 //TODO(amatej): replace with id in GameState
 my_id: [3]u8
@@ -163,6 +166,11 @@ main_start :: proc "c" (path_len: u32, path_data: [^]u8, mobile: bool) {
     context.allocator = my_allocator
     runtime.init_global_temporary_allocator(1 * mem.Megabyte)
 
+    when ODIN_DEBUG {
+        mem.tracking_allocator_init(&track, my_allocator)
+        context.allocator = mem.tracking_allocator(&track)
+    }
+
     rand.reset(u64(time.time_to_unix(time.now())))
     my_id[0] = u8(rand.int_max(9) + 48)
     my_id[1] = u8(rand.int_max(9) + 48)
@@ -234,6 +242,21 @@ main_update :: proc "c" () -> bool {
 main_end :: proc "c" () {
     context = web_context
     game.shutdown()
+    when ODIN_DEBUG {
+        if len(track.allocation_map) > 0 {
+            fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
+            for _, entry in track.allocation_map {
+                fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+            }
+        }
+        if len(track.bad_free_array) > 0 {
+            fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
+            for entry in track.bad_free_array {
+                fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
+            }
+        }
+        mem.tracking_allocator_destroy(&track)
+    }
 }
 
 @(export)
