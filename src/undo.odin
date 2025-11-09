@@ -502,9 +502,9 @@ merge_and_redo_actions :: proc(
 ) -> (
     hashes_changed: bool,
 ) {
-    fmt.println(actions[:])
+    //fmt.println(actions[:])
     new_to_merge, old_to_merge := find_first_not_matching_action(actions[:], state.undo_history[:])
-    fmt.println("new_to_merge: ", new_to_merge, " old_to_merge: ", old_to_merge)
+    //fmt.println("new_to_merge: ", new_to_merge, " old_to_merge: ", old_to_merge)
     hashes_changed = false
     for i := len(state.undo_history) - 1; i >= old_to_merge; i -= 1 {
         action := &state.undo_history[i]
