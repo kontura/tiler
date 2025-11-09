@@ -136,7 +136,7 @@ main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
             }
             state.selected_index = 0
         }}, {"Quit Game", proc(state: ^GameState) {
-            os.exit(0)
+            state.should_run = false
         }}}
 
 config: []Config = {
