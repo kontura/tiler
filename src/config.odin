@@ -278,10 +278,15 @@ config: []Config = {
                     tokens_reset(state)
                     tilemap_clear(tile_map)
 
-                    for &action in state.undo_history {
-                        redo_action(state, tile_map, &action)
+                    if state.debug == .ACTIONS {
+                        state.undone = len(state.undo_history)
+                        fmt.println("you have to redo manually (arrow up)")
+                    } else {
+                        for &action in state.undo_history {
+                            redo_action(state, tile_map, &action)
+                        }
+                        fmt.println("redone all")
                     }
-                    fmt.println("redone all")
                 }}}},
     {{{.LEFT_CONTROL, .PRESSED}}, {{.ICON_COLOR_PICKER, "Active colorpicker", nil, proc(state: ^GameState) {
                     if state.previous_tool == nil {
