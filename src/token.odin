@@ -63,9 +63,6 @@ delete_token :: proc(token: ^Token) {
 //TODO(amatej): should this be a tool
 token_kill :: proc(state: ^GameState, tile_map: ^TileMap, token: ^Token, action: ^Action) {
     init, init_index, ok := remove_token_by_id_from_initiative(state, token.id)
-    if !ok {
-        fmt.eprintln("Killing: ", token.id, " but cant find it in initiative.")
-    }
     token.alive = false
     if action != nil {
         action.token_id = token.id
@@ -75,6 +72,9 @@ token_kill :: proc(state: ^GameState, tile_map: ^TileMap, token: ^Token, action:
     // token with id 0 is special temp token, it is not in initiative
     // and we don't want to emit particles
     if token.id != 0 {
+        if !ok {
+            fmt.eprintln("Killing: ", token.id, " but cant find it in initiative.")
+        }
         for i := 0; i < 80 * int(token.size) * int(token.size); i += 1 {
             angle := rand.float32() * 2 * math.PI
             rand_radius := math.sqrt(rand.float32()) * f32(token.size) * tile_map.tile_side_in_feet / 2
