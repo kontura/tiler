@@ -586,8 +586,6 @@ update :: proc() {
                                     builder: strings.Builder
                                     strings.write_string(&builder, token.name)
                                     #partial switch key {
-                                    case .BACKSPACE:
-                                        strings.pop_rune(&builder)
                                     case .MINUS:
                                         {
                                             if token.size > 1 {
@@ -619,21 +617,25 @@ update :: proc() {
                                         {
                                         }
                                     case:
-                                        strings.write_byte(&builder, byte)
+                                        if key == .BACKSPACE {
+                                            strings.pop_rune(&builder)
+                                        } else {
+                                            strings.write_byte(&builder, byte)
+                                        }
+                                        append(&state.undo_history, make_action(.EDIT_TOKEN_NAME))
+                                        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                                        action.token_id = token.id
+                                        action.old_name = strings.clone(token.name)
+                                        action.new_name = strings.clone(strings.to_string(builder))
+                                        finish_last_undo_history_action(state)
+
+                                        delete(token.name)
+                                        token.name = strings.to_string(builder)
+
+                                        state.key_consumed = true
+                                        set_texture_based_on_name(state, token)
                                     }
 
-                                    append(&state.undo_history, make_action(.EDIT_TOKEN_NAME))
-                                    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                    action.token_id = token.id
-                                    action.old_name = strings.clone(token.name)
-                                    action.new_name = strings.clone(strings.to_string(builder))
-                                    finish_last_undo_history_action(state)
-
-                                    delete(token.name)
-                                    token.name = strings.to_string(builder)
-
-                                    state.key_consumed = true
-                                    set_texture_based_on_name(state, token)
                                 }
                             }
                         }
