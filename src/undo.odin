@@ -279,7 +279,6 @@ finish_last_undo_history_action :: proc(state: ^GameState) {
     if len(state.undo_history) > 0 {
         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
         action.authors_index = u64(len(state.undo_history))
-        state.my_action_count += 1
         action.author_id = state.id
 
         if len(state.undo_history) > 1 {
