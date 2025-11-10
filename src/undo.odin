@@ -63,6 +63,14 @@ Action :: struct {
 
 to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -> string {
     builder := strings.builder_make(allocator)
+    strings.write_u64(&builder, action.authors_index)
+    strings.write_string(&builder, ") ")
+    strings.write_int(&builder, int(action.hash[0]))
+    strings.write_int(&builder, int(action.hash[1]))
+    strings.write_int(&builder, int(action.hash[2]))
+    strings.write_int(&builder, int(action.hash[3]))
+    strings.write_int(&builder, int(action.hash[4]))
+    strings.write_string(&builder, "..., ")
     at, _ := fmt.enum_value_to_string(action.type)
     strings.write_string(&builder, at)
     switch action.type {
