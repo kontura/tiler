@@ -24,6 +24,13 @@ ActionType :: enum {
     CONE,
 }
 
+ActionState :: enum {
+    STARTED,
+    DONE,
+    REVERTED,
+    REVERTS,
+}
+
 Action :: struct {
     // SYNCED
     type:                   ActionType,
@@ -45,12 +52,11 @@ Action :: struct {
     author_id:              u64,
     authors_index:          u64,
 
-    // NOT SYNCED
-
-    // Whether this action can be reverted.
     // Actions that have already been reverted or are reverting
-    // actions cannot be reverted again.
-    reverted:               bool,
+    // actions (reverts) cannot be reverted again.
+    state:                  ActionState,
+
+    // NOT SYNCED
 
     // Whether this action was made by me, not other peers
     mine:                   bool,
@@ -187,7 +193,7 @@ duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
     action.end = a.end
     action.color = a.color
     action.radius = a.radius
-    action.reverted = a.reverted
+    action.state = a.state
     action.mine = a.mine
     action.hash = a.hash
     action.author_id = a.author_id
@@ -212,6 +218,7 @@ make_action :: proc(type: ActionType, allocator := context.allocator) -> Action 
     action.tile_history.allocator = allocator
     action.mine = true
     action.type = type
+    action.state = .STARTED
 
     return action
 }
@@ -236,7 +243,7 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, mem.ptr_to_bytes(&action.authors_index))
     sha2.update(&hash, mem.ptr_to_bytes(&action.author_id))
 
-    if action.type == .BRUSH {
+    if action.type == .BRUSH || action.state == .REVERTS {
         tile_keys := make([dynamic][2]u32, allocator = context.temp_allocator)
         for k, _ in action.tile_history {
             append(&tile_keys, k)
@@ -283,11 +290,12 @@ serialize_actions :: proc(actions: []Action, allocator := context.allocator) -> 
     return s.data[:]
 }
 
-finish_last_undo_history_action :: proc(state: ^GameState) {
+finish_last_undo_history_action :: proc(state: ^GameState, action_state := ActionState.DONE) {
     if len(state.undo_history) > 0 {
         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
         action.authors_index = u64(len(state.undo_history))
         action.author_id = state.id
+        action.state = action_state
 
         if len(state.undo_history) > 1 {
             action_before := state.undo_history[len(state.undo_history) - 2]
@@ -295,7 +303,6 @@ finish_last_undo_history_action :: proc(state: ^GameState) {
         } else {
             action.hash = compute_hash_with_prev(action, nil)
         }
-
     }
 }
 

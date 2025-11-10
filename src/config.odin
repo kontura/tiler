@@ -262,13 +262,12 @@ config: []Config = {
     },
     {{{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_UNDO, "Undo last action", nil, proc(state: ^GameState) {
                     #reverse for &action in state.undo_history {
-                        if action.mine && !action.reverted {
+                        if action.mine && action.state == .DONE {
                             reverted := revert_action(&action)
                             redo_action(state, tile_map, &reverted)
-                            reverted.reverted = true
-                            action.reverted = true
+                            action.state = .REVERTED
                             append(&state.undo_history, reverted)
-                            finish_last_undo_history_action(state)
+                            finish_last_undo_history_action(state, .REVERTS)
                             state.needs_sync = true
                             break
                         }
