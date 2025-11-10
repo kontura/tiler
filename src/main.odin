@@ -610,6 +610,8 @@ update :: proc() {
                                                 action.token_id = token.id
                                                 action.token_size = 1
                                                 finish_last_undo_history_action(state)
+                                                //TODO(amatej): I could set needs_sync only after deselecting
+                                                // the EDIT token (and if there is some new actions?)
                                                 state.needs_sync = true
                                             }
                                         }

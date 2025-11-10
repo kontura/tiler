@@ -539,6 +539,7 @@ merge_and_redo_actions :: proc(
     }
     for i := new_to_merge; i < len(actions); i += 1 {
         if !inject_action(&state.undo_history, old_to_merge, &actions[i]) {
+            //TODO(amatej): check if actions are exactly the same with the duplicate
             fmt.println("DROPPING DUPLICATE ACTION: ", actions[i])
             delete_action(&actions[i])
         }

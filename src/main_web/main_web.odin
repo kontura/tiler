@@ -126,6 +126,10 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
             }
         }
         if len(target) == 0 {
+            //TODO(amatej): Only the peer with the highest id should sync,
+            //              otherwise when a new peer joins state with a lot
+            //              of peers and actions it will get a lot of big messages
+            //              with mostly duplicate information.
             fmt.println("Registering: ", sender)
             make_webrtc_offer(&sender_bytes[0], u32(len(sender_bytes)))
             peer_state.webrtc = .OFFERED
@@ -191,6 +195,8 @@ main_start :: proc "c" (path_len: u32, path_data: [^]u8, mobile: bool) {
     mount_idbfs()
     game.init(string(path_data[:path_len]), mobile)
 }
+
+//TODO(amatej): would it be possible to dump all actions on panic?
 
 @(export)
 main_update :: proc "c" () -> bool {
