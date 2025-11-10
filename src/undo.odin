@@ -62,8 +62,10 @@ Action :: struct {
     mine:                   bool,
 
     // Tile xor value
-    // Not synced, used only for undo (this is fine because in order to do undo we
-    // have to first redo and this populates tile_history)
+    // Synced only for .REVERTS and brush tool
+    // TODO(amatej): .REVERTS technically might not need to sync it
+    // we could get the infor from the action we are revering.
+    // Not sure it is worth it.
     tile_history:           map[[2]u32]Tile,
 }
 
