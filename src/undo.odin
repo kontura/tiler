@@ -314,7 +314,12 @@ delete_action :: proc(action: ^Action) {
 
 revert_action :: proc(action: ^Action, allocator := context.allocator) -> Action {
     reverted := duplicate_action(action, allocator)
-    reverted.start, reverted.end = reverted.end, reverted.start
+    // Rectangle/Wall is always drawn from start to end, if we swap it the
+    // rectangle_tool will swap them back which could lead to different
+    // hashes across peers.
+    if action.type != .RECTANGLE && action.type != .WALL {
+        reverted.start, reverted.end = reverted.end, reverted.start
+    }
     //TODO(amatej): color is not delta and I don't have the starting color
 
     reverted.token_initiative_start, reverted.token_initiative_end =
