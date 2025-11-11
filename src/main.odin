@@ -359,7 +359,7 @@ update :: proc() {
         } else if rl.IsMouseButtonDown(.RIGHT) {
             state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
         }
-        tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMove())
+        tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMoveV().y)
     }
     touch_count := rl.GetTouchPointCount()
 
