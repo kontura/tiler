@@ -376,8 +376,9 @@ update :: proc() {
     case .BRUSH:
         {
             if selected_widget == .MAP {
-                if rl.IsMouseButtonDown(.LEFT) {
+                if rl.IsMouseButtonPressed(.LEFT) {
                     append(&state.undo_history, make_action(.BRUSH))
+                } else if rl.IsMouseButtonDown(.LEFT) {
                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                     if (!(mouse_tile_pos.abs_tile in action.tile_history)) {
                         old_tile := get_tile(tile_map, mouse_tile_pos.abs_tile)
@@ -386,6 +387,7 @@ update :: proc() {
                         action.tile_history[mouse_tile_pos.abs_tile] = tile_xor(&old_tile, &new_tile)
                         set_tile(tile_map, mouse_tile_pos.abs_tile, new_tile)
                     }
+                } else if rl.IsMouseButtonReleased(.LEFT) {
                     finish_last_undo_history_action(state)
                 }
             }
