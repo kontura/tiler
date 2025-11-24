@@ -347,6 +347,9 @@ revert_action :: proc(action: ^Action, allocator := context.allocator) -> Action
     if action.type == .SET_BACKGROUND_SCALE {
         reverted.radius *= -1
     }
+    if action.type == .LOAD_BACKGROUND {
+        clear(&reverted.payload)
+    }
     //TODO(amatej): color is not delta and I don't have the starting color
 
     reverted.token_initiative_start, reverted.token_initiative_end =
