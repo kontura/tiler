@@ -57,6 +57,7 @@ GameState :: struct {
     bg:                     rl.Texture2D,
     bg_pos:                 TileMapPosition,
     bg_scale:               f32,
+    bg_snap:                [3]Maybe([2]f32),
 
     // permanent state
     textures:               map[string]rl.Texture2D,
@@ -217,17 +218,22 @@ load_from_serialized :: proc(data: []byte, allocator: mem.Allocator) -> [dynamic
     return actions
 }
 
-add_background :: proc(data: [^]u8, width: i32, height: i32) {
-    d := data[:width * height]
-    fmt.println(d)
-    image: rl.Image
-    image.data = data
-    image.width = width
-    image.height = height
-    image.mipmaps = 1
-    image.format = .UNCOMPRESSED_R8G8B8A8 // or appropriate format
-    fmt.println(image)
+set_background :: proc(data: []u8, width: i32, height: i32) {
+    image: rl.Image = rl.LoadImageFromMemory(".jpeg", raw_data(data), i32(len(data)))
     state.bg = rl.LoadTextureFromImage(image)
+}
+
+add_background :: proc(data: [^]u8, data_len, width: i32, height: i32) {
+    d : []u8 = data[:data_len]
+    append(&state.undo_history, make_action(.LOAD_BACKGROUND))
+    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+    action.token_initiative_start = {width, height}
+    for e in d {
+        append(&action.payload, e)
+    }
+    set_background(d, width, height)
+    finish_last_undo_history_action(state)
+    state.needs_sync = true
 }
 
 game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32, path: string) {
@@ -260,6 +266,8 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
         size = 1,
     }
     state.path = path
+    state.bg_pos.rel_tile = 2.5
+    state.bg_pos.abs_tile = 100
 }
 
 tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {
@@ -350,7 +358,7 @@ update :: proc() {
 
     particles_update(state, tile_map, rl.GetFrameTime())
 
-    if !state.mobile {
+    if !state.mobile && state.bg_snap[0] == nil {
         // Mouse clicks
         if rl.IsMouseButtonPressed(.LEFT) {
             if (state.tool_start_position == nil) {
@@ -730,33 +738,31 @@ update :: proc() {
         }
     case .EDIT_BG:
         {
-            if rl.IsKeyPressed(.MINUS) {
-                state.bg_scale -= 0.01
-                state.key_consumed = true
+            if state.bg_snap[0] != nil && state.bg_snap[1] != nil && state.bg_snap[2] != nil {
+                state.bg_snap[0] = nil
+                state.bg_snap[1] = nil
+                state.bg_snap[2] = nil
             }
-            if rl.IsKeyPressed(.EQUAL) {
-                state.bg_scale += 0.01
-                state.key_consumed = true
-            }
-            if rl.IsKeyDown(.LEFT) {
-                state.bg_pos.rel_tile.x -= 0.1
-                state.bg_pos = recanonicalize_position(tile_map, state.bg_pos)
-                state.key_consumed = true
-            }
-            if rl.IsKeyDown(.RIGHT) {
-                state.bg_pos.rel_tile.x += 0.1
-                state.bg_pos = recanonicalize_position(tile_map, state.bg_pos)
-                state.key_consumed = true
-            }
-            if rl.IsKeyDown(.UP) {
-                state.bg_pos.rel_tile.y -= 0.1
-                state.bg_pos = recanonicalize_position(tile_map, state.bg_pos)
-                state.key_consumed = true
-            }
-            if rl.IsKeyDown(.DOWN) {
-                state.bg_pos.rel_tile.y += 0.1
-                state.bg_pos = recanonicalize_position(tile_map, state.bg_pos)
-                state.key_consumed = true
+            if rl.IsMouseButtonPressed(.LEFT) {
+                if state.bg_snap[0] == nil {
+                    state.bg_snap[0] = mouse_pos
+                } else if state.bg_snap[1] == nil {
+                    state.bg_snap[1] = mouse_pos
+                } else if state.bg_snap[2] == nil {
+                    state.bg_snap[2] = mouse_pos
+
+                    bg_tile_side_in_pixels_approx := (state.bg_snap[0].?.x - state.bg_snap[1].?.x) / state.bg_scale
+                    big_dist := (state.bg_snap[0].?.x - state.bg_snap[2].?.x) / state.bg_scale
+                    tiles_far := math.round(big_dist / bg_tile_side_in_pixels_approx)
+                    bg_tile_side_in_pixels_approx = big_dist / tiles_far
+                    new_scale := f32(tile_map.tile_side_in_pixels) / bg_tile_side_in_pixels_approx
+                    append(&state.undo_history, make_action(.SET_BACKGROUND_SCALE))
+                    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                    action.radius = f64(state.bg_scale - new_scale)
+                    state.needs_sync = true
+                    finish_last_undo_history_action(state)
+                    state.bg_scale = new_scale
+                }
             }
             icon = .ICON_LAYERS
         }
@@ -1288,6 +1294,24 @@ update :: proc() {
                 rl.DrawText(strings.clone_to_cstring(bind.help, context.temp_allocator), 540, offset, 18, rl.WHITE)
 
                 offset += 20
+            }
+        }
+    }
+
+    if state.active_tool == .EDIT_BG {
+        if state.bg_snap[0] == nil {
+            rl.DrawText("Select corner of any tile", i32(mouse_pos.x) + 20, i32(mouse_pos.y), 15, rl.WHITE)
+        }
+        if state.bg_snap[0] != nil && state.bg_snap[1] == nil {
+            rl.DrawText("Select opposite corner of this tile", i32(state.bg_snap[0].?.x), i32(state.bg_snap[0].?.y), 15, rl.WHITE)
+        }
+        if state.bg_snap[0] != nil && state.bg_snap[1] != nil && state.bg_snap[2] == nil {
+            rl.DrawText("Select tile corner as far horizontally as possible", i32(state.bg_snap[1].?.x), i32(state.bg_snap[1].?.y), 15, rl.WHITE)
+        }
+        for p in state.bg_snap {
+            if p != nil {
+                rl.DrawLineV(p.? - {10, 0}, p.? + {10, 0}, {255, 0, 0, 255})
+                rl.DrawLineV(p.? - {0, 10}, p.? + {0, 10}, {255, 0, 0, 255})
             }
         }
     }

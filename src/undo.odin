@@ -22,6 +22,8 @@ ActionType :: enum {
     WALL,
     LIGHT_SOURCE,
     CONE,
+    LOAD_BACKGROUND,
+    SET_BACKGROUND_SCALE,
 }
 
 ActionState :: enum {
@@ -51,6 +53,7 @@ Action :: struct {
     hash:                   [32]u8,
     author_id:              u64,
     authors_index:          u64,
+    payload:                [dynamic]u8,
 
     // Actions that have already been reverted or are reverting
     // actions (reverts) cannot be reverted again.
@@ -180,6 +183,17 @@ to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -
             strings.write_string(&builder, " -> ")
             strings.write_string(&builder, action.new_name)
         }
+    case .SET_BACKGROUND_SCALE:
+        {
+            strings.write_string(&builder, " scale delta: ")
+            radius_text := fmt.aprint(action.radius, allocator = context.temp_allocator)
+            strings.write_string(&builder, radius_text)
+        }
+    case .LOAD_BACKGROUND:
+        {
+            strings.write_string(&builder, " loading image of size: ")
+            strings.write_int(&builder, len(action.payload))
+        }
     case .LIGHT_SOURCE:
         {
             strings.write_string(&builder, "TODO(amatej): missing")
@@ -210,6 +224,9 @@ duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
     action.tile_history = make(map[[2]u32]Tile, allocator = allocator)
     for pos, &hist in a.tile_history {
         action.tile_history[pos] = hist
+    }
+    for color in a.payload {
+        append(&action.payload, color)
     }
 
     return action
@@ -244,6 +261,10 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, transmute([]u8)(action.new_name))
     sha2.update(&hash, mem.ptr_to_bytes(&action.authors_index))
     sha2.update(&hash, mem.ptr_to_bytes(&action.author_id))
+
+    for &b in action.payload {
+        sha2.update(&hash, mem.ptr_to_bytes(&b))
+    }
 
     if action.type == .BRUSH || action.state == .REVERTS {
         tile_keys := make([dynamic][2]u32, allocator = context.temp_allocator)
@@ -312,6 +333,7 @@ delete_action :: proc(action: ^Action) {
     delete(action.tile_history)
     delete(action.old_name)
     delete(action.new_name)
+    delete(action.payload)
 }
 
 revert_action :: proc(action: ^Action, allocator := context.allocator) -> Action {
@@ -321,6 +343,9 @@ revert_action :: proc(action: ^Action, allocator := context.allocator) -> Action
     // hashes across peers.
     if action.type != .RECTANGLE && action.type != .WALL {
         reverted.start, reverted.end = reverted.end, reverted.start
+    }
+    if action.type == .SET_BACKGROUND_SCALE {
+        reverted.radius *= -1
     }
     //TODO(amatej): color is not delta and I don't have the starting color
 
@@ -472,6 +497,14 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
     case .LIGHT_SOURCE:
         {
             fmt.println("TODO(amatej): missing implementation")
+        }
+    case .SET_BACKGROUND_SCALE:
+        {
+            state.bg_scale -= f32(action.radius)
+        }
+    case .LOAD_BACKGROUND:
+        {
+            set_background(action.payload[:], action.token_initiative_start.x, action.token_initiative_start.y)
         }
     }
 }

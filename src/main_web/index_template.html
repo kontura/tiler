@@ -147,20 +147,28 @@
                           const ctx = canvas.getContext("2d");
                           ctx.drawImage(img, 0, 0);
 
-                          const imageData = ctx.getImageData(0, 0, img.width, img.height);
-                          const byteLength = imageData.data.length;
+                          function log_blob(blob) {
+                              blob.arrayBuffer().then(arrayBuffer => {
+                                console.log(arrayBuffer.byteLength);
+                                console.log(img.width * img.height);
+                                const ptr = Module._malloc(arrayBuffer.byteLength);
+                                const wasmMemory = new Uint8Array(Module.HEAPU8.buffer, ptr, arrayBuffer.byteLength);
+                                wasmMemory.set(new Uint8Array(arrayBuffer));
 
-                          const ptr = Module._malloc(byteLength);
-                          Module.HEAPU8.set(imageData.data, ptr);
+                                // Synchronous call into C++
+                                Module.ccall('paste_image',
+                                  null,
+                                  ['number', 'number', 'number', 'number'],
+                                  [ptr, arrayBuffer.byteLength, img.width, img.height]
+                                );
+                                Module._free(ptr);
+                              });
 
-                          // Synchronous call into C++
-                          Module.ccall('paste_image',
-                            null,
-                            ['number', 'number', 'number'],
-                            [ptr, img.width, img.height]
-                          );
 
-                          Module._free(ptr);
+                            console.log(blob);
+                          }
+                          canvas.toBlob(log_blob, 'image/jpeg', 0.5);
+
                         };
                         img.src = e.target.result;
                       };

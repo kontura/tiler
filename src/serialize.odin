@@ -395,6 +395,7 @@ serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_locatio
     serialize(s, &action.author_id, loc) or_return
     serialize(s, &action.authors_index, loc) or_return
     serialize(s, &action.state, loc) or_return
+    serialize(s, &action.payload, loc) or_return
 
     if action.type == .BRUSH || action.state == .REVERTS {
         serialize(s, &action.tile_history, loc) or_return

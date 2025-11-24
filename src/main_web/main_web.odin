@@ -150,14 +150,9 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
 }
 
 @(export)
-paste_image :: proc "c" (data: [^]u8, width: i32, height: i32) {
+paste_image :: proc "c" (data: [^]u8, data_len: i32, width: i32, height: i32) {
     context = web_context
-
-    game.add_background(data, width, height)
-
-    fmt.println(data)
-    fmt.println(width)
-    fmt.println(height)
+    game.add_background(data, data_len, width, height)
 }
 
 @(export)
