@@ -121,14 +121,23 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
             }
         }
         if target_id == 0 {
-            //TODO(amatej): Only the peer with the highest id should sync,
-            //              otherwise when a new peer joins state with a lot
-            //              of peers and actions it will get a lot of big messages
-            //              with mostly duplicate information.
             fmt.println("Registering: ", sender_id)
             make_webrtc_offer(sender_id)
             peer_state.webrtc = .OFFERED
-            game.state.needs_sync = true
+            // Only the peer with the highest id should sync,
+            // otherwise when a new peer joins state with a lot
+            // of peers and actions it will get a lot of big messages
+            // with mostly duplicate information.
+            am_highest := true
+            for id in peers {
+                if id > game.state.id && id != sender_id {
+                    am_highest = false
+                    break
+                }
+            }
+            if am_highest {
+                game.state.needs_sync = true
+            }
         }
     } else if type == 2 {
         if peer_state.webrtc == .WAITING {
