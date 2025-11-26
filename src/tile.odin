@@ -96,7 +96,7 @@ get_tile_chunk :: proc(tile_map: ^TileMap, tile_chunk: [2]u32) -> ^TileChunk {
     } else {
         tile_map.tile_chunks[tile_chunk] = {make([dynamic]Tile, tile_map.chunk_dim * tile_map.chunk_dim)}
         for i: u32 = 0; i < tile_map.chunk_dim * tile_map.chunk_dim; i += 1 {
-            tile_map.tile_chunks[tile_chunk].tiles[i] = tile_make([4]u8{77, 77, 77, 255})
+            tile_map.tile_chunks[tile_chunk].tiles[i] = tile_make([4]u8{77, 77, 77, 0})
         }
         return &tile_map.tile_chunks[tile_chunk]
     }

@@ -903,7 +903,7 @@ update :: proc() {
                 tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
                 f32(column_offset * tile_map.tile_side_in_pixels)
             min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-            if current_tile_value.color != {77, 77, 77, 255} {
+            if current_tile_value.color.w != 0 {
                 rl.DrawRectangleV(
                     {min_x, min_y},
                     {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
