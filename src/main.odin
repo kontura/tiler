@@ -224,7 +224,7 @@ set_background :: proc(data: []u8, width: i32, height: i32) {
 }
 
 add_background :: proc(data: [^]u8, data_len, width: i32, height: i32) {
-    d : []u8 = data[:data_len]
+    d: []u8 = data[:data_len]
     append(&state.undo_history, make_action(.LOAD_BACKGROUND))
     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
     action.token_initiative_start = {width, height}
@@ -1300,10 +1300,22 @@ update :: proc() {
             rl.DrawText("Select corner of any tile", i32(mouse_pos.x) + 20, i32(mouse_pos.y), 15, rl.WHITE)
         }
         if state.bg_snap[0] != nil && state.bg_snap[1] == nil {
-            rl.DrawText("Select opposite corner of this tile", i32(state.bg_snap[0].?.x), i32(state.bg_snap[0].?.y), 15, rl.WHITE)
+            rl.DrawText(
+                "Select opposite corner of this tile",
+                i32(state.bg_snap[0].?.x),
+                i32(state.bg_snap[0].?.y),
+                15,
+                rl.WHITE,
+            )
         }
         if state.bg_snap[0] != nil && state.bg_snap[1] != nil && state.bg_snap[2] == nil {
-            rl.DrawText("Select tile corner as far horizontally as possible", i32(state.bg_snap[1].?.x), i32(state.bg_snap[1].?.y), 15, rl.WHITE)
+            rl.DrawText(
+                "Select tile corner as far horizontally as possible",
+                i32(state.bg_snap[1].?.x),
+                i32(state.bg_snap[1].?.y),
+                15,
+                rl.WHITE,
+            )
         }
         for p in state.bg_snap {
             if p != nil {
