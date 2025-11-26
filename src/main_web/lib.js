@@ -49,11 +49,7 @@ addToLibrary({
         });
     },
 
-    send_binary_to_peer: function(peer_ptr, peer_len, data_ptr, data_len) {
-        const peer_array = new Uint8Array(Module.HEAPU8.buffer, peer_ptr, peer_len);
-        const decoder = new TextDecoder();
-        const peer = decoder.decode(peer_array);
-
+    send_binary_to_peer: function(peer, data_ptr, data_len) {
         const msg = new Uint8Array(Module.HEAPU8.buffer, data_ptr, data_len);
         if (Module[peer] && Module[peer].rtc && Module[peer].rtc.connectionState === 'connected' &&
         Module[peer].channel && Module[peer].channel.readyState === 'open') {
@@ -63,7 +59,7 @@ addToLibrary({
         }
     },
 
-    send_to_peer_signaling: function(peer_ptr, peer_len, msg) {
+    send_to_peer_signaling: function(peer, msg) {
         const encoder = new TextEncoder();
         const view = encoder.encode(msg)
         const arrayBuffer = view.buffer;
@@ -75,11 +71,11 @@ addToLibrary({
         const data_len = Module._malloc(4);
         const data = Module._malloc(4);
         Module.ccall('build_binary_msg_c', null,
-                     ['number', 'number', 'number', 'number', 'number', 'number'],
-                     [peer_len, peer_ptr, arrayBuffer.byteLength, ptr, data_len, data]);
+                     ['number', 'number', 'number', 'number', 'number'],
+                     [peer, arrayBuffer.byteLength, ptr, data_len, data]);
         const d_len = Module.HEAP32[data_len >> 2];
         const d_ptr = Module.HEAP32[data >> 2];
-        _send_binary_to_peer(peer_ptr, peer_len, d_ptr, d_len);
+        _send_binary_to_peer(peer, d_ptr, d_len);
     },
 
     pass_msg_to_odin: function(arrayBuffer) {
@@ -89,47 +85,40 @@ addToLibrary({
         Module.ccall('process_binary_msg', null, ['number', 'number'], [arrayBuffer.byteLength, ptr]);
     },
 
-    make_webrtc_offer: function(peer_ptr, peer_len) {
+    make_webrtc_offer: function(peer_id) {
         console.log("sending webrtc offer")
-        const peer_array = new Uint8Array(Module.HEAPU8.buffer, peer_ptr, peer_len);
-        const decoder = new TextDecoder();
-        const peer = decoder.decode(peer_array);
-
         const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]};
-        Module[peer] = {rtc: new RTCPeerConnection(configuration)};
+        Module[peer_id] = {rtc: new RTCPeerConnection(configuration)};
         console.log("adding channel")
-        Module[peer].channel = Module[peer].rtc.createDataChannel("my-channel");
-        Module[peer].channel.binaryType = 'arraybuffer';
-        Module[peer].channel.addEventListener('message', event => {
+        Module[peer_id].channel = Module[peer_id].rtc.createDataChannel("my-channel");
+        Module[peer_id].channel.binaryType = 'arraybuffer';
+        Module[peer_id].channel.addEventListener('message', event => {
             _pass_msg_to_odin(event.data);
         });
 
-        Module[peer].rtc.createOffer().then((offer) => {
-                Module[peer].rtc.setLocalDescription(offer).then(() => {
-                    _send_to_peer_signaling(peer_ptr, peer_len, JSON.stringify(offer))
+        Module[peer_id].rtc.createOffer().then((offer) => {
+                Module[peer_id].rtc.setLocalDescription(offer).then(() => {
+                    _send_to_peer_signaling(peer_id, JSON.stringify(offer))
                 });
         });
 
-        Module[peer].rtc.addEventListener('connectionstatechange', event => {
-            if (Module[peer].rtc.connectionState === 'connected') {
-                Module.ccall('set_peer_rtc_connected', null, ['number', 'number'], [peer_len, peer_ptr]);
+        Module[peer_id].rtc.addEventListener('connectionstatechange', event => {
+            if (Module[peer_id].rtc.connectionState === 'connected') {
+                Module.ccall('set_peer_rtc_connected', null, ['number'], [peer_id]);
             }
         });
 
         // Listen for local ICE candidates on the local RTCPeerConnection
-        Module[peer].rtc.addEventListener('icecandidate', event => {
+        Module[peer_id].rtc.addEventListener('icecandidate', event => {
             if (event.candidate) {
-                _send_to_peer_signaling(peer_ptr, peer_len, JSON.stringify(event.candidate))
+                _send_to_peer_signaling(peer_id, JSON.stringify(event.candidate))
             }
         });
     },
 
-    accept_webrtc_answer: function(peer_ptr, peer_len, answer_data, answer_len) {
-        const peer_array = new Uint8Array(Module.HEAPU8.buffer, peer_ptr, peer_len);
-        const decoder = new TextDecoder();
-        const peer = decoder.decode(peer_array);
-
+    accept_webrtc_answer: function(peer, answer_data, answer_len) {
         const answer_array = new Uint8Array(Module.HEAPU8.buffer, answer_data, answer_len);
+        const decoder = new TextDecoder();
         const answer_string = decoder.decode(answer_array);
         const answer = JSON.parse(answer_string);
         console.log("ANSWER: ", answer)
@@ -137,12 +126,9 @@ addToLibrary({
         Module[peer].rtc.setRemoteDescription(remoteDesc)
     },
 
-    accept_webrtc_offer: function(peer_ptr, peer_len, sdp_data, sdp_len) {
-        const peer_array = new Uint8Array(Module.HEAPU8.buffer, peer_ptr, peer_len);
-        const decoder = new TextDecoder();
-        const peer = decoder.decode(peer_array);
-
+    accept_webrtc_offer: function(peer, sdp_data, sdp_len) {
         const sdp_array = new Uint8Array(Module.HEAPU8.buffer, sdp_data, sdp_len);
+        const decoder = new TextDecoder();
         const sdpString = decoder.decode(sdp_array);
         const offer = JSON.parse(sdpString);
         const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
@@ -159,31 +145,28 @@ addToLibrary({
 
         Module[peer].rtc.addEventListener('connectionstatechange', event => {
             if (Module[peer].rtc.connectionState === 'connected') {
-                Module.ccall('set_peer_rtc_connected', null, ['number', 'number'], [peer_len, peer_ptr]);
+                Module.ccall('set_peer_rtc_connected', null, ['number'], [peer]);
             }
         });
 
         Module[peer].rtc.setRemoteDescription(new RTCSessionDescription(offer));
         Module[peer].rtc.createAnswer().then((answer) => {
             Module[peer].rtc.setLocalDescription(answer).then(() => {
-                _send_to_peer_signaling(peer_ptr, peer_len, JSON.stringify(answer))
+                _send_to_peer_signaling(peer, JSON.stringify(answer))
             });
         });
 
         // Listen for local ICE candidates on the local RTCPeerConnection
         Module[peer].rtc.addEventListener('icecandidate', event => {
             if (event.candidate) {
-                _send_to_peer_signaling(peer_ptr, peer_len, JSON.stringify(event.candidate))
+                _send_to_peer_signaling(peer, JSON.stringify(event.candidate))
             }
         });
     },
 
-    add_peer_ice: function(peer_ptr, peer_len, msg_data, msg_len) {
-        const peer_array = new Uint8Array(Module.HEAPU8.buffer, peer_ptr, peer_len);
-        const decoder = new TextDecoder();
-        const peer = decoder.decode(peer_array);
-
+    add_peer_ice: function(peer, msg_data, msg_len) {
         const msg_array = new Uint8Array(Module.HEAPU8.buffer, msg_data, msg_len);
+        const decoder = new TextDecoder();
         const msgString = decoder.decode(msg_array);
         const ice = JSON.parse(msgString);
         Module[peer].rtc.addIceCandidate(ice).then(() => {});

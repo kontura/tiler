@@ -21,12 +21,12 @@ web_context: runtime.Context
 @(default_calling_convention = "c")
 foreign _ {
     mount_idbfs :: proc() ---
-    make_webrtc_offer :: proc(peer_ptr: rawptr, peer_len: u32) ---
-    accept_webrtc_offer :: proc(peer_ptr: rawptr, peer_len: u32, sdp_data: rawptr, sdp_len: u32) ---
-    accept_webrtc_answer :: proc(peer_ptr: rawptr, peer_len: u32, answer_data: rawptr, answer_len: u32) ---
-    add_peer_ice :: proc(peer_ptr: rawptr, peer_len: u32, msg_data: rawptr, msg_len: u32) ---
+    make_webrtc_offer :: proc(peer_id: u64) ---
+    accept_webrtc_offer :: proc(peer_id: u64, sdp_data: rawptr, sdp_len: u32) ---
+    accept_webrtc_answer :: proc(peer_id: u64, answer_data: rawptr, answer_len: u32) ---
+    add_peer_ice :: proc(peer_id: u64, msg_data: rawptr, msg_len: u32) ---
     connect_signaling_websocket :: proc() ---
-    send_binary_to_peer :: proc(peer_ptr: rawptr, peer_len: u32, data: rawptr, len: u32) ---
+    send_binary_to_peer :: proc(peer_id: u64, data: rawptr, len: u32) ---
 }
 
 socket_ready: bool = false
@@ -34,9 +34,7 @@ my_allocator: mem.Allocator
 when ODIN_DEBUG {
     track: mem.Tracking_Allocator
 }
-peers: map[string]PeerState
-//TODO(amatej): replace with id in GameState
-my_id: [3]u8
+peers: map[u64]PeerState
 
 PeerState :: struct {
     webrtc:             WEBRTC_STATE,
@@ -53,15 +51,14 @@ WEBRTC_STATE :: enum u8 {
 
 @(export)
 build_binary_msg_c :: proc "c" (
-    peer_len: u32,
-    peer_data: [^]u8,
+    peer_id: u64,
     msg_len: u32,
     msg_data: [^]u8,
     out_len: ^u32,
     out_data: ^rawptr,
 ) {
     context = web_context
-    msg := game.build_binary_message(my_id, 2, peer_data[:peer_len], msg_data[:msg_len])
+    msg := game.build_binary_message(game.state.id, 2, peer_id, msg_data[:msg_len])
     out_len^ = u32(len(msg))
     out_data^ = &msg[0]
 }
@@ -69,7 +66,7 @@ build_binary_msg_c :: proc "c" (
 @(export)
 build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
     context = web_context
-    register := game.build_register_msg(my_id, game.state)
+    register := game.build_register_msg(game.state.id, game.state)
     out_len^ = u32(len(register))
     out_data^ = &register[0]
 }
@@ -80,9 +77,8 @@ set_socket_ready :: proc "c" () {
 }
 
 @(export)
-set_peer_rtc_connected :: proc "c" (peer_len: u32, peer_data: [^]u8) {
-    peer := string(peer_data[:peer_len])
-    peer_state := &peers[peer]
+set_peer_rtc_connected :: proc "c" (peer_id: u64) {
+    peer_state := &peers[peer_id]
     peer_state.webrtc = .CONNECTED
 }
 
@@ -90,24 +86,23 @@ set_peer_rtc_connected :: proc "c" (peer_len: u32, peer_data: [^]u8) {
 process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     context = web_context
 
-    type, sender_bytes, target, payload := game.parse_binary_message(data[:data_len])
-    sender := string(sender_bytes)
-    sender_already_registered := sender in peers
+    type, sender_id, target_id, payload := game.parse_binary_message(data[:data_len])
+    sender_already_registered := sender_id in peers
     if !sender_already_registered {
-        peers[strings.clone(sender)] = {.WAITING, {}}
-        peer_state := &peers[sender]
+        peers[sender_id] = {.WAITING, {}}
+        peer_state := &peers[sender_id]
     }
 
-    if !bytes.equal(target, my_id[:]) && len(target) != 0 {
-        fmt.println("This message is not for me: ", target, " (target) x ", my_id[:], " (me)")
+    if game.state.id != target_id && target_id != 0 {
+        fmt.println("This message is not for me: ", target_id, " (target) x ", game.state.id, " (me)")
         assert(false)
     }
-    if bytes.equal(sender_bytes, my_id[:]) {
-        fmt.println("This message is from me: ", target, " (target) x ", my_id[:], " (me)")
+    if sender_id == game.state.id {
+        fmt.println("This message is from me: ", target_id, " (target) x ", game.state.id, " (me)")
         assert(false)
     }
 
-    peer_state := &peers[sender]
+    peer_state := &peers[sender_id]
 
     if type == 1 {
         bytes: []byte = payload[:len(payload)]
@@ -125,25 +120,25 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
                 game.state.needs_sync = true
             }
         }
-        if len(target) == 0 {
+        if target_id == 0 {
             //TODO(amatej): Only the peer with the highest id should sync,
             //              otherwise when a new peer joins state with a lot
             //              of peers and actions it will get a lot of big messages
             //              with mostly duplicate information.
-            fmt.println("Registering: ", sender)
-            make_webrtc_offer(&sender_bytes[0], u32(len(sender_bytes)))
+            fmt.println("Registering: ", sender_id)
+            make_webrtc_offer(sender_id)
             peer_state.webrtc = .OFFERED
             game.state.needs_sync = true
         }
     } else if type == 2 {
         if peer_state.webrtc == .WAITING {
-            accept_webrtc_offer(&sender_bytes[0], u32(len(sender_bytes)), &payload[0], u32(len(payload)))
+            accept_webrtc_offer(sender_id, &payload[0], u32(len(payload)))
             peer_state.webrtc = .ICE
         } else if peer_state.webrtc == .OFFERED {
-            accept_webrtc_answer(&sender_bytes[0], u32(len(sender_bytes)), &payload[0], u32(len(payload)))
+            accept_webrtc_answer(sender_id, &payload[0], u32(len(payload)))
             peer_state.webrtc = .ICE
         } else if peer_state.webrtc == .ICE {
-            add_peer_ice(&sender_bytes[0], u32(len(sender_bytes)), &payload[0], u32(len(payload)))
+            add_peer_ice(sender_id, &payload[0], u32(len(payload)))
         }
         return
     }
@@ -170,12 +165,6 @@ main_start :: proc "c" (path_len: u32, path_data: [^]u8, mobile: bool) {
         context.allocator = mem.tracking_allocator(&track)
     }
 
-    rand.reset(u64(time.time_to_unix(time.now())))
-    my_id[0] = u8(rand.int_max(9) + 48)
-    my_id[1] = u8(rand.int_max(9) + 48)
-    my_id[2] = u8(rand.int_max(9) + 48)
-    fmt.println("my id: ", string(my_id[:]))
-
     // Since we now use js_wasm32 we should be able to remove this and use
     // context.logger = log.create_console_logger(). However, that one produces
     // extra newlines on web. So it's a bug in that core lib.
@@ -199,17 +188,16 @@ main_update :: proc "c" () -> bool {
     game.update()
 
     if game.state.debug != .OFF {
-        p := make(map[string]bool, allocator = context.temp_allocator)
+        p := make(map[u64]bool, allocator = context.temp_allocator)
         for peer, &peer_state in peers {
             p[peer] = peer_state.webrtc == .CONNECTED ? true : false
         }
-        game.draw_connections(string(my_id[:]), socket_ready, p)
+        game.draw_connections(socket_ready, p)
     }
 
     if game.state.needs_sync && !game.state.offline {
         if socket_ready {
-            for peer, &peer_state in peers {
-                peer_bytes := transmute([]u8)peer
+            for peer_id, &peer_state in peers {
                 binary: []u8
                 _, to_send := game.find_first_not_matching_action(
                     peer_state.last_known_actions[:],
@@ -218,8 +206,8 @@ main_update :: proc "c" () -> bool {
                 // send one more action if there is one, so that we can find common parent action (by hash)
                 to_send = math.max(0, to_send - 1)
                 serialized_actions := game.serialize_actions(game.state.undo_history[to_send:], context.temp_allocator)
-                binary = game.build_binary_message(my_id, 1, peer_bytes, serialized_actions)
-                send_binary_to_peer(&peer_bytes[0], u32(len(peer_bytes)), &binary[0], u32(len(binary)))
+                binary = game.build_binary_message(game.state.id, 1, peer_id, serialized_actions)
+                send_binary_to_peer(peer_id, &binary[0], u32(len(binary)))
                 if len(game.state.undo_history[to_send:]) > 0 {
                     for _, index in peer_state.last_known_actions {
                         game.delete_action(&peer_state.last_known_actions[index])
@@ -248,7 +236,6 @@ main_end :: proc "c" () {
             game.delete_action(&peer_state.last_known_actions[index])
         }
         delete(peer_state.last_known_actions)
-        delete(peer)
     }
     delete(peers)
 

@@ -1,34 +1,46 @@
 package tiler
 
+import "core:encoding/endian"
 import "core:math"
+import "core:mem"
 
 
-build_binary_message :: proc(my_id: [3]u8, type: u8, target: []u8, payload: []u8) -> []u8 {
+build_binary_message :: proc(id: u64, type: u8, target: u64, payload: []u8) -> []u8 {
     msg := make([dynamic]u8, allocator = context.temp_allocator)
     append(&msg, type)
-    append(&msg, 3)
-    append(&msg, my_id[0])
-    append(&msg, my_id[1])
-    append(&msg, my_id[2])
-    append(&msg, u8(len(target)))
-    append(&msg, ..target[:])
+    append(&msg, u8(size_of(id)))
+    id := id
+    append(&msg, ..mem.ptr_to_bytes(&id))
+    append(&msg, u8(size_of(target)))
+    target := target
+    append(&msg, ..mem.ptr_to_bytes(&target))
     append(&msg, ..payload[:])
     return msg[:]
 }
 
-build_register_msg :: proc(my_id: [3]u8, state: ^GameState) -> []u8 {
+build_register_msg :: proc(my_id: u64, state: ^GameState) -> []u8 {
     actions_num := math.min(4, len(state.undo_history))
-    return build_binary_message(my_id, 1, nil, serialize_actions(state.undo_history[actions_num:], context.temp_allocator))
+    return build_binary_message(
+        my_id,
+        1,
+        0,
+        serialize_actions(state.undo_history[actions_num:], context.temp_allocator),
+    )
 }
 
-parse_binary_message :: proc(msg: []u8) -> (type: u8, sender, target, payload: []u8) {
+parse_binary_message :: proc(msg: []u8) -> (type: u8, sender, target: u64, payload: []u8) {
     // 0 1 2 3 4 5 6 7 8 9
     // 1 3 a b c 3 d e f x x x
     type = msg[0]
     sender_len := msg[1]
-    sender = msg[2:2 + sender_len]
+    sender_bytes := msg[2:2 + sender_len]
+    ok: bool
+    sender, ok = endian.get_u64(sender_bytes, .Little)
+    assert(ok)
     target_len := msg[2 + sender_len]
-    target = msg[3 + sender_len:3 + sender_len + target_len]
+    target_bytes := msg[3 + sender_len:3 + sender_len + target_len]
+    target, ok = endian.get_u64(target_bytes, .Little)
+    assert(ok)
     payload = msg[3 + sender_len + target_len:]
     return
 }

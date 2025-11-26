@@ -251,7 +251,9 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.selected_color.r = u8(rand.int_max(255))
     state.selected_color.g = u8(rand.int_max(255))
     state.selected_color.b = u8(rand.int_max(255))
-    state.id = rand.uint64()
+    for state.id == 0 {
+        state.id = rand.uint64()
+    }
     state.selected_alpha = 1
     state.needs_sync = true
     state.mobile = mobile
@@ -304,21 +306,16 @@ init :: proc(path: string = "root", mobile := false) {
     }
 }
 
-draw_connections :: proc(my_id: string, socket_ready: bool, peers: map[string]bool) {
+draw_connections :: proc(socket_ready: bool, peers: map[u64]bool) {
     offset: i32 = 30
-    id := fmt.caprint("my_id: ", my_id, allocator = context.temp_allocator)
+    id := fmt.caprint("my_id: ", state.id, allocator = context.temp_allocator)
     rl.DrawText(id, state.screen_width - 230, offset, 18, rl.BLUE)
     offset += 30
     rl.DrawText("Signaling status", state.screen_width - 230, offset, 18, socket_ready ? rl.GREEN : rl.RED)
     for peer, peer_status in peers {
         offset += 30
-        rl.DrawText(
-            strings.clone_to_cstring(peer, context.temp_allocator),
-            state.screen_width - 230,
-            offset,
-            18,
-            peer_status ? rl.GREEN : rl.RED,
-        )
+        peer_id := fmt.caprint(peer, allocator = context.temp_allocator)
+        rl.DrawText(peer_id, state.screen_width - 230, offset, 18, peer_status ? rl.GREEN : rl.RED)
     }
 }
 
