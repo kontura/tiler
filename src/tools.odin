@@ -172,6 +172,35 @@ draw_tile_circle :: proc(tile_map: ^TileMap, center: TileMapPosition, radius: f3
 
 }
 
+add_u8_clamped :: proc(val: u8, delta: i32) -> u8 {
+    val_i32 := i32(val)
+
+    val_i32 += delta
+    if val_i32 < 0 {
+        return 0
+    }
+    if val_i32 > 255 {
+        return 255
+    }
+
+    return u8(val_i32)
+}
+
+compute_chance_of_darker :: proc(tile_map: ^TileMap, x, y: u32) -> f32 {
+    current_tile := get_tile(tile_map, {x, y})
+    prob: f32 = 0
+    for dy := -1; dy <= 1; dy += 1 {
+        for dx := -1; dx <= 1; dx += 1 {
+            next_tile := get_tile(tile_map, {u32(int(x) + dx), u32(int(y) + dy)})
+            if next_tile.color != current_tile.color {
+                prob += 0.20
+            }
+        }
+    }
+
+    return prob
+}
+
 rectangle_tool :: proc(
     start_mouse_tile: TileMapPosition,
     end_mouse_tile: TileMapPosition,
@@ -194,15 +223,35 @@ rectangle_tool :: proc(
     for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
         for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
             old_tile := get_tile(tile_map, {x, y})
-            new_tile := tile_make_color_walls_colors(
-                color_over(selected_color.xyzw, old_tile.color.xyzw),
-                old_tile.walls,
-                old_tile.wall_colors,
-            )
+
+            new_color := color_over(selected_color.xyzw, old_tile.color.xyzw)
+            new_tile := tile_make_color_walls_colors(new_color, old_tile.walls, old_tile.wall_colors)
             if action != nil {
                 action.tile_history[{x, y}] = tile_xor(&old_tile, &new_tile)
             }
             set_tile(tile_map, {x, y}, new_tile)
+        }
+    }
+
+    // waveform collapse - add patina around edges
+    rand_i32 := -rand.int31_max(5) - 5
+    for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
+        for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
+            prob := compute_chance_of_darker(tile_map, x, y)
+            if rand.float32() < prob {
+                old_tile := get_tile(tile_map, {x, y})
+                new_color := old_tile.color.xyzw
+                new_color.x = add_u8_clamped(new_color.x, rand_i32)
+                new_color.y = add_u8_clamped(new_color.y, rand_i32)
+                new_color.z = add_u8_clamped(new_color.z, rand_i32)
+
+                new_tile := tile_make_color_walls_colors(new_color, old_tile.walls, old_tile.wall_colors)
+                if action != nil {
+                    orig_tile := tile_xor(&action.tile_history[{x, y}], &old_tile)
+                    action.tile_history[{x, y}] = tile_xor(&orig_tile, &new_tile)
+                }
+                set_tile(tile_map, {x, y}, new_tile)
+            }
         }
     }
 
