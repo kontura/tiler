@@ -225,7 +225,7 @@ config: []Config = {
                     s, _ := time.time_to_rfc3339(time.now(), 0, false, context.temp_allocator)
                     strings.write_string(&builder, s)
                     store_save(state, strings.to_string(builder))
-                    state.timeout = 60
+                    show_message(state, "Saved!", 60)
                 }}}},
     {
         {{.D, .PRESSED}},
@@ -422,7 +422,14 @@ config: []Config = {
         },
     },
     {{{.F, .PRESSED}}, {{nil, "Toggle offline state", nil, proc(state: ^GameState) {state.offline = !state.offline}}}},
-    {{{.ENTER, .PRESSED}}, {{nil, "Confirm", nil, proc(state: ^GameState) {
+    {
+        {{.ENTER, .PRESSED}},
+        {
+            {
+                nil,
+                "Confirm",
+                nil,
+                proc(state: ^GameState) {
                     #partial switch state.active_tool {
                     case .LOAD_GAME:
                         {
@@ -451,7 +458,7 @@ config: []Config = {
                                 )
                                 if store_save(state, save_name) {
                                     state.active_tool = state.previous_tool.?
-                                    state.timeout = 60
+                                    show_message(state, "Saved!", 60)
                                 }
                             }
                         }
@@ -465,7 +472,7 @@ config: []Config = {
                             )
                             if store_save(state, save_name) {
                                 state.active_tool = state.previous_tool.?
-                                state.timeout = 60
+                                show_message(state, "Saved!", 60)
                             }
                         }
                     case .MAIN_MENU:
@@ -476,6 +483,27 @@ config: []Config = {
                         {
                             options_menu[state.selected_index].action(state)
                         }
+                    case:
+                        {
+                            if state.debug == .ACTIONS {
+                                dropping_msg := fmt.aprint(
+                                    "Dropping: ",
+                                    state.undone,
+                                    " actions!",
+                                    sep = "",
+                                    allocator = context.temp_allocator,
+                                )
+                                show_message(state, dropping_msg, 60)
+                                for state.undone > 0 {
+                                    removed_action := pop(&state.undo_history)
+                                    delete_action(&removed_action)
+                                    state.undone -= 1
+                                }
+                            }
+                        }
                     }
-                }}}},
+                },
+            },
+        },
+    },
 }

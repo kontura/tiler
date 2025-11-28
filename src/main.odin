@@ -49,6 +49,7 @@ GameState :: struct {
     previous_touch_pos:     [2]f32,
     previous_touch_count:   i32,
     timeout:                uint,
+    timeout_string:         string,
     debug:                  DebugMode,
     should_run:             bool,
     undone:                 int,
@@ -101,6 +102,11 @@ draw_quad :: proc(v1, v2, v3, v4: [2]f32, color: [4]u8) {
     }
 }
 
+show_message :: proc(state: ^GameState, str: string, timeout: uint) {
+    state.timeout = timeout
+    delete(state.timeout_string)
+    state.timeout_string = strings.clone(str)
+}
 
 u64_to_cstring :: proc(num: u64) -> cstring {
     builder := strings.builder_make(context.temp_allocator)
@@ -1149,7 +1155,7 @@ update :: proc() {
     }
 
     if state.timeout > 0 {
-        msg := fmt.caprint("Saved!", allocator = context.temp_allocator)
+        msg := fmt.caprint(state.timeout_string, allocator = context.temp_allocator)
         rl.DrawText(msg, 100, 100, 100, rl.BLUE)
         state.timeout -= 1
     }
