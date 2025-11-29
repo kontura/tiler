@@ -32,7 +32,7 @@ files="$OUT_DIR/game.wasm ${ODIN_PATH}/vendor/raylib/wasm/libraylib.a \
 # src/main_web/main_web.odin
 flags="-sUSE_GLFW=3 -sFORCE_FILESYSTEM -sWASM_BIGINT -sWARN_ON_UNDEFINED_SYMBOLS=0 -sASSERTIONS \
       --shell-file src/main_web/index_template.html --preload-file assets -lidbfs.js -DPLATFORM_WEB \
-      -sEXIT_RUNTIME=1 -lwebsocket.js -sINITIAL_HEAP=64MB \
+      -sEXIT_RUNTIME=1 -lwebsocket.js -sINITIAL_HEAP=256MB \
       -sEXPORTED_FUNCTIONS=_malloc,_free \
       -sEXPORTED_RUNTIME_METHODS=ccall \
       -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=send_to_peer_signaling,pass_msg_to_odin \
