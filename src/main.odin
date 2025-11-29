@@ -44,6 +44,7 @@ GameState :: struct {
     temp_actions:           [dynamic]Action,
     key_consumed:           bool,
     needs_sync:             bool,
+    needs_images:           [dynamic]string,
     mobile:                 bool,
     previous_touch_dist:    f32,
     previous_touch_pos:     [2]f32,
@@ -55,13 +56,14 @@ GameState :: struct {
     undone:                 int,
     light_source:           [2]f32,
     shadow_color:           [4]u8,
-    bg:                     rl.Texture2D,
+    bg_id:                  string,
     bg_pos:                 TileMapPosition,
     bg_scale:               f32,
     bg_snap:                [3]Maybe([2]f32),
 
     // permanent state
     textures:               map[string]rl.Texture2D,
+    images:                 map[string]rl.Image,
     gui_rectangles:         map[Widget]rl.Rectangle,
 
     //TODO(amatej): check if the tool actually does any color change before recoding
@@ -216,6 +218,24 @@ store_save :: proc(state: ^GameState, path := "./tiler_save") -> bool {
     return write_entire_file(path, serialize_actions(state.undo_history[:], context.temp_allocator))
 }
 
+serialize_image :: proc(state: ^GameState, img_id: string, allocator: mem.Allocator) -> [dynamic]u8 {
+    img, ok := state.images[img_id]
+    if ok {
+        size: i32
+        data_ptr := rl.ExportImageToMemory(img, ".png", &size)
+        data_slice := slice.bytes_from_ptr(data_ptr, int(size))
+        defer rl.MemFree(data_ptr)
+        return slice.clone_to_dynamic(data_slice, allocator=allocator)
+    }
+
+    return {}
+}
+
+save_image :: proc(state: ^GameState, img_id: string, img_data: []u8) {
+    state.images[img_id] = rl.LoadImageFromMemory(".png", raw_data(img_data), i32(len(img_data)))
+    state.textures[img_id] = rl.LoadTextureFromImage(state.images[img_id])
+}
+
 load_from_serialized :: proc(data: []byte, allocator: mem.Allocator) -> [dynamic]Action {
     s: Serializer
     serializer_init_reader(&s, data)
@@ -224,20 +244,25 @@ load_from_serialized :: proc(data: []byte, allocator: mem.Allocator) -> [dynamic
     return actions
 }
 
-set_background :: proc(data: []u8, width: i32, height: i32) {
-    image: rl.Image = rl.LoadImageFromMemory(".jpeg", raw_data(data), i32(len(data)))
-    state.bg = rl.LoadTextureFromImage(image)
+set_background :: proc(state: ^GameState, image_id: string) {
+    delete(state.bg_id)
+    state.bg_id = strings.clone(image_id)
+    _, ok := state.images[image_id]
+    if !ok {
+        if len(image_id) > 0 {
+            append(&state.needs_images, strings.clone(image_id))
+        }
+    }
 }
 
 add_background :: proc(data: [^]u8, data_len, width: i32, height: i32) {
     d: []u8 = data[:data_len]
     append(&state.undo_history, make_action(.LOAD_BACKGROUND))
     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-    action.token_initiative_start = {width, height}
-    for e in d {
-        append(&action.payload, e)
-    }
-    set_background(d, width, height)
+    action.texture_id = strings.clone("bg")
+    state.images[strings.clone(action.texture_id)] = rl.LoadImageFromMemory(".jpeg", raw_data(d), data_len)
+    state.textures[strings.clone(action.texture_id)] = rl.LoadTextureFromImage(state.images[action.texture_id])
+    set_background(state, action.texture_id)
     finish_last_undo_history_action(state)
     state.needs_sync = true
 }
@@ -875,7 +900,10 @@ update :: proc() {
     // draw bg
     pos: rl.Vector2 = tile_map_to_screen_coord(state.bg_pos, state, tile_map)
     pos += state.bg_pos.rel_tile * tile_map.feet_to_pixels
-    rl.DrawTextureEx(state.bg, pos, 0, state.bg_scale * tile_map.feet_to_pixels, rl.WHITE)
+    tex, ok := state.textures[state.bg_id]
+    if ok {
+        rl.DrawTextureEx(tex, pos, 0, state.bg_scale * tile_map.feet_to_pixels, rl.WHITE)
+    }
 
     // draw tile map
     tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
@@ -1365,6 +1393,10 @@ tokens_reset :: proc(state: ^GameState) {
 
 shutdown :: proc() {
     rl.CloseWindow()
+    for name, _ in state.images {
+        delete(name)
+    }
+    delete(state.images)
     for name, _ in state.textures {
         delete(name)
     }
@@ -1376,6 +1408,13 @@ shutdown :: proc() {
     delete(state.initiative_to_tokens)
     delete(state.selected_tokens)
     delete(state.tokens)
+    delete(state.bg_id)
+    delete(state.timeout_string)
+
+    for &item in state.needs_images {
+        delete(item)
+    }
+    delete(state.needs_images)
 
     for &item in state.menu_items {
         delete(item)

@@ -70,7 +70,7 @@ addToLibrary({
 
         const data_len = Module._malloc(4);
         const data = Module._malloc(4);
-        Module.ccall('build_binary_msg_c', null,
+        Module.ccall('build_binary_webrtc_msg_c', null,
                      ['number', 'number', 'number', 'number', 'number'],
                      [peer, arrayBuffer.byteLength, ptr, data_len, data]);
         const d_len = Module.HEAP32[data_len >> 2];

@@ -4,10 +4,16 @@ import "core:encoding/endian"
 import "core:math"
 import "core:mem"
 
+MESSAGE_TYPE :: enum u8 {
+    ACTIONS = 1,
+    WEBRTC = 2,
+    IMAGE_REQUEST = 3,
+    IMAGE_ANSWER = 4,
+}
 
-build_binary_message :: proc(id: u64, type: u8, target: u64, payload: []u8) -> []u8 {
+build_binary_message :: proc(id: u64, type: MESSAGE_TYPE, target: u64, payload: []u8) -> []u8 {
     msg := make([dynamic]u8, allocator = context.temp_allocator)
-    append(&msg, type)
+    append(&msg, u8(type))
     append(&msg, u8(size_of(id)))
     id := id
     append(&msg, ..mem.ptr_to_bytes(&id))
@@ -22,16 +28,16 @@ build_register_msg :: proc(my_id: u64, state: ^GameState) -> []u8 {
     actions_num := math.min(4, len(state.undo_history))
     return build_binary_message(
         my_id,
-        1,
+        .ACTIONS,
         0,
         serialize_actions(state.undo_history[actions_num:], context.temp_allocator),
     )
 }
 
-parse_binary_message :: proc(msg: []u8) -> (type: u8, sender, target: u64, payload: []u8) {
+parse_binary_message :: proc(msg: []u8) -> (type: MESSAGE_TYPE, sender, target: u64, payload: []u8) {
     // 0 1 2 3 4 5 6 7 8 9
     // 1 3 a b c 3 d e f x x x
-    type = msg[0]
+    type = auto_cast(msg[0])
     sender_len := msg[1]
     sender_bytes := msg[2:2 + sender_len]
     ok: bool

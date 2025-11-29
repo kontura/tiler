@@ -50,15 +50,9 @@ WEBRTC_STATE :: enum u8 {
 }
 
 @(export)
-build_binary_msg_c :: proc "c" (
-    peer_id: u64,
-    msg_len: u32,
-    msg_data: [^]u8,
-    out_len: ^u32,
-    out_data: ^rawptr,
-) {
+build_binary_webrtc_msg_c :: proc "c" (peer_id: u64, msg_len: u32, msg_data: [^]u8, out_len: ^u32, out_data: ^rawptr) {
     context = web_context
-    msg := game.build_binary_message(game.state.id, 2, peer_id, msg_data[:msg_len])
+    msg := game.build_binary_message(game.state.id, .WEBRTC, peer_id, msg_data[:msg_len])
     out_len^ = u32(len(msg))
     out_data^ = &msg[0]
 }
@@ -104,7 +98,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
 
     peer_state := &peers[sender_id]
 
-    if type == 1 {
+    if type == .ACTIONS {
         bytes: []byte = payload[:len(payload)]
         // context.allocator allocated actions
         actions := game.load_from_serialized(bytes, context.allocator)
@@ -139,7 +133,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
                 game.state.needs_sync = true
             }
         }
-    } else if type == 2 {
+    } else if type == .WEBRTC {
         if peer_state.webrtc == .WAITING {
             accept_webrtc_offer(sender_id, &payload[0], u32(len(payload)))
             peer_state.webrtc = .ICE
@@ -150,6 +144,20 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
             add_peer_ice(sender_id, &payload[0], u32(len(payload)))
         }
         return
+    } else if type == .IMAGE_REQUEST {
+        requested_img_id := string(payload)
+        fmt.println("Requested id: ", requested_img_id)
+        img, ok := game.state.images[requested_img_id]
+        if ok {
+            image_data := game.serialize_image(game.state, requested_img_id, context.temp_allocator)
+            binary := game.build_binary_message(game.state.id, .IMAGE_ANSWER, sender_id, image_data[:])
+            send_binary_to_peer(sender_id, &binary[0], u32(len(binary)))
+        } else {
+            //TODO(amatej): handle if I don't have the image
+        }
+    } else if type == .IMAGE_ANSWER {
+        game.save_image(game.state, "bg", payload)
+        fmt.println("got payload of size: ", len(payload))
     }
 }
 
@@ -204,8 +212,19 @@ main_update :: proc "c" () -> bool {
         game.draw_connections(socket_ready, p)
     }
 
-    if game.state.needs_sync && !game.state.offline {
-        if socket_ready {
+    if !game.state.offline && socket_ready {
+        for &img_id in game.state.needs_images {
+            // Use the first peer
+            for peer_id in peers {
+                binary := game.build_binary_message(game.state.id, .IMAGE_REQUEST, peer_id, raw_data(img_id)[:len(img_id)])
+                send_binary_to_peer(peer_id, &binary[0], u32(len(binary)))
+                delete(img_id)
+                break
+            }
+        }
+        clear(&game.state.needs_images)
+
+        if game.state.needs_sync {
             for peer_id, &peer_state in peers {
                 binary: []u8
                 _, to_send := game.find_first_not_matching_action(
@@ -215,7 +234,7 @@ main_update :: proc "c" () -> bool {
                 // send one more action if there is one, so that we can find common parent action (by hash)
                 to_send = math.max(0, to_send - 1)
                 serialized_actions := game.serialize_actions(game.state.undo_history[to_send:], context.temp_allocator)
-                binary = game.build_binary_message(game.state.id, 1, peer_id, serialized_actions)
+                binary = game.build_binary_message(game.state.id, .ACTIONS, peer_id, serialized_actions)
                 send_binary_to_peer(peer_id, &binary[0], u32(len(binary)))
                 if len(game.state.undo_history[to_send:]) > 0 {
                     for _, index in peer_state.last_known_actions {
@@ -228,8 +247,8 @@ main_update :: proc "c" () -> bool {
                     )
                 }
             }
+            game.state.needs_sync = false
         }
-        game.state.needs_sync = false
     }
 
     free_all(context.temp_allocator)
