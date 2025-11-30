@@ -5,10 +5,27 @@ import "core:math"
 import "core:mem"
 
 MESSAGE_TYPE :: enum u8 {
-    ACTIONS = 1,
-    WEBRTC = 2,
+    ACTIONS       = 1,
+    WEBRTC        = 2,
     IMAGE_REQUEST = 3,
-    IMAGE_ANSWER = 4,
+    IMAGE_ANSWER  = 4,
+    CHUNK         = 5,
+}
+
+CHUNK_SIZE :: 32000
+
+chunk_binary_message :: proc(id: u64, target: u64, msg: []u8, allocator: mem.Allocator) -> [dynamic][]u8 {
+    result := make([dynamic][]u8, allocator = allocator)
+    if len(msg) > CHUNK_SIZE {
+        for i := 0; i < len(msg); i += CHUNK_SIZE {
+            end := i + CHUNK_SIZE > len(msg) ? len(msg) : i + CHUNK_SIZE
+            append(&result, build_binary_message(id, .CHUNK, target, msg[i:end]))
+        }
+    } else {
+        append(&result, msg)
+    }
+
+    return result
 }
 
 build_binary_message :: proc(id: u64, type: MESSAGE_TYPE, target: u64, payload: []u8) -> []u8 {
@@ -37,7 +54,7 @@ build_register_msg :: proc(my_id: u64, state: ^GameState) -> []u8 {
 parse_binary_message :: proc(msg: []u8) -> (type: MESSAGE_TYPE, sender, target: u64, payload: []u8) {
     // 0 1 2 3 4 5 6 7 8 9
     // 1 3 a b c 3 d e f x x x
-    type = auto_cast(msg[0])
+    type = auto_cast (msg[0])
     sender_len := msg[1]
     sender_bytes := msg[2:2 + sender_len]
     ok: bool

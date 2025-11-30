@@ -39,6 +39,7 @@ peers: map[u64]PeerState
 PeerState :: struct {
     webrtc:             WEBRTC_STATE,
     last_known_actions: [dynamic]game.Action,
+    chunks:             [dynamic]u8,
 }
 
 WEBRTC_STATE :: enum u8 {
@@ -83,7 +84,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     type, sender_id, target_id, payload := game.parse_binary_message(data[:data_len])
     sender_already_registered := sender_id in peers
     if !sender_already_registered {
-        peers[sender_id] = {.WAITING, {}}
+        peers[sender_id] = {.WAITING, {}, {}}
         peer_state := &peers[sender_id]
     }
 
@@ -151,13 +152,24 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         if ok {
             image_data := game.serialize_image(game.state, requested_img_id, context.temp_allocator)
             binary := game.build_binary_message(game.state.id, .IMAGE_ANSWER, sender_id, image_data[:])
-            send_binary_to_peer(sender_id, &binary[0], u32(len(binary)))
+            for &msg in game.chunk_binary_message(game.state.id, sender_id, binary, context.temp_allocator) {
+                send_binary_to_peer(sender_id, &msg[0], u32(len(msg)))
+            }
+
         } else {
             //TODO(amatej): handle if I don't have the image
         }
     } else if type == .IMAGE_ANSWER {
         game.save_image(game.state, "bg", payload)
-        fmt.println("got payload of size: ", len(payload))
+    } else if type == .CHUNK {
+        for byte in payload {
+            append(&peer_state.chunks, byte)
+        }
+        // This is the last chunk
+        if len(payload) != game.CHUNK_SIZE {
+            process_binary_msg(u32(len(peer_state.chunks)), raw_data(peer_state.chunks))
+            delete(peer_state.chunks)
+        }
     }
 }
 
