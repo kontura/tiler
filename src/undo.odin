@@ -53,7 +53,6 @@ Action :: struct {
     hash:                   [32]u8,
     author_id:              u64,
     authors_index:          u64,
-    texture_id:             string,
 
     // Actions that have already been reverted or are reverting
     // actions (reverts) cannot be reverted again.
@@ -192,7 +191,7 @@ to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -
     case .LOAD_BACKGROUND:
         {
             strings.write_string(&builder, " loading image with id: ")
-            strings.write_string(&builder, action.texture_id)
+            strings.write_string(&builder, action.new_name)
         }
     case .LIGHT_SOURCE:
         {
@@ -225,7 +224,6 @@ duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
     for pos, &hist in a.tile_history {
         action.tile_history[pos] = hist
     }
-    action.texture_id = strings.clone(a.texture_id, allocator = allocator)
 
     return action
 }
@@ -259,8 +257,6 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, transmute([]u8)(action.new_name))
     sha2.update(&hash, mem.ptr_to_bytes(&action.authors_index))
     sha2.update(&hash, mem.ptr_to_bytes(&action.author_id))
-
-    sha2.update(&hash, transmute([]u8)(action.texture_id))
 
     if action.type == .BRUSH || action.state == .REVERTS {
         tile_keys := make([dynamic][2]u32, allocator = context.temp_allocator)
@@ -329,7 +325,6 @@ delete_action :: proc(action: ^Action) {
     delete(action.tile_history)
     delete(action.old_name)
     delete(action.new_name)
-    delete(action.texture_id)
 }
 
 revert_action :: proc(action: ^Action, allocator := context.allocator) -> Action {
@@ -342,10 +337,6 @@ revert_action :: proc(action: ^Action, allocator := context.allocator) -> Action
     }
     if action.type == .SET_BACKGROUND_SCALE {
         reverted.radius *= -1
-    }
-    if action.type == .LOAD_BACKGROUND {
-        delete(reverted.texture_id, allocator=allocator)
-        reverted.texture_id = strings.clone("")
     }
     //TODO(amatej): color is not delta and I don't have the starting color
 
@@ -504,8 +495,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         }
     case .LOAD_BACKGROUND:
         {
-            fmt.println(action.texture_id)
-            set_background(state, action.texture_id)
+            set_background(state, action.new_name)
         }
     }
 }
