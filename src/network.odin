@@ -10,6 +10,8 @@ MESSAGE_TYPE :: enum u8 {
     IMAGE_REQUEST = 3,
     IMAGE_ANSWER  = 4,
     CHUNK         = 5,
+    HELLO         = 6,
+    SYNC_REQUEST  = 7,
 }
 
 CHUNK_SIZE :: 32000

@@ -30,6 +30,7 @@ foreign _ {
 }
 
 socket_ready: bool = false
+init_sync_requested: bool = false
 my_allocator: mem.Allocator
 when ODIN_DEBUG {
     track: mem.Tracking_Allocator
@@ -119,20 +120,8 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
             fmt.println("Registering: ", sender_id)
             make_webrtc_offer(sender_id)
             peer_state.webrtc = .OFFERED
-            // Only the peer with the highest id should sync,
-            // otherwise when a new peer joins state with a lot
-            // of peers and actions it will get a lot of big messages
-            // with mostly duplicate information.
-            am_highest := true
-            for id in peers {
-                if id > game.state.id && id != sender_id {
-                    am_highest = false
-                    break
-                }
-            }
-            if am_highest {
-                game.state.needs_sync = true
-            }
+            binary := game.build_binary_message(game.state.id, .HELLO, sender_id, nil)
+            send_binary_to_peer(sender_id, &binary[0], u32(len(binary)))
         }
     } else if type == .WEBRTC {
         if peer_state.webrtc == .WAITING {
@@ -170,6 +159,14 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
             process_binary_msg(u32(len(peer_state.chunks)), raw_data(peer_state.chunks))
             delete(peer_state.chunks)
         }
+    } else if type == .HELLO {
+        if !init_sync_requested {
+            binary := game.build_binary_message(game.state.id, .SYNC_REQUEST, sender_id, nil)
+            send_binary_to_peer(sender_id, &binary[0], u32(len(binary)))
+            init_sync_requested = true
+        }
+    } else if type == .SYNC_REQUEST {
+        game.state.needs_sync = true
     }
 }
 
