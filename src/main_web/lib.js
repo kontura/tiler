@@ -53,7 +53,12 @@ addToLibrary({
         const msg = new Uint8Array(Module.HEAPU8.buffer, data_ptr, data_len);
         if (Module[peer] && Module[peer].rtc && Module[peer].rtc.connectionState === 'connected' &&
         Module[peer].channel && Module[peer].channel.readyState === 'open') {
-            Module[peer].channel.send(msg)
+            try {
+                Module[peer].channel.send(msg)
+            } catch (error) {
+                console.error(error)
+                Module.signalingSocket.send(msg)
+            }
         } else {
             Module.signalingSocket.send(msg)
         }
