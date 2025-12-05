@@ -206,7 +206,6 @@ tool_menu: []ToolConfig = {
     paintbrush_tool_config,
     wall_tool_config,
     edit_token_tool_config,
-    edit_bg_tool_config,
 }
 
 config: []Config = {
