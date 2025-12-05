@@ -1304,6 +1304,21 @@ update :: proc() {
         state.selected_color = rl.ColorAlpha(state.selected_color.xyzw, state.selected_alpha).xyzw
     }
 
+    // Draw tool menu
+    offset: f32 = 250
+    for &tool in tool_menu {
+        bg_color : [4]u8 = {0, 0, 0, 95}
+        cond_proc, cond_ok := tool.is_active.?
+        if cond_ok {
+            if cond_proc(state) {
+                bg_color = {255, 255, 255, 95}
+            }
+        }
+        rl.DrawRectangleV({f32(state.screen_width)-30, offset}, {30, 30}, bg_color.xyzw)
+        rl.GuiDrawIcon(tool.icon, (state.screen_width)-23, i32(offset) + 7, 1, rl.WHITE)
+        offset += 32
+    }
+
     if state.active_tool == .HELP {
         rl.DrawRectangleV({30, 30}, {f32(state.screen_width) - 60, f32(state.screen_height) - 60}, {0, 0, 0, 155})
         offset: i32 = 100

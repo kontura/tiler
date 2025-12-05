@@ -12,18 +12,21 @@ KeyAction :: enum {
     PRESSED,
 }
 
+ToolConfig :: struct {
+    icon:      rl.GuiIconName,
+    help:      string,
+    condition: Maybe(proc(_: ^GameState) -> bool),
+    is_active: Maybe(proc(_: ^GameState) -> bool),
+    action:    proc(_: ^GameState),
+}
+
 Config :: struct {
     key_triggers: []struct {
         binding: rl.KeyboardKey,
         action:  KeyAction,
     },
     // The order of bindings matter we execute only the first tool matching binding
-    bindings:     []struct {
-        icon:      rl.GuiIconName,
-        help:      string,
-        condition: Maybe(proc(_: ^GameState) -> bool),
-        action:    proc(_: ^GameState),
-    },
+    bindings:     []ToolConfig,
 }
 
 MenuItem :: struct {
@@ -137,9 +140,78 @@ main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
             state.should_run = false
         }}}
 
+
+cone_tool_config: ToolConfig = {
+    .ICON_CURSOR_POINTER,
+    "Cone tool",
+    nil,
+    proc(state: ^GameState) -> bool {return state.active_tool == .CONE},
+    proc(state: ^GameState) {state.active_tool = .CONE},
+}
+paintbrush_tool_config: ToolConfig = {
+    .ICON_PENCIL,
+    "Pintbrush",
+    nil,
+    proc(state: ^GameState) -> bool {return state.active_tool == .BRUSH},
+    proc(state: ^GameState) {state.active_tool = .BRUSH},
+}
+rectangle_tool_config: ToolConfig = {
+    .ICON_BOX,
+    "Rectangle tool",
+    nil,
+    proc(state: ^GameState) -> bool {return state.active_tool == .RECTANGLE},
+    proc(state: ^GameState) {state.active_tool = .RECTANGLE},
+}
+circle_tool_config: ToolConfig = {
+    .ICON_PLAYER_RECORD,
+    "Circle tool",
+    nil,
+    proc(state: ^GameState) -> bool {return state.active_tool == .CIRCLE},
+    proc(state: ^GameState) {state.active_tool = .CIRCLE},
+}
+wall_tool_config: ToolConfig = {
+    .ICON_BOX_GRID_BIG,
+    "Wall tool",
+    nil,
+    proc(state: ^GameState) -> bool {return state.active_tool == .WALL},
+    proc(state: ^GameState) {state.active_tool = .WALL},
+}
+edit_token_tool_config: ToolConfig = {
+    .ICON_PLAYER,
+    "Edit tokens tool",
+    nil,
+    proc(state: ^GameState) -> bool {return state.active_tool == .EDIT_TOKEN},
+    proc(state: ^GameState) {state.active_tool = .EDIT_TOKEN},
+}
+edit_bg_tool_config: ToolConfig = {
+    .ICON_LAYERS,
+    "Edit background tool",
+    nil,
+    proc(state: ^GameState) -> bool {return state.active_tool == .EDIT_BG},
+    proc(state: ^GameState) {state.active_tool = .EDIT_BG},
+}
+move_token_tool_config: ToolConfig = {
+    .ICON_TARGET_MOVE,
+    "Move tokens tool",
+    nil,
+    proc(state: ^GameState) -> bool {return state.active_tool == .MOVE_TOKEN},
+    proc(state: ^GameState) {state.active_tool = .MOVE_TOKEN},
+}
+
+tool_menu: []ToolConfig = {
+    move_token_tool_config,
+    rectangle_tool_config,
+    circle_tool_config,
+    cone_tool_config,
+    paintbrush_tool_config,
+    wall_tool_config,
+    edit_token_tool_config,
+    edit_bg_tool_config,
+}
+
 config: []Config = {
-    {key_triggers = {{.LEFT, .PRESSED}}, bindings = {{.ICON_ARROW_LEFT, "Move to the left", nil, move_left}}},
-    {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, "Move to the right", nil, move_right}}},
+    {key_triggers = {{.LEFT, .PRESSED}}, bindings = {{.ICON_ARROW_LEFT, "Move to the left", nil, nil, move_left}}},
+    {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, "Move to the right", nil, nil, move_right}}},
     {
         key_triggers = {{.UP, .PRESSED}},
         bindings = {
@@ -152,12 +224,13 @@ config: []Config = {
                         tool_is(state, .SAVE_GAME) ||
                         tool_is(state, .OPTIONS_MENU) \
                     )},
+                nil,
                 proc(state: ^GameState) {
                     state.selected_index -= 1
                     state.selected_index = math.max(state.selected_index, 0)
                 },
             },
-            {.ICON_ARROW_UP, "Move up", nil, proc(state: ^GameState) {
+            {.ICON_ARROW_UP, "Move up", nil, nil, proc(state: ^GameState) {
                     if state.debug == .ACTIONS {
                         if state.undone > 0 {
                             a := &state.undo_history[len(state.undo_history) - state.undone]
@@ -182,12 +255,13 @@ config: []Config = {
                         tool_is(state, .SAVE_GAME) ||
                         tool_is(state, .OPTIONS_MENU) \
                     )},
+                nil,
                 proc(state: ^GameState) {
                     state.selected_index += 1
                     state.selected_index = math.min(state.selected_index, len(state.menu_items) - 1)
                 },
             },
-            {.ICON_ARROW_DOWN, "Move down", nil, proc(state: ^GameState) {
+            {.ICON_ARROW_DOWN, "Move down", nil, nil, proc(state: ^GameState) {
                     if state.debug == .ACTIONS {
                         if state.undone < len(state.undo_history) {
                             a := &state.undo_history[len(state.undo_history) - 1 - state.undone]
@@ -200,26 +274,14 @@ config: []Config = {
                 }},
         },
     },
-    {{{.P, .PRESSED}}, {{.ICON_PENCIL, "Pintbrush", nil, proc(state: ^GameState) {state.active_tool = .BRUSH}}}},
-    {{{.R, .PRESSED}}, {{.ICON_BOX, "Rectangle tool", nil, proc(state: ^GameState) {state.active_tool = .RECTANGLE}}}},
-    {
-        {{.C, .PRESSED}},
-        {{.ICON_PLAYER_RECORD, "Circle tool", nil, proc(state: ^GameState) {state.active_tool = .CIRCLE}}},
-    },
-    {{{.W, .PRESSED}}, {{.ICON_BOX_GRID_BIG, "Wall tool", nil, proc(state: ^GameState) {state.active_tool = .WALL}}}},
-    {
-        {{.S, .PRESSED}},
-        {{.ICON_PLAYER, "Edit tokens tool", nil, proc(state: ^GameState) {state.active_tool = .EDIT_TOKEN}}},
-    },
-    {
-        {{.B, .PRESSED}},
-        {{.ICON_LAYERS, "Edit background tool", nil, proc(state: ^GameState) {state.active_tool = .EDIT_BG}}},
-    },
-    {
-        {{.M, .PRESSED}},
-        {{.ICON_TARGET_MOVE, "Move tokens tool", nil, proc(state: ^GameState) {state.active_tool = .MOVE_TOKEN}}},
-    },
-    {{{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_FILE_SAVE, "Quick save", nil, proc(state: ^GameState) {
+    {{{.P, .PRESSED}}, {paintbrush_tool_config}},
+    {{{.R, .PRESSED}}, {rectangle_tool_config}},
+    {{{.C, .PRESSED}}, {circle_tool_config}},
+    {{{.W, .PRESSED}}, {wall_tool_config}},
+    {{{.S, .PRESSED}}, {edit_token_tool_config}},
+    {{{.B, .PRESSED}}, {edit_bg_tool_config}},
+    {{{.M, .PRESSED}}, {move_token_tool_config}},
+    {{{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_FILE_SAVE, "Quick save", nil, nil, proc(state: ^GameState) {
                     builder := strings.builder_make(context.temp_allocator)
                     strings.write_string(&builder, "/persist/autosave-")
                     s, _ := time.time_to_rfc3339(time.now(), 0, false, context.temp_allocator)
@@ -233,6 +295,7 @@ config: []Config = {
             {
                 nil,
                 "Toggle debug info (allows walking current action history)",
+                nil,
                 nil,
                 proc(state: ^GameState) {
                     switch state.debug {
@@ -260,7 +323,7 @@ config: []Config = {
             },
         },
     },
-    {{{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_UNDO, "Undo last action", nil, proc(state: ^GameState) {
+    {{{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_UNDO, "Undo last action", nil, nil, proc(state: ^GameState) {
                     #reverse for &action in state.undo_history {
                         if action.mine && action.state == .DONE {
                             reverted := revert_action(&action)
@@ -273,7 +336,7 @@ config: []Config = {
                         }
                     }
                 }}}},
-    {{{.A, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_REDO, "Redo all actions", nil, proc(state: ^GameState) {
+    {{{.A, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_REDO, "Redo all actions", nil, nil, proc(state: ^GameState) {
                     tokens_reset(state)
                     tilemap_clear(tile_map)
 
@@ -287,31 +350,28 @@ config: []Config = {
                         fmt.println("redone all")
                     }
                 }}}},
-    {{{.LEFT_CONTROL, .PRESSED}}, {{.ICON_COLOR_PICKER, "Active colorpicker", nil, proc(state: ^GameState) {
+    {{{.LEFT_CONTROL, .PRESSED}}, {{.ICON_COLOR_PICKER, "Active colorpicker", nil, nil, proc(state: ^GameState) {
                     if state.previous_tool == nil {
                         state.previous_tool = state.active_tool
                         state.active_tool = .COLOR_PICKER
                     }}}}},
-    {{{.LEFT_CONTROL, .RELEASED}}, {{nil, "Deactive colorpicker", nil, proc(state: ^GameState) {
+    {{{.LEFT_CONTROL, .RELEASED}}, {{nil, "Deactive colorpicker", nil, nil, proc(state: ^GameState) {
                     if state.previous_tool != nil {
                         state.active_tool = state.previous_tool.?
                         state.previous_tool = nil
                     }}}}},
-    {{{.SLASH, .PRESSED}}, {{.ICON_HELP, "Active help", nil, proc(state: ^GameState) {
+    {{{.SLASH, .PRESSED}}, {{.ICON_HELP, "Active help", nil, nil, proc(state: ^GameState) {
                     if state.previous_tool == nil {
                         state.previous_tool = state.active_tool
                         state.active_tool = .HELP
                     }}}}},
-    {{{.SLASH, .RELEASED}}, {{nil, "Deactive help", nil, proc(state: ^GameState) {
+    {{{.SLASH, .RELEASED}}, {{nil, "Deactive help", nil, nil, proc(state: ^GameState) {
                     if state.previous_tool != nil {
                         state.active_tool = state.previous_tool.?
                         state.previous_tool = nil
                     }}}}},
-    {
-        {{.O, .PRESSED}},
-        {{.ICON_CURSOR_POINTER, "Cone tool", nil, proc(state: ^GameState) {state.active_tool = .CONE}}},
-    },
-    {{{.E, .PRESSED}}, {{nil, "Print all actions to console", nil, proc(state: ^GameState) {
+    {{{.O, .PRESSED}}, {cone_tool_config}},
+    {{{.E, .PRESSED}}, {{nil, "Print all actions to console", nil, nil, proc(state: ^GameState) {
                     for &action, index in state.undo_history {
                         fmt.println(index, ". ", action)
                     }
@@ -323,6 +383,7 @@ config: []Config = {
                 nil,
                 "Move selected tokens down",
                 proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
+                nil,
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {0, 1})},
             },
         },
@@ -334,6 +395,7 @@ config: []Config = {
                 nil,
                 "Move selected tokens up",
                 proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
+                nil,
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {0, -1})},
             },
         },
@@ -345,6 +407,7 @@ config: []Config = {
                 nil,
                 "Move selected tokens left",
                 proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
+                nil,
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {-1, 0})},
             },
         },
@@ -356,11 +419,13 @@ config: []Config = {
                 nil,
                 "Move selected tokens right",
                 proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
+                nil,
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {1, 0})},
             },
             {
                 .ICON_CURSOR_SCALE_LEFT,
                 "Light source tool",
+                nil,
                 nil,
                 proc(state: ^GameState) {state.active_tool = .LIGHT_SOURCE},
             },
@@ -369,8 +434,14 @@ config: []Config = {
     {
         {{.ESCAPE, .PRESSED}},
         {
-            {nil, "Deselected tokens", are_tokens_selected, proc(state: ^GameState) {clear_selected_tokens(state)}},
-            {nil, "Main Menu", nil, proc(state: ^GameState) {
+            {
+                nil,
+                "Deselected tokens",
+                are_tokens_selected,
+                nil,
+                proc(state: ^GameState) {clear_selected_tokens(state)},
+            },
+            {nil, "Main Menu", nil, nil, proc(state: ^GameState) {
                     if state.active_tool == .MAIN_MENU {
                         state.active_tool = state.previous_tool.?
                     } else {
@@ -399,6 +470,7 @@ config: []Config = {
                 nil,
                 "Select next token",
                 nil,
+                nil,
                 proc(state: ^GameState) {
                     if len(state.tokens) > 1 {
                         if len(state.selected_tokens) != 1 {
@@ -421,15 +493,11 @@ config: []Config = {
             },
         },
     },
-    {{{.F, .PRESSED}}, {{nil, "Toggle offline state", nil, proc(state: ^GameState) {state.offline = !state.offline}}}},
     {
-        {{.ENTER, .PRESSED}},
-        {
-            {
-                nil,
-                "Confirm",
-                nil,
-                proc(state: ^GameState) {
+        {{.F, .PRESSED}},
+        {{nil, "Toggle offline state", nil, nil, proc(state: ^GameState) {state.offline = !state.offline}}},
+    },
+    {{{.ENTER, .PRESSED}}, {{nil, "Confirm", nil, nil, proc(state: ^GameState) {
                     #partial switch state.active_tool {
                     case .LOAD_GAME:
                         {
@@ -502,8 +570,5 @@ config: []Config = {
                             }
                         }
                     }
-                },
-            },
-        },
-    },
+                }}}},
 }
