@@ -208,6 +208,11 @@ tool_menu: []ToolConfig = {
     edit_token_tool_config,
 }
 
+get_tool_tool_menu_rect :: proc(state: ^GameState, tool_menu: ^[]ToolConfig, index: int) -> [4]f32 {
+    offset := 250 + 32 * index
+    return {f32(state.screen_width) - 30, f32(offset), 30, 30}
+}
+
 config: []Config = {
     {key_triggers = {{.LEFT, .PRESSED}}, bindings = {{.ICON_ARROW_LEFT, "Move to the left", nil, nil, move_left}}},
     {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, "Move to the right", nil, nil, move_right}}},
