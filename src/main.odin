@@ -356,9 +356,11 @@ update :: proc() {
 
     state.screen_height = rl.GetScreenHeight()
     state.screen_width = rl.GetScreenWidth()
-    state.gui_rectangles[.COLORPICKER] = {f32(state.screen_width - 230), 10, 200, 200}
-    state.gui_rectangles[.COLORBARHUE] = {f32(state.screen_width - 30), 5, 30, 205}
-    state.gui_rectangles[.COLORBARALPHA] = {f32(state.screen_width - 230), 215, 200, 20}
+    if state.active_tool == .COLOR_PICKER {
+        state.gui_rectangles[.COLORPICKER] = {f32(state.screen_width - 230), 10, 200, 200}
+        state.gui_rectangles[.COLORBARHUE] = {f32(state.screen_width - 30), 5, 30, 205}
+        state.gui_rectangles[.COLORBARALPHA] = {f32(state.screen_width - 230), 215, 200, 20}
+    }
     if state.draw_initiative {
         state.gui_rectangles[.INITIATIVE] = {0, 0, 120, f32(state.screen_height)}
     }
