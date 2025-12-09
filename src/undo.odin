@@ -72,6 +72,9 @@ Action :: struct {
 }
 
 to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -> string {
+    if action == nil {
+        return "action is nil"
+    }
     builder := strings.builder_make(allocator)
     strings.write_u64(&builder, action.authors_index)
     strings.write_string(&builder, ") ")
