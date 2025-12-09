@@ -1241,6 +1241,9 @@ update :: proc() {
                 )
                 rl.DrawText(a_text, 50, 30 + 30 * count, 15, a.mine ? rl.GREEN : rl.RED)
                 count += 1
+                if count > 42 {
+                    break
+                }
             }
         }
     case .TOKENS:
