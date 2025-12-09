@@ -204,7 +204,7 @@ to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -
     return strings.to_string(builder)
 }
 
-duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
+duplicate_action :: proc(a: ^Action, with_tile_history := true, allocator := context.allocator) -> Action {
     //TODO(amatej): Could we add some detection that all members are copied?
     action: Action = make_action(a.type, allocator = allocator)
     action.start = a.start
@@ -224,8 +224,10 @@ duplicate_action :: proc(a: ^Action, allocator := context.allocator) -> Action {
     action.old_name = strings.clone(a.old_name, allocator = allocator)
     action.new_name = strings.clone(a.new_name, allocator = allocator)
     action.tile_history = make(map[[2]u32]Tile, allocator = allocator)
-    for pos, &hist in a.tile_history {
-        action.tile_history[pos] = hist
+    if with_tile_history {
+        for pos, &hist in a.tile_history {
+            action.tile_history[pos] = hist
+        }
     }
 
     return action
@@ -331,7 +333,7 @@ delete_action :: proc(action: ^Action) {
 }
 
 revert_action :: proc(action: ^Action, allocator := context.allocator) -> Action {
-    reverted := duplicate_action(action, allocator)
+    reverted := duplicate_action(action, true, allocator)
     // Rectangle/Wall is always drawn from start to end, if we swap it the
     // rectangle_tool will swap them back which could lead to different
     // hashes across peers.
