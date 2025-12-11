@@ -65,6 +65,7 @@ GameState :: struct {
     textures:               map[string]rl.Texture2D,
     images:                 map[string]rl.Image,
     gui_rectangles:         map[Widget]rl.Rectangle,
+    done_circle_actions:    [dynamic]int,
 
     //TODO(amatej): check if the tool actually does any color change before recoding
     //              undoing non-color changes does nothing
@@ -404,16 +405,7 @@ update :: proc() {
     touch_count := rl.GetTouchPointCount()
 
 
-    if selected_widget == .TOOLMENU {
-        for &tool, i in tool_menu {
-            rect := get_tool_tool_menu_rect(state, &tool_menu, i)
-            if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
-                if rl.IsMouseButtonDown(.LEFT) {
-                    tool.action(state)
-                }
-            }
-        }
-    } else {
+    if selected_widget != .TOOLMENU {
         switch state.active_tool {
         case .LIGHT_SOURCE:
             {
@@ -452,13 +444,11 @@ update :: proc() {
                     temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
                     tooltip = cone_tool(state, tile_map, mouse_pos, temp_action)
                 } else if rl.IsMouseButtonReleased(.LEFT) {
-                    if (state.tool_start_position != nil) {
-                        append(&state.undo_history, make_action(.CONE))
-                        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                        tooltip = cone_tool(state, tile_map, mouse_pos, action)
-                        finish_last_undo_history_action(state)
-                        state.needs_sync = true
-                    }
+                    append(&state.undo_history, make_action(.CONE))
+                    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                    tooltip = cone_tool(state, tile_map, mouse_pos, action)
+                    finish_last_undo_history_action(state)
+                    state.needs_sync = true
                 } else {
                     highligh_current_tile_intersection = true
                 }
@@ -508,18 +498,68 @@ update :: proc() {
             }
         case .CIRCLE:
             {
+                //TODO(amatej): this leaks at the end
+                clear(&state.done_circle_actions)
+                selected_action_circle: ^Action = nil
+                key := rl.GetKeyPressed()
+                for i in 0 ..< len(state.undo_history) {
+                    action := &state.undo_history[i]
+                    if action.type == .CIRCLE && action.state != .REVERTED && action.state != .REVERTS {
+                        append(&state.done_circle_actions, i)
+                        rect := get_circle_action_rect(state, tile_map, action)
+                        // Trigger only once for each press
+                        if rl.IsKeyPressed(key) && key == .DELETE {
+                            if rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]}) {
+                                reverted := revert_action(action)
+                                redo_action(state, tile_map, &reverted)
+                                append(&state.undo_history, reverted)
+                                finish_last_undo_history_action(state)
+                            }
+                        } else if state.tool_start_position != nil {
+                            if rl.CheckCollisionPointRec(
+                                state.tool_start_position.?,
+                                {rect[0], rect[1], rect[2], rect[3]},
+                            ) {
+                                selected_action_circle = action
+                            }
+                        }
+                    }
+                }
+
                 if rl.IsMouseButtonDown(.LEFT) {
-                    append(&state.temp_actions, make_action(.CIRCLE, context.temp_allocator))
-                    temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                    tooltip = circle_tool(state, tile_map, mouse_pos, temp_action)
+                    if selected_action_circle != nil {
+                        //TODO(amatej): This leaves behind circle centers
+                        reverted := revert_action(selected_action_circle, context.temp_allocator)
+                        redo_action(state, tile_map, &reverted)
+                        append(&state.temp_actions, reverted)
+
+                        dupe := duplicate_action(selected_action_circle, false, context.temp_allocator)
+                        move_action(state, tile_map, &dupe, mouse_pos)
+                        redo_action(state, tile_map, &dupe)
+                        append(&state.temp_actions, dupe)
+                    } else {
+                        append(&state.temp_actions, make_action(.CIRCLE, context.temp_allocator))
+                        temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+                        tooltip = circle_tool(state, tile_map, mouse_pos, temp_action)
+                    }
                 } else if rl.IsMouseButtonReleased(.LEFT) {
-                    if (state.tool_start_position != nil) {
+                    if selected_action_circle != nil {
+                        dupe := duplicate_action(selected_action_circle, false, context.allocator)
+                        reverted := revert_action(selected_action_circle)
+                        redo_action(state, tile_map, &reverted)
+                        append(&state.undo_history, reverted)
+                        finish_last_undo_history_action(state)
+                        move_action(state, tile_map, &dupe, mouse_pos)
+                        redo_action(state, tile_map, &dupe)
+                        append(&state.undo_history, dupe)
+                    } else {
+                        //TODO(amatej): don't add the action if the circle has size 0
                         append(&state.undo_history, make_action(.CIRCLE))
                         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                         tooltip = circle_tool(state, tile_map, mouse_pos, action)
-                        state.needs_sync = true
-                        finish_last_undo_history_action(state)
                     }
+                    state.needs_sync = true
+                    finish_last_undo_history_action(state)
                 } else {
                     highligh_current_tile_intersection = true
                 }
@@ -1335,24 +1375,6 @@ update :: proc() {
         state.selected_color = rl.ColorAlpha(state.selected_color.xyzw, state.selected_alpha).xyzw
     }
 
-    // Draw tool menu
-    for &tool, i in tool_menu {
-        rect := get_tool_tool_menu_rect(state, &tool_menu, i)
-        bg_color: [4]u8 = {0, 0, 0, 95}
-        cond_proc, cond_ok := tool.is_active.?
-        if cond_ok {
-            if cond_proc(state) {
-                bg_color = {255, 255, 255, 95}
-            } else {
-                if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
-                    bg_color = {255, 0, 0, 95}
-                }
-            }
-        }
-        rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, bg_color.xyzw)
-        rl.GuiDrawIcon(tool.icon, i32(rect[0]) + 7, i32(rect[1]) + 7, 1, rl.WHITE)
-    }
-
     if state.active_tool == .HELP {
         rl.DrawRectangleV({30, 30}, {f32(state.screen_width) - 60, f32(state.screen_height) - 60}, {0, 0, 0, 155})
         offset: i32 = 100
@@ -1375,6 +1397,43 @@ update :: proc() {
 
                 offset += 20
             }
+        }
+    }
+
+    // DO UI
+
+    // Draw tool menu
+    for &tool, i in tool_menu {
+        rect := get_tool_tool_menu_rect(state, &tool_menu, i)
+        bg_color: [4]u8 = {0, 0, 0, 95}
+        cond_proc, cond_ok := tool.is_active.?
+        if cond_ok {
+            if cond_proc(state) {
+                bg_color = {255, 255, 255, 95}
+            } else {
+                if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
+                    if rl.IsMouseButtonDown(.LEFT) {
+                        tool.action(state)
+                    }
+                    bg_color = {255, 0, 0, 95}
+                }
+            }
+        }
+        rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, bg_color.xyzw)
+        rl.GuiDrawIcon(tool.icon, i32(rect[0]) + 7, i32(rect[1]) + 7, 1, rl.WHITE)
+    }
+
+    // draw gathered circle movables
+    if state.active_tool == .CIRCLE {
+        for action_index in state.done_circle_actions {
+            action := &state.undo_history[action_index]
+            rect := get_circle_action_rect(state, tile_map, action)
+            pos := tile_map_to_screen_coord_full(action.start, state, tile_map)
+            bg_color: [4]u8 = {0, 0, 0, 95}
+            if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
+                bg_color = {255, 0, 0, 95}
+            }
+            rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, bg_color.xyzw)
         }
     }
 

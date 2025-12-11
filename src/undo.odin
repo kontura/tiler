@@ -586,3 +586,9 @@ merge_and_redo_actions :: proc(
     delete(actions)
     return hashes_changed
 }
+
+get_circle_action_rect :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) -> [4]f32 {
+    pos := tile_map_to_screen_coord_full(action.start, state, tile_map)
+    size: f32 = f32(tile_map.tile_side_in_pixels)
+    return {pos.x - size / 2, pos.y - size / 2, size, size}
+}

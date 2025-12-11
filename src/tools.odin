@@ -584,3 +584,17 @@ draw_cone_tiles :: proc(
         }
     }
 }
+
+move_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action, end_pos: [2]f32) {
+    #partial switch action.type {
+    case .CIRCLE:
+        {
+            start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
+
+            half := tile_map.tile_side_in_feet / 2
+            start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? half : -half
+            start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? half : -half
+            action.start = start_mouse_tile
+        }
+    }
+}
