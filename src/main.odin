@@ -54,8 +54,6 @@ GameState :: struct {
     debug:                  DebugMode,
     should_run:             bool,
     undone:                 int,
-    light_source:           [2]f32,
-    shadow_color:           [4]u8,
     bg_id:                  string,
     bg_pos:                 TileMapPosition,
     bg_scale:               f32,
@@ -79,6 +77,11 @@ GameState :: struct {
     id:                     u64,
     menu_items:             [dynamic]string,
     selected_index:         int,
+
+    // light
+    light:                  LightInfo,
+    light_pos:              TileMapPosition,
+    light_mask:             rl.RenderTexture,
 }
 
 Widget :: enum {
@@ -88,6 +91,11 @@ Widget :: enum {
     COLORBARALPHA,
     INITIATIVE,
     TOOLMENU,
+}
+
+draw_quad_ordered :: proc(v1, v2, v3, v4: [2]f32, color: [4]u8) {
+    rl.DrawTriangle(v1, v2, v3, color.xyzw)
+    rl.DrawTriangle(v3, v4, v1, color.xyzw)
 }
 
 draw_quad :: proc(v1, v2, v3, v4: [2]f32, color: [4]u8) {
@@ -292,8 +300,6 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.mobile = mobile
     state.bg_scale = 1
     state.should_run = true
-    state.light_source = {0.06, 0.09}
-    state.shadow_color = {0, 0, 0, 65}
     // Token 0 is reserved, it is a temp token used for previews
     state.tokens[0] = Token {
         id   = 0,
@@ -303,6 +309,10 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.path = path
     state.bg_pos.rel_tile = 2.5
     state.bg_pos.abs_tile = 100
+
+    // light
+    state.light = {rl.LoadRenderTexture(width, height), 1900}
+    state.light_mask = rl.LoadRenderTexture(width, height)
 }
 
 tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {
@@ -353,9 +363,26 @@ draw_connections :: proc(socket_ready: bool, peers: map[u64]bool) {
 }
 
 update :: proc() {
+    if state.screen_height != rl.GetScreenHeight() || state.screen_width != rl.GetScreenWidth() {
+        state.screen_height = rl.GetScreenHeight()
+        state.screen_width = rl.GetScreenWidth()
+        state.light.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+        state.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+        for _, &token in state.tokens {
+            l, ok := &token.light.?
+            if ok {
+                l.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+            }
+        }
+    }
+    state.light.radius = f32(20 * tile_map.tile_side_in_pixels)
+    for _, &token in state.tokens {
+        l, ok := &token.light.?
+        if ok {
+            l.radius = f32(10 * tile_map.tile_side_in_pixels)
+        }
+    }
 
-    state.screen_height = rl.GetScreenHeight()
-    state.screen_width = rl.GetScreenWidth()
     if state.active_tool == .COLOR_PICKER {
         state.gui_rectangles[.COLORPICKER] = {f32(state.screen_width - 230), 10, 200, 200}
         state.gui_rectangles[.COLORBARHUE] = {f32(state.screen_width - 30), 5, 30, 205}
@@ -409,7 +436,7 @@ update :: proc() {
             {
                 if selected_widget == .MAP {
                     if rl.IsMouseButtonDown(.LEFT) {
-                        state.light_source = (state.tool_start_position.? - mouse_pos) / 100
+                        state.light_pos = screen_coord_to_tile_map(mouse_pos, state, tile_map)
                     }
                 }
                 icon = .ICON_CURSOR_SCALE_LEFT
@@ -756,7 +783,11 @@ update :: proc() {
                                     token_pos.rel_tile = {0, 0}
                                     token_pos.abs_tile.y += pos_offset
 
-                                    token_spawn(state, action, token_pos, state.selected_color, name)
+                                    token_id := token_spawn(state, action, token_pos, state.selected_color, name)
+                                    new_token: ^Token = &state.tokens[token_id]
+                                    new_token.light = LightInfo(
+                                        {rl.LoadRenderTexture(state.screen_width, state.screen_height), 900},
+                                    )
                                     pos_offset += 2
                                     finish_last_undo_history_action(state)
                                 }
@@ -963,6 +994,16 @@ update :: proc() {
     screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
     //TODO(amatej): extract into render method
+
+    draw_light_mask(state, tile_map, &state.light, state.light_pos)
+    for _, &token in state.tokens {
+        l, ok := &token.light.?
+        if ok {
+            draw_light_mask(state, tile_map, l, token.position)
+        }
+    }
+    merge_light_masks(state, tile_map)
+
     rl.BeginDrawing()
     rl.ClearBackground(EMPTY_COLOR.xyzw)
 
@@ -1040,67 +1081,12 @@ update :: proc() {
         }
     }
 
-    // Draw wall shadows, has to be done after all TILEs are drawn, because the shadows can
-    // extend beyond its TILE
-    for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
-        row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
-        row_offset += 1 {
-        cen_y: f32 =
-            screen_center.y -
-            tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
-            f32(row_offset * tile_map.tile_side_in_pixels)
-        min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
-
-        for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-            column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
-            column_offset += 1 {
-            current_tile: [2]u32
-            current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset)
-            current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
-            current_tile_value: Tile = get_tile(tile_map, current_tile)
-
-            // Calculate tile position on screen
-            cen_x: f32 =
-                screen_center.x -
-                tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-                f32(column_offset * tile_map.tile_side_in_pixels)
-            min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-
-            shadow := state.light_source * f32(tile_map.tile_side_in_pixels) * 3
-            if Direction.TOP in current_tile_value.walls {
-                if current_tile_value.wall_colors[Direction.TOP].w != 0 {
-                    draw_quad(
-                        {min_x, min_y},
-                        {min_x + f32(tile_map.tile_side_in_pixels), min_y},
-                        {min_x, min_y} + shadow,
-                        {min_x + f32(tile_map.tile_side_in_pixels), min_y} + shadow,
-                        state.shadow_color,
-                    )
-                }
-            }
-            if current_tile_value.wall_colors[Direction.LEFT].w != 0 {
-                if Direction.LEFT in current_tile_value.walls {
-                    draw_quad(
-                        {min_x, min_y},
-                        {min_x, min_y} + shadow,
-                        {min_x, min_y + f32(tile_map.tile_side_in_pixels)},
-                        {min_x, min_y + f32(tile_map.tile_side_in_pixels)} + shadow,
-                        state.shadow_color,
-                    )
-                }
-            }
-        }
-
-        if (state.draw_grid) {
-            rl.DrawLineV({0, min_y}, {f32(state.screen_width), min_y}, {0, 0, 0, 20})
-        }
-    }
-
     // draw tokens on map
     for _, &token in state.tokens {
         if token.alive {
             pos: rl.Vector2 = tile_map_to_screen_coord(token.position, state, tile_map)
             token_pos, token_radius := get_token_circle(tile_map, state, token)
+            // Make tokens pop from background
             // Draw shadows only for real tokens, skip temp 0 token
             if token.id != 0 {
                 token_base_from: [4]u8 = {0, 0, 0, 30}
@@ -1110,11 +1096,6 @@ update :: proc() {
                     token_radius + 0.2 * f32(tile_map.tile_side_in_pixels),
                     token_base_from.xyzw,
                     TRANSPARENT_COLOR.xyzw,
-                )
-                rl.DrawCircleV(
-                    token_pos + state.light_source * f32(tile_map.tile_side_in_pixels),
-                    token_radius,
-                    state.shadow_color.xyzw,
                 )
                 for selected_id in state.selected_tokens {
                     if selected_id == token.id {
@@ -1176,6 +1157,40 @@ update :: proc() {
         rl.DrawRectangleV(cross_pos - {1, size / 2}, {2, size}, {255, 255, 255, 255})
         rl.DrawRectangleV(cross_pos - {size / 2, 1}, {size, 2}, {255, 255, 255, 255})
     }
+    // draw particles
+    for &particle in state.particles {
+        if particle.lifetime_remaining <= 0 {
+            continue
+        }
+
+        pos: rl.Vector2 = tile_map_to_screen_coord_full(particle.position, state, tile_map)
+        color := particle.color_begin
+        // particle lifetime is 0 to 1, multiply by 255 to get opacity
+        color.w = u8(particle.lifetime_remaining / particle.lifetime * 255)
+        rl.DrawCircleV(pos, particle.size, color.xyzw)
+    }
+
+    if (state.draw_grid) {
+        for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
+            column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
+            column_offset += 1 {
+            cen_x: f32 =
+                screen_center.x -
+                tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
+                f32(column_offset * tile_map.tile_side_in_pixels)
+            min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
+            min_x = math.max(0, min_x)
+            rl.DrawLineV({min_x, 0}, {min_x, f32(state.screen_height)}, {0, 0, 0, 20})
+        }
+    }
+
+    // Overlay the global shadow mask
+    rl.DrawTextureRec(
+        state.light_mask.texture,
+        {0, 0, f32(state.screen_width), f32(-state.screen_height)},
+        {0, 0},
+        {255, 255, 255, 100},
+    )
 
     // draw initiative tracker
     if (state.draw_initiative) {
@@ -1238,18 +1253,6 @@ update :: proc() {
         }
     }
 
-    // draw particles
-    for &particle in state.particles {
-        if particle.lifetime_remaining <= 0 {
-            continue
-        }
-
-        pos: rl.Vector2 = tile_map_to_screen_coord_full(particle.position, state, tile_map)
-        color := particle.color_begin
-        // particle lifetime is 0 to 1, multiply by 255 to get opacity
-        color.w = u8(particle.lifetime_remaining / particle.lifetime * 255)
-        rl.DrawCircleV(pos, particle.size, color.xyzw)
-    }
 
     if state.timeout > 0 {
         msg := fmt.caprint(state.timeout_string, allocator = context.temp_allocator)
@@ -1332,19 +1335,7 @@ update :: proc() {
         rl.DrawText(fps_text, state.screen_width - 200, state.screen_height - 100, 17, rl.GREEN)
     }
 
-    if (state.draw_grid) {
-        for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-            column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
-            column_offset += 1 {
-            cen_x: f32 =
-                screen_center.x -
-                tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-                f32(column_offset * tile_map.tile_side_in_pixels)
-            min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-            min_x = math.max(0, min_x)
-            rl.DrawLineV({min_x, 0}, {min_x, f32(state.screen_height)}, {0, 0, 0, 20})
-        }
-    }
+    // DO UI
 
 
     if state.active_tool == .LOAD_GAME ||
@@ -1400,8 +1391,6 @@ update :: proc() {
             }
         }
     }
-
-    // DO UI
 
     // Draw tool menu
     for &tool, i in tool_menu {

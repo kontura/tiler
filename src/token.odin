@@ -16,6 +16,7 @@ Token :: struct {
     initiative: i32,
     texture:    ^rl.Texture2D,
     alive:      bool,
+    light:      Maybe(LightInfo),
 }
 
 get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (center: [2]f32, radius: f32) {
@@ -50,9 +51,9 @@ get_token_name_temp :: proc(token: ^Token) -> cstring {
 
 make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name: string = "", initiative: i32 = -1) -> Token {
     if initiative == -1 {
-        return Token{id, pos, color, strings.clone(name), 0, 1, rand.int31_max(22) + 1, nil, true}
+        return Token{id, pos, color, strings.clone(name), 0, 1, rand.int31_max(22) + 1, nil, true, nil}
     } else {
-        return Token{id, pos, color, strings.clone(name), 0, 1, initiative, nil, true}
+        return Token{id, pos, color, strings.clone(name), 0, 1, initiative, nil, true, nil}
     }
 }
 
