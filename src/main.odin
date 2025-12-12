@@ -353,8 +353,6 @@ draw_connections :: proc(socket_ready: bool, peers: map[u64]bool) {
 }
 
 update :: proc() {
-    rl.BeginDrawing()
-    rl.ClearBackground(EMPTY_COLOR.xyzw)
 
     state.screen_height = rl.GetScreenHeight()
     state.screen_width = rl.GetScreenWidth()
@@ -965,6 +963,9 @@ update :: proc() {
     screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
     //TODO(amatej): extract into render method
+    rl.BeginDrawing()
+    rl.ClearBackground(EMPTY_COLOR.xyzw)
+
     // draw bg
     pos: rl.Vector2 = tile_map_to_screen_coord(state.bg_pos, state, tile_map)
     pos += state.bg_pos.rel_tile * tile_map.feet_to_pixels
