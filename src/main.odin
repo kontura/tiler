@@ -20,6 +20,7 @@ SELECTED_COLOR: [4]u8 : {0, 255, 0, 255}
 SELECTED_TRANSPARENT_COLOR: [4]u8 : {0, 255, 0, 180}
 
 INITIATIVE_COUNT: i32 : 50
+PLAYERS := [?]string{"Wesley", "AR100", "Daren", "Max", "Mardun", "Rodion"}
 
 DebugMode :: enum {
     OFF,
@@ -765,9 +766,8 @@ update :: proc() {
                             if token != nil {
                                 append(&state.selected_tokens, token.id)
                             } else if rl.IsKeyDown(.LEFT_SHIFT) {
-                                players := [?]string{"Wesley", "AR100", "Daren", "Max", "Mardun", "Rodion"}
                                 pos_offset: u32 = 0
-                                for name in players {
+                                for name in PLAYERS {
                                     append(&state.undo_history, make_action(.EDIT_TOKEN_LIFE))
                                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                     token_pos := mouse_tile_pos
