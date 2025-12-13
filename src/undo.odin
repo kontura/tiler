@@ -7,6 +7,8 @@ import "core:sort"
 import "core:strings"
 import "core:time"
 
+import rl "vendor:raylib"
+
 ActionType :: enum {
     BRUSH,
     RECTANGLE,
@@ -455,6 +457,15 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                             action.new_name,
                             action.token_initiative_end,
                         )
+                        //TODO(amatej): temporarily add light to player tokens
+                        for name in PLAYERS {
+                            if action.new_name == name {
+                                new_token: ^Token = &state.tokens[action.token_id]
+                                new_token.light = LightInfo(
+                                    {rl.LoadRenderTexture(state.screen_width, state.screen_height), 900},
+                                )
+                            }
+                        }
                     } else {
                         fmt.println(
                             "[WARNING]: REDO attempted to create token with id: ",
