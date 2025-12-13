@@ -9,7 +9,7 @@ RLGL_SRC_ALPHA :: 0x0302
 RLGL_MIN :: 0x8007
 RLGL_MAX :: 0x8008
 
-TOKEN_SHADOW_SIZE :: .3
+TOKEN_SHADOW_SIZE :: .2
 
 LightInfo :: struct {
     light_mask: rl.RenderTexture,
