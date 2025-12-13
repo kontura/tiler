@@ -316,7 +316,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.bg_pos.abs_tile = 100
 
     // light
-    state.light = {rl.LoadRenderTexture(width, height), 1900}
+    state.light = {rl.LoadRenderTexture(width, height), 1900, true}
     state.light_mask = rl.LoadRenderTexture(width, height)
 }
 
@@ -366,6 +366,7 @@ update :: proc() {
                 l.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             }
         }
+        set_dirty_for_all_lights(state)
     }
     state.light.radius = f32(20 * tile_map.tile_side_in_pixels)
     for _, &token in state.tokens {
@@ -415,9 +416,15 @@ update :: proc() {
                 state.tool_start_position = mouse_pos
             }
         } else if rl.IsMouseButtonDown(.RIGHT) {
-            state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
+            if rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8 != 0 {
+                state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
+                set_dirty_for_all_lights(state)
+            }
         }
-        tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMoveV().y * 1.5)
+        if rl.GetMouseWheelMoveV().y * 1.5 != 0 {
+            tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMoveV().y * 1.5)
+            set_dirty_for_all_lights(state)
+        }
     }
     touch_count := rl.GetTouchPointCount()
 
@@ -429,6 +436,7 @@ update :: proc() {
                 if selected_widget == .MAP {
                     if rl.IsMouseButtonDown(.LEFT) {
                         state.light_pos = screen_coord_to_tile_map(mouse_pos, state, tile_map)
+                        state.light.dirty = true
                     }
                 }
                 icon = .ICON_CURSOR_SCALE_LEFT
@@ -699,6 +707,7 @@ update :: proc() {
                                     clear_selected_tokens(state)
                                     state.needs_sync = true
                                     finish_last_undo_history_action(state)
+                                    set_dirty_for_all_lights(state)
                                 } else {
                                     if rl.IsKeyDown(.BACKSPACE) {
                                         key = .BACKSPACE
@@ -777,10 +786,11 @@ update :: proc() {
                                     token_id := token_spawn(state, action, token_pos, state.selected_color, name)
                                     new_token: ^Token = &state.tokens[token_id]
                                     new_token.light = LightInfo(
-                                        {rl.LoadRenderTexture(state.screen_width, state.screen_height), 900},
+                                        {rl.LoadRenderTexture(state.screen_width, state.screen_height), 900, true},
                                     )
                                     pos_offset += 2
                                     finish_last_undo_history_action(state)
+                                    set_dirty_for_all_lights(state)
                                 }
                                 state.needs_sync = true
                             } else {
@@ -790,6 +800,7 @@ update :: proc() {
                                 token_spawn(state, &action, token_pos, state.selected_color)
                                 append(&state.undo_history, action)
                                 finish_last_undo_history_action(state)
+                                set_dirty_for_all_lights(state)
                             }
                         } else {
                             c := state.selected_color
@@ -804,6 +815,7 @@ update :: proc() {
                             temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
                             temp_action.token_id = 0
                             temp_action.token_life = true
+                            set_dirty_for_all_lights(state)
                         }
                         icon = .ICON_PLAYER
                     }

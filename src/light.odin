@@ -14,6 +14,7 @@ TOKEN_SHADOW_SIZE :: .3
 LightInfo :: struct {
     light_mask: rl.RenderTexture,
     radius:     f32,
+    dirty:      bool,
 }
 
 get_N_points_on_circle :: #force_inline proc($N: int, center: [2]f32, radius: f32) -> (res: [N][2]f32) {
@@ -28,6 +29,10 @@ get_N_points_on_circle :: #force_inline proc($N: int, center: [2]f32, radius: f3
 
 
 draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo, pos: TileMapPosition) {
+    if light.dirty == false {
+        return
+    }
+
     rl.BeginTextureMode(light.light_mask)
     {
         rl.ClearBackground(rl.WHITE)
@@ -138,6 +143,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
         rlgl.SetBlendMode(i32(rl.BlendMode.ALPHA))
     }
     rl.EndTextureMode()
+    light.dirty = false
 }
 
 merge_light_masks :: proc(state: ^GameState, tile_map: ^TileMap) {
@@ -171,4 +177,14 @@ merge_light_masks :: proc(state: ^GameState, tile_map: ^TileMap) {
         rlgl.SetBlendMode(i32(rl.BlendMode.ALPHA))
     }
     rl.EndTextureMode()
+}
+
+set_dirty_for_all_lights :: proc(state: ^GameState) {
+    state.light.dirty = true
+    for _, &token in state.tokens {
+        l, ok := &token.light.?
+        if ok {
+            l.dirty = true
+        }
+    }
 }

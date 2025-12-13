@@ -462,7 +462,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                             if action.new_name == name {
                                 new_token: ^Token = &state.tokens[action.token_id]
                                 new_token.light = LightInfo(
-                                    {rl.LoadRenderTexture(state.screen_width, state.screen_height), 900},
+                                    {rl.LoadRenderTexture(state.screen_width, state.screen_height), 900, true},
                                 )
                             }
                         }
