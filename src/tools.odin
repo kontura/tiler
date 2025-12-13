@@ -52,6 +52,17 @@ color_over :: proc(c1: [4]u8, c2: [4]u8) -> [4]u8 {
     return rl.ColorFromNormalized(res).xyzw
 }
 
+colors_roughly_match :: proc(c1: [4]u8, c2: [4]u8) -> bool {
+    for i in 0 ..< 4 {
+        diff := math.abs(int(c1[i]) - int(c2[i]))
+        if diff > 10 {
+            return false
+        }
+    }
+
+    return true
+}
+
 wall_tool :: proc(tile_map: ^TileMap, start, end: TileMapPosition, color: [4]u8, action: ^Action) -> cstring {
     action.start = start
     action.end = end
@@ -225,7 +236,48 @@ rectangle_tool :: proc(
             old_tile := get_tile(tile_map, {x, y})
 
             new_color := color_over(selected_color.xyzw, old_tile.color.xyzw)
-            new_tile := tile_make_color_walls_colors(new_color, old_tile.walls, old_tile.wall_colors)
+
+            walls := old_tile.walls
+            wall_colors := old_tile.wall_colors
+
+            tile_plus_minus_y := get_tile(tile_map, {x, y - 1})
+            if colors_roughly_match(tile_plus_minus_y.color, new_color) {
+                walls -= {.TOP}
+            }
+            tile_plus_minus_x := get_tile(tile_map, {x-1, y})
+            if colors_roughly_match(tile_plus_minus_x.color, new_color) {
+                walls -= {.LEFT}
+            }
+
+            if !colors_roughly_match(old_tile.color, new_color) {
+                if y == start_tile.y {
+                    wall_colors[.TOP] = new_color
+                    walls |= {.TOP}
+                }
+                if y == end_tile.y {
+                    tile_plus_one_y := get_tile(tile_map, {x, y + 1})
+                    tile_plus_one_y.wall_colors[.TOP] = new_color
+                    tile_plus_one_y.walls |= {.TOP}
+                    o := get_tile(tile_map, {x, y + 1})
+                    action.tile_history[{x, y + 1}] = tile_xor(&o, &tile_plus_one_y)
+                    set_tile(tile_map, {x, y + 1}, tile_plus_one_y)
+                }
+                if x == start_tile.x {
+                    wall_colors[.LEFT] = new_color
+                    walls |= {.LEFT}
+                }
+                if x == end_tile.x {
+                    tile_plus_one_x := get_tile(tile_map, {x + 1, y})
+                    tile_plus_one_x.wall_colors[.LEFT] = new_color
+                    tile_plus_one_x.walls |= {.LEFT}
+                    o := get_tile(tile_map, {x + 1, y})
+                    action.tile_history[{x + 1, y}] = tile_xor(&o, &tile_plus_one_x)
+                    set_tile(tile_map, {x + 1, y}, tile_plus_one_x)
+                }
+            }
+
+
+            new_tile := tile_make_color_walls_colors(new_color, walls, wall_colors)
             if action != nil {
                 action.tile_history[{x, y}] = tile_xor(&old_tile, &new_tile)
             }
