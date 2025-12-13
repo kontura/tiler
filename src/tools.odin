@@ -7,7 +7,7 @@ import "core:strings"
 import "core:time"
 import rl "vendor:raylib"
 
-GREEN_HIGHLIGH: [4]u8 : {0, 255, 0, 30}
+GREEN_HIGHLIGH: [4]u8 : {0, 255, 0, 100}
 GREEN_HIGHLIGH_PATH: [4]u8 : {30, 105, 30, 230}
 
 Tool :: enum {
