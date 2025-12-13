@@ -14,6 +14,20 @@ MESSAGE_TYPE :: enum u8 {
     SYNC_REQUEST  = 7,
 }
 
+WEBRTC_STATE :: enum u8 {
+    WAITING,
+    OFFERED,
+    ANSWERED,
+    ICE,
+    CONNECTED,
+}
+
+PeerState :: struct {
+    webrtc:             WEBRTC_STATE,
+    last_known_actions: [dynamic]Action,
+    chunks:             [dynamic]u8,
+}
+
 CHUNK_SIZE :: 32000
 
 chunk_binary_message :: proc(id: u64, target: u64, msg: []u8, allocator: mem.Allocator) -> [dynamic][]u8 {

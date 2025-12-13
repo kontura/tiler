@@ -82,6 +82,10 @@ GameState :: struct {
     light:                  LightInfo,
     light_pos:              TileMapPosition,
     light_mask:             rl.RenderTexture,
+
+    // network
+    socket_ready:           bool,
+    peers:                  map[u64]PeerState,
 }
 
 Widget :: enum {
@@ -346,19 +350,6 @@ init :: proc(path: string = "root", mobile := false) {
         state.textures[strings.clone(split[0])] = rl.LoadTexture(
             strings.clone_to_cstring(join, context.temp_allocator),
         )
-    }
-}
-
-draw_connections :: proc(socket_ready: bool, peers: map[u64]bool) {
-    offset: i32 = 30
-    id := fmt.caprint("my_id: ", state.id, allocator = context.temp_allocator)
-    rl.DrawText(id, state.screen_width - 230, offset, 18, rl.BLUE)
-    offset += 30
-    rl.DrawText("Signaling status", state.screen_width - 230, offset, 18, socket_ready ? rl.GREEN : rl.RED)
-    for peer, peer_status in peers {
-        offset += 30
-        peer_id := fmt.caprint(peer, allocator = context.temp_allocator)
-        rl.DrawText(peer_id, state.screen_width - 230, offset, 18, peer_status ? rl.GREEN : rl.RED)
     }
 }
 
@@ -1329,6 +1320,15 @@ update :: proc() {
 
     }
     if state.debug != .OFF {
+        offset: i32 = 30
+        id := fmt.caprint("my_id: ", state.id, allocator = context.temp_allocator)
+        rl.DrawText(id, state.screen_width - 330, offset, 18, rl.BLUE)
+        offset += 30
+        for peer, &peer_status in state.peers {
+            peer_id := fmt.caprint(peer, allocator = context.temp_allocator)
+            rl.DrawText(peer_id, state.screen_width - 330, offset, 18, peer_status.webrtc == .CONNECTED ? rl.GREEN : rl.RED)
+            offset += 30
+        }
         dt := rl.GetFrameTime()
         fps := 1 / dt
         fps_text := fmt.caprint("fps", ": ", fps, allocator = context.temp_allocator)
@@ -1337,6 +1337,7 @@ update :: proc() {
 
     // DO UI
 
+    rl.GuiDrawIcon(.ICON_BREAKPOINT_ON, state.screen_width - 20, 6, 1, state.socket_ready ? rl.GREEN : rl.RED)
 
     if state.active_tool == .LOAD_GAME ||
        state.active_tool == .SAVE_GAME ||

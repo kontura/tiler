@@ -29,26 +29,10 @@ foreign _ {
     send_binary_to_peer :: proc(peer_id: u64, data: rawptr, len: u32) ---
 }
 
-socket_ready: bool = false
 init_sync_requested: bool = false
 my_allocator: mem.Allocator
 when ODIN_DEBUG {
     track: mem.Tracking_Allocator
-}
-peers: map[u64]PeerState
-
-PeerState :: struct {
-    webrtc:             WEBRTC_STATE,
-    last_known_actions: [dynamic]game.Action,
-    chunks:             [dynamic]u8,
-}
-
-WEBRTC_STATE :: enum u8 {
-    WAITING,
-    OFFERED,
-    ANSWERED,
-    ICE,
-    CONNECTED,
 }
 
 @(export)
@@ -69,12 +53,12 @@ build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
 
 @(export)
 set_socket_ready :: proc "c" () {
-    socket_ready = true
+    game.state.socket_ready = true
 }
 
 @(export)
 set_peer_rtc_connected :: proc "c" (peer_id: u64) {
-    peer_state := &peers[peer_id]
+    peer_state := &game.state.peers[peer_id]
     peer_state.webrtc = .CONNECTED
 }
 
@@ -83,10 +67,10 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     context = web_context
 
     type, sender_id, target_id, payload := game.parse_binary_message(data[:data_len])
-    sender_already_registered := sender_id in peers
+    sender_already_registered := sender_id in game.state.peers
     if !sender_already_registered {
-        peers[sender_id] = {.WAITING, {}, {}}
-        peer_state := &peers[sender_id]
+        game.state.peers[sender_id] = {.WAITING, {}, {}}
+        peer_state := &game.state.peers[sender_id]
     }
 
     if game.state.id != target_id && target_id != 0 {
@@ -98,7 +82,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         assert(false)
     }
 
-    peer_state := &peers[sender_id]
+    peer_state := &game.state.peers[sender_id]
 
     if type == .ACTIONS {
         bytes: []byte = payload[:len(payload)]
@@ -213,18 +197,10 @@ main_update :: proc "c" () -> bool {
     context = web_context
     game.update()
 
-    if game.state.debug != .OFF {
-        p := make(map[u64]bool, allocator = context.temp_allocator)
-        for peer, &peer_state in peers {
-            p[peer] = peer_state.webrtc == .CONNECTED ? true : false
-        }
-        game.draw_connections(socket_ready, p)
-    }
-
-    if !game.state.offline && socket_ready {
+    if !game.state.offline && game.state.socket_ready {
         for &img_id in game.state.needs_images {
             // Use the first peer
-            for peer_id in peers {
+            for peer_id in game.state.peers {
                 binary := game.build_binary_message(game.state.id, .IMAGE_REQUEST, peer_id, raw_data(img_id)[:len(img_id)])
                 send_binary_to_peer(peer_id, &binary[0], u32(len(binary)))
                 delete(img_id)
@@ -234,7 +210,7 @@ main_update :: proc "c" () -> bool {
         clear(&game.state.needs_images)
 
         if game.state.needs_sync {
-            for peer_id, &peer_state in peers {
+            for peer_id, &peer_state in game.state.peers {
                 binary: []u8
                 _, to_send := game.find_first_not_matching_action(
                     peer_state.last_known_actions[:],
@@ -268,13 +244,13 @@ main_update :: proc "c" () -> bool {
 main_end :: proc "c" () {
     context = web_context
     game.shutdown()
-    for peer, &peer_state in peers {
+    for peer, &peer_state in game.state.peers {
         for _, index in peer_state.last_known_actions {
             game.delete_action(&peer_state.last_known_actions[index])
         }
         delete(peer_state.last_known_actions)
     }
-    delete(peers)
+    delete(game.state.peers)
 
     when ODIN_DEBUG {
         if len(track.allocation_map) > 0 {
