@@ -316,7 +316,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.bg_pos.abs_tile = 100
 
     // light
-    state.light = {rl.LoadRenderTexture(width, height), 1900, true}
+    state.light = {rl.LoadRenderTexture(width, height), 20, true}
     state.light_mask = rl.LoadRenderTexture(width, height)
 }
 
@@ -367,13 +367,6 @@ update :: proc() {
             }
         }
         set_dirty_for_all_lights(state)
-    }
-    state.light.radius = f32(20 * tile_map.tile_side_in_pixels)
-    for _, &token in state.tokens {
-        l, ok := &token.light.?
-        if ok {
-            l.radius = f32(10 * tile_map.tile_side_in_pixels)
-        }
     }
 
     if state.active_tool == .COLOR_PICKER {
@@ -786,7 +779,7 @@ update :: proc() {
                                     token_id := token_spawn(state, action, token_pos, state.selected_color, name)
                                     new_token: ^Token = &state.tokens[token_id]
                                     new_token.light = LightInfo(
-                                        {rl.LoadRenderTexture(state.screen_width, state.screen_height), 900, true},
+                                        {rl.LoadRenderTexture(state.screen_width, state.screen_height), 10, true},
                                     )
                                     pos_offset += 2
                                     finish_last_undo_history_action(state)

@@ -44,7 +44,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
         rl.DrawCircleGradient(
             i32(light_screen_pos.x),
             i32(light_screen_pos.y),
-            light.radius,
+            light.radius * f32(tile_map.tile_side_in_pixels),
             {255, 255, 255, 0},
             rl.WHITE,
         )
