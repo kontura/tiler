@@ -787,7 +787,11 @@ update :: proc() {
                                     token_id := token_spawn(state, action, token_pos, state.selected_color, name)
                                     new_token: ^Token = &state.tokens[token_id]
                                     new_token.light = LightInfo(
-                                        {rl.LoadRenderTexture(state.screen_width, state.screen_height), 10, true},
+                                        {
+                                            rl.LoadRenderTexture(state.screen_width, state.screen_height),
+                                            TOKEN_DEFAULT_LIGHT_RADIUS,
+                                            true,
+                                        },
                                     )
                                     pos_offset += 2
                                     finish_last_undo_history_action(state)

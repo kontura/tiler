@@ -6,6 +6,8 @@ import "core:math/rand"
 import "core:strings"
 import rl "vendor:raylib"
 
+TOKEN_DEFAULT_LIGHT_RADIUS :: 10
+
 Token :: struct {
     id:         u64,
     position:   TileMapPosition,
