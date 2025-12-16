@@ -474,6 +474,12 @@ update :: proc() {
             }
         case .RECTANGLE:
             {
+                walls := false
+                icon = .ICON_BOX
+                if rl.IsKeyDown(.LEFT_SHIFT) {
+                    walls = true
+                    icon = .ICON_BOX_GRID_BIG
+                }
                 if rl.IsMouseButtonDown(.LEFT) {
                     append(&state.temp_actions, make_action(.RECTANGLE, context.temp_allocator))
                     temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
@@ -486,6 +492,8 @@ update :: proc() {
                     tooltip = rectangle_tool(
                         start_mouse_tile,
                         end_mouse_tile,
+                        state.selected_color,
+                        walls,
                         state.selected_color,
                         tile_map,
                         temp_action,
@@ -504,6 +512,8 @@ update :: proc() {
                             start_mouse_tile,
                             end_mouse_tile,
                             state.selected_color,
+                            walls,
+                            state.selected_color,
                             tile_map,
                             action,
                         )
@@ -511,7 +521,6 @@ update :: proc() {
                         finish_last_undo_history_action(state)
                     }
                 }
-                icon = .ICON_BOX
                 highligh_current_tile = true
             }
         case .CIRCLE:

@@ -235,6 +235,8 @@ rectangle_tool :: proc(
     start_mouse_tile: TileMapPosition,
     end_mouse_tile: TileMapPosition,
     selected_color: [4]u8,
+    do_walls: bool,
+    walls_color: [4]u8,
     tile_map: ^TileMap,
     action: ^Action,
 ) -> cstring {
@@ -249,6 +251,8 @@ rectangle_tool :: proc(
     action.start = {start_tile, {0, 0}}
     action.end = {end_tile, {0, 0}}
     action.color = selected_color
+    action.walls = do_walls
+    action.walls_color = walls_color
 
     for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
         for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
@@ -259,42 +263,43 @@ rectangle_tool :: proc(
             walls := old_tile.walls
             wall_colors := old_tile.wall_colors
 
-            tile_plus_minus_y := get_tile(tile_map, {x, y - 1})
-            if colors_roughly_match(tile_plus_minus_y.color, new_color) {
-                walls -= {.TOP}
-            }
-            tile_plus_minus_x := get_tile(tile_map, {x-1, y})
-            if colors_roughly_match(tile_plus_minus_x.color, new_color) {
-                walls -= {.LEFT}
-            }
+            if do_walls {
+                tile_plus_minus_y := get_tile(tile_map, {x, y - 1})
+                if colors_roughly_match(tile_plus_minus_y.color, new_color) {
+                    walls -= {.TOP}
+                }
+                tile_plus_minus_x := get_tile(tile_map, {x - 1, y})
+                if colors_roughly_match(tile_plus_minus_x.color, new_color) {
+                    walls -= {.LEFT}
+                }
 
-            if !colors_roughly_match(old_tile.color, new_color) {
-                if y == start_tile.y {
-                    wall_colors[.TOP] = new_color
-                    walls |= {.TOP}
-                }
-                if y == end_tile.y {
-                    tile_plus_one_y := get_tile(tile_map, {x, y + 1})
-                    tile_plus_one_y.wall_colors[.TOP] = new_color
-                    tile_plus_one_y.walls |= {.TOP}
-                    o := get_tile(tile_map, {x, y + 1})
-                    action.tile_history[{x, y + 1}] = tile_xor(&o, &tile_plus_one_y)
-                    set_tile(tile_map, {x, y + 1}, tile_plus_one_y)
-                }
-                if x == start_tile.x {
-                    wall_colors[.LEFT] = new_color
-                    walls |= {.LEFT}
-                }
-                if x == end_tile.x {
-                    tile_plus_one_x := get_tile(tile_map, {x + 1, y})
-                    tile_plus_one_x.wall_colors[.LEFT] = new_color
-                    tile_plus_one_x.walls |= {.LEFT}
-                    o := get_tile(tile_map, {x + 1, y})
-                    action.tile_history[{x + 1, y}] = tile_xor(&o, &tile_plus_one_x)
-                    set_tile(tile_map, {x + 1, y}, tile_plus_one_x)
+                if !colors_roughly_match(old_tile.color, new_color) {
+                    if y == start_tile.y {
+                        wall_colors[.TOP] = walls_color
+                        walls |= {.TOP}
+                    }
+                    if y == end_tile.y {
+                        tile_plus_one_y := get_tile(tile_map, {x, y + 1})
+                        tile_plus_one_y.wall_colors[.TOP] = walls_color
+                        tile_plus_one_y.walls |= {.TOP}
+                        o := get_tile(tile_map, {x, y + 1})
+                        action.tile_history[{x, y + 1}] = tile_xor(&o, &tile_plus_one_y)
+                        set_tile(tile_map, {x, y + 1}, tile_plus_one_y)
+                    }
+                    if x == start_tile.x {
+                        wall_colors[.LEFT] = walls_color
+                        walls |= {.LEFT}
+                    }
+                    if x == end_tile.x {
+                        tile_plus_one_x := get_tile(tile_map, {x + 1, y})
+                        tile_plus_one_x.wall_colors[.LEFT] = walls_color
+                        tile_plus_one_x.walls |= {.LEFT}
+                        o := get_tile(tile_map, {x + 1, y})
+                        action.tile_history[{x + 1, y}] = tile_xor(&o, &tile_plus_one_x)
+                        set_tile(tile_map, {x + 1, y}, tile_plus_one_x)
+                    }
                 }
             }
-
 
             new_tile := tile_make_color_walls_colors(new_color, walls, wall_colors)
             if action != nil {
