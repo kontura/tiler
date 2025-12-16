@@ -426,6 +426,14 @@ update :: proc() {
         switch state.active_tool {
         case .LIGHT_SOURCE:
             {
+                if rl.IsKeyDown(.EQUAL) {
+                    state.light.radius += 1
+                    state.light.dirty = true
+                }
+                if rl.IsKeyDown(.MINUS) {
+                    state.light.radius -= 1
+                    state.light.dirty = true
+                }
                 if selected_widget == .MAP {
                     if rl.IsMouseButtonDown(.LEFT) {
                         state.light_pos = screen_coord_to_tile_map(mouse_pos, state, tile_map)
