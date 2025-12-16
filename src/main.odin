@@ -34,6 +34,7 @@ GameState :: struct {
     screen_height:          i32,
     camera_pos:             TileMapPosition,
     selected_color:         [4]u8,
+    selected_wall_color:    [4]u8,
     selected_alpha:         f32,
     selected_tokens:        [dynamic]u64,
     last_selected_token_id: u64,
@@ -289,6 +290,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.selected_color.r = u8(rand.int_max(255))
     state.selected_color.g = u8(rand.int_max(255))
     state.selected_color.b = u8(rand.int_max(255))
+    state.selected_wall_color = state.selected_color
     for state.id == 0 {
         state.id = rand.uint64()
     }
@@ -494,7 +496,7 @@ update :: proc() {
                         end_mouse_tile,
                         state.selected_color,
                         walls,
-                        state.selected_color,
+                        state.selected_wall_color,
                         tile_map,
                         temp_action,
                     )
@@ -513,7 +515,7 @@ update :: proc() {
                             end_mouse_tile,
                             state.selected_color,
                             walls,
-                            state.selected_color,
+                            state.selected_wall_color,
                             tile_map,
                             action,
                         )
@@ -645,16 +647,27 @@ update :: proc() {
             }
         case .COLOR_PICKER:
             {
+                picked_color: Maybe([4]u8)
                 if selected_widget == .MAP {
                     if rl.IsMouseButtonPressed(.LEFT) {
                         token := find_token_at_screen(tile_map, state, mouse_pos)
                         if token != nil {
-                            state.selected_color = token.color
+                            picked_color = token.color
                         } else {
                             mouse_tile: Tile = get_tile(tile_map, mouse_tile_pos.abs_tile)
-                            state.selected_color = mouse_tile.color
+                            picked_color = mouse_tile.color
                         }
                     }
+
+                    c, ok := picked_color.?
+                    if ok {
+                        if state.previous_tool.? == .WALL {
+                            state.selected_wall_color = c
+                        } else {
+                            state.selected_color = c
+                        }
+                    }
+
                     icon = .ICON_COLOR_PICKER
                 }
             }
@@ -669,7 +682,13 @@ update :: proc() {
                         tile_map,
                     )
                     end_mouse_tile: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
-                    tooltip = wall_tool(tile_map, start_mouse_tile, end_mouse_tile, state.selected_color, temp_action)
+                    tooltip = wall_tool(
+                        tile_map,
+                        start_mouse_tile,
+                        end_mouse_tile,
+                        state.selected_wall_color,
+                        temp_action,
+                    )
                 } else if rl.IsMouseButtonReleased(.LEFT) {
                     if (state.tool_start_position != nil) {
                         append(&state.undo_history, make_action(.WALL))
@@ -680,7 +699,13 @@ update :: proc() {
                             tile_map,
                         )
                         end_mouse_tile: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
-                        tooltip = wall_tool(tile_map, start_mouse_tile, end_mouse_tile, state.selected_color, action)
+                        tooltip = wall_tool(
+                            tile_map,
+                            start_mouse_tile,
+                            end_mouse_tile,
+                            state.selected_wall_color,
+                            action,
+                        )
                         state.needs_sync = true
                         finish_last_undo_history_action(state)
                     }
@@ -1387,9 +1412,15 @@ update :: proc() {
     }
 
     if state.active_tool == .COLOR_PICKER {
+        target_color: ^[4]u8
+        if state.previous_tool.? == .WALL {
+            target_color = &state.selected_wall_color
+        } else {
+            target_color = &state.selected_color
+        }
         rl.GuiColorBarAlpha(state.gui_rectangles[.COLORBARALPHA], "color picker alpha", &state.selected_alpha)
-        rl.GuiColorPicker(state.gui_rectangles[.COLORPICKER], "color picker", (^rl.Color)(&state.selected_color))
-        state.selected_color = rl.ColorAlpha(state.selected_color.xyzw, state.selected_alpha).xyzw
+        rl.GuiColorPicker(state.gui_rectangles[.COLORPICKER], "color picker", (^rl.Color)(target_color))
+        target_color^ = rl.ColorAlpha(target_color^.xyzw, state.selected_alpha).xyzw
     }
 
     if state.active_tool == .HELP {
@@ -1437,6 +1468,46 @@ update :: proc() {
         rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, bg_color.xyzw)
         rl.GuiDrawIcon(tool.icon, i32(rect[0]) + 7, i32(rect[1]) + 7, 1, rl.WHITE)
     }
+
+    {
+        draw_selected_color, draw_selected_wall_color: bool
+        #partial switch state.active_tool {
+        case .RECTANGLE:
+            {
+                draw_selected_color = true
+                if (rl.IsKeyDown(.LEFT_SHIFT)) {
+                    draw_selected_wall_color = true
+                }
+            }
+        case .COLOR_PICKER:
+            {
+                if state.previous_tool.? == .WALL {
+                    draw_selected_wall_color = true
+                } else {
+                    draw_selected_color = true
+                }
+            }
+        case .WALL:
+            {
+                draw_selected_wall_color = true
+            }
+        case .BRUSH, .CIRCLE, .EDIT_TOKEN, .CONE:
+            {
+                draw_selected_color = true
+            }
+        }
+
+
+        if draw_selected_color {
+            rect := get_tool_tool_menu_rect(state, &tool_menu, 8)
+            rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, state.selected_color.xyzw)
+        }
+        if draw_selected_wall_color {
+            rect := get_tool_tool_menu_rect(state, &tool_menu, 9)
+            rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, state.selected_wall_color.xyzw)
+        }
+    }
+
 
     // draw gathered circle movables
     if state.active_tool == .CIRCLE {
