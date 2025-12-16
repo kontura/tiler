@@ -1,11 +1,11 @@
 package tiler
 
-import "core:fmt"
 import "base:intrinsics"
-import "core:mem"
-import "core:time"
 import "base:runtime"
+import "core:fmt"
+import "core:mem"
 import "core:slice"
+import "core:time"
 
 // Each update to the data layout should be a value in this enum.
 // WARNING: do not change the order of these!
@@ -400,6 +400,12 @@ serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_locatio
         serialize(s, &action.tile_history, loc) or_return
     }
 
+    return true
+}
+
+serialize_versioned :: proc(s: ^Serializer, data: $T, loc := #caller_location) -> bool {
+    serialize(s, &s.version, loc) or_return
+    serialize(s, data, loc) or_return
     return true
 }
 

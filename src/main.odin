@@ -201,7 +201,7 @@ tile_map: ^TileMap
 load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
     data, ok := read_entire_file(path, context.temp_allocator)
     if ok {
-        actions := load_from_serialized(data, context.allocator)
+        actions := load_serialized_actions(data, context.allocator)
 
         if len(actions) > 0 {
             // undo and delete current actions
@@ -249,14 +249,6 @@ serialize_image :: proc(state: ^GameState, img_id: string, allocator: mem.Alloca
 save_image :: proc(state: ^GameState, img_id: string, img_data: []u8) {
     state.images[img_id] = rl.LoadImageFromMemory(".png", raw_data(img_data), i32(len(img_data)))
     state.textures[img_id] = rl.LoadTextureFromImage(state.images[img_id])
-}
-
-load_from_serialized :: proc(data: []byte, allocator: mem.Allocator) -> [dynamic]Action {
-    s: Serializer
-    serializer_init_reader(&s, data)
-    actions := make([dynamic]Action, allocator = allocator)
-    serialize(&s, &actions)
-    return actions
 }
 
 set_background :: proc(state: ^GameState, image_id: string) {

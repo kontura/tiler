@@ -308,8 +308,16 @@ serialize_actions :: proc(actions: []Action, allocator := context.allocator) -> 
     s: Serializer
     serializer_init_writer(&s, allocator = allocator)
     as := actions
-    serialize(&s, &as)
+    serialize_versioned(&s, &as)
     return s.data[:]
+}
+
+load_serialized_actions :: proc(data: []byte, allocator: mem.Allocator) -> [dynamic]Action {
+    s: Serializer
+    serializer_init_reader(&s, data)
+    actions := make([dynamic]Action, allocator = allocator)
+    serialize_versioned(&s, &actions)
+    return actions
 }
 
 finish_last_undo_history_action :: proc(state: ^GameState, action_state := ActionState.DONE) {
