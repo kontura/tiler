@@ -1335,7 +1335,13 @@ update :: proc() {
         offset += 30
         for peer, &peer_status in state.peers {
             peer_id := fmt.caprint(peer, allocator = context.temp_allocator)
-            rl.DrawText(peer_id, state.screen_width - 330, offset, 18, peer_status.webrtc == .CONNECTED ? rl.GREEN : rl.RED)
+            rl.DrawText(
+                peer_id,
+                state.screen_width - 330,
+                offset,
+                18,
+                peer_status.webrtc == .CONNECTED ? rl.GREEN : rl.RED,
+            )
             offset += 30
         }
         dt := rl.GetFrameTime()
