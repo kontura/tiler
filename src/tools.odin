@@ -213,6 +213,24 @@ compute_chance_of_darker :: proc(tile_map: ^TileMap, x, y: u32) -> f32 {
     return prob
 }
 
+offset_tile_color_by_chance :: proc(tile_map: ^TileMap, x, y: u32, color_offset: i32, action: ^Action) {
+    prob := compute_chance_of_darker(tile_map, x, y)
+    if rand.float32() < prob {
+        old_tile := get_tile(tile_map, {x, y})
+        new_color := old_tile.color.xyzw
+        new_color.x = add_u8_clamped(new_color.x, color_offset)
+        new_color.y = add_u8_clamped(new_color.y, color_offset)
+        new_color.z = add_u8_clamped(new_color.z, color_offset)
+
+        new_tile := tile_make_color_walls_colors(new_color, old_tile.walls, old_tile.wall_colors)
+        if action != nil {
+            orig_tile := tile_xor(&action.tile_history[{x, y}], &old_tile)
+            action.tile_history[{x, y}] = tile_xor(&orig_tile, &new_tile)
+        }
+        set_tile(tile_map, {x, y}, new_tile)
+    }
+}
+
 rectangle_tool :: proc(
     start_mouse_tile: TileMapPosition,
     end_mouse_tile: TileMapPosition,
@@ -304,23 +322,38 @@ rectangle_tool :: proc(
         ),
     )
     rand_i32 := -rand.int31_max(5) - 5
-    for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
-        for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
-            prob := compute_chance_of_darker(tile_map, x, y)
-            if rand.float32() < prob {
-                old_tile := get_tile(tile_map, {x, y})
-                new_color := old_tile.color.xyzw
-                new_color.x = add_u8_clamped(new_color.x, rand_i32)
-                new_color.y = add_u8_clamped(new_color.y, rand_i32)
-                new_color.z = add_u8_clamped(new_color.z, rand_i32)
+    // Since we compute chance of darker color using different neighbouring tiles
+    // we cannot loop row by row (the ending rows would never have growths of darker
+    // color), instead iterate in a spiral from the outside in.
+    top, bottom := start_tile.y, end_tile.y
+    left, right := start_tile.x, end_tile.x
+    for top <= bottom && left <= right {
+        // left → right
+        for col in left..=right {
+            offset_tile_color_by_chance(tile_map, col, top, rand_i32, action)
+        }
+        top += 1
 
-                new_tile := tile_make_color_walls_colors(new_color, old_tile.walls, old_tile.wall_colors)
-                if action != nil {
-                    orig_tile := tile_xor(&action.tile_history[{x, y}], &old_tile)
-                    action.tile_history[{x, y}] = tile_xor(&orig_tile, &new_tile)
-                }
-                set_tile(tile_map, {x, y}, new_tile)
+        // top → bottom
+        for row in top..=bottom {
+            offset_tile_color_by_chance(tile_map, right, row, rand_i32, action)
+        }
+        right -= 1
+
+        if top <= bottom {
+            // right → left
+            for col:=right; col >= left; col -= 1 {
+                offset_tile_color_by_chance(tile_map, col, bottom, rand_i32, action)
             }
+            bottom -= 1
+        }
+
+        if left <= right {
+            // bottom → top
+            for row := bottom; row >= top; row -= 1 {
+                offset_tile_color_by_chance(tile_map, left, row, rand_i32, action)
+            }
+            left += 1
         }
     }
 
