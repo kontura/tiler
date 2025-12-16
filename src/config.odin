@@ -18,6 +18,7 @@ ToolConfig :: struct {
     condition: Maybe(proc(_: ^GameState) -> bool),
     is_active: Maybe(proc(_: ^GameState) -> bool),
     action:    proc(_: ^GameState),
+    options:   []ToolConfig,
 }
 
 Config :: struct {
@@ -47,6 +48,14 @@ tool_is :: proc(state: ^GameState, tool: Tool) -> bool {
         return true
     } else {
         return false
+    }
+}
+
+toggle_tool_option :: proc(state: ^GameState, tool_option: ToolOtions) {
+    if tool_option in state.selected_options {
+        state.selected_options -= {tool_option}
+    } else {
+        state.selected_options += {tool_option}
     }
 }
 
@@ -147,6 +156,7 @@ cone_tool_config: ToolConfig = {
     nil,
     proc(state: ^GameState) -> bool {return state.active_tool == .CONE},
     proc(state: ^GameState) {state.active_tool = .CONE},
+    {},
 }
 paintbrush_tool_config: ToolConfig = {
     .ICON_PENCIL,
@@ -154,6 +164,7 @@ paintbrush_tool_config: ToolConfig = {
     nil,
     proc(state: ^GameState) -> bool {return state.active_tool == .BRUSH},
     proc(state: ^GameState) {state.active_tool = .BRUSH},
+    {},
 }
 rectangle_tool_config: ToolConfig = {
     .ICON_BOX,
@@ -161,6 +172,24 @@ rectangle_tool_config: ToolConfig = {
     nil,
     proc(state: ^GameState) -> bool {return state.active_tool == .RECTANGLE},
     proc(state: ^GameState) {state.active_tool = .RECTANGLE},
+    {
+        {
+            .ICON_BOX_GRID_BIG,
+            "Surround with walls",
+            proc(state: ^GameState) -> bool {return state.active_tool == .RECTANGLE},
+            proc(state: ^GameState) -> bool {return .ADD_WALLS in state.selected_options},
+            proc(state: ^GameState) {toggle_tool_option(state, .ADD_WALLS)},
+            {},
+        },
+        {
+            .ICON_DITHERING,
+            "Vary rectangle colors",
+            proc(state: ^GameState) -> bool {return state.active_tool == .RECTANGLE},
+            proc(state: ^GameState) -> bool {return .DITHERING in state.selected_options},
+            proc(state: ^GameState) {toggle_tool_option(state, .DITHERING)},
+            {},
+        },
+    },
 }
 circle_tool_config: ToolConfig = {
     .ICON_PLAYER_RECORD,
@@ -168,6 +197,7 @@ circle_tool_config: ToolConfig = {
     nil,
     proc(state: ^GameState) -> bool {return state.active_tool == .CIRCLE},
     proc(state: ^GameState) {state.active_tool = .CIRCLE},
+    {},
 }
 wall_tool_config: ToolConfig = {
     .ICON_BOX_GRID_BIG,
@@ -175,6 +205,7 @@ wall_tool_config: ToolConfig = {
     nil,
     proc(state: ^GameState) -> bool {return state.active_tool == .WALL},
     proc(state: ^GameState) {state.active_tool = .WALL},
+    {},
 }
 edit_token_tool_config: ToolConfig = {
     .ICON_PLAYER,
@@ -182,6 +213,7 @@ edit_token_tool_config: ToolConfig = {
     nil,
     proc(state: ^GameState) -> bool {return state.active_tool == .EDIT_TOKEN},
     proc(state: ^GameState) {state.active_tool = .EDIT_TOKEN},
+    {},
 }
 edit_bg_tool_config: ToolConfig = {
     .ICON_LAYERS,
@@ -189,6 +221,7 @@ edit_bg_tool_config: ToolConfig = {
     nil,
     proc(state: ^GameState) -> bool {return state.active_tool == .EDIT_BG},
     proc(state: ^GameState) {state.active_tool = .EDIT_BG},
+    {},
 }
 move_token_tool_config: ToolConfig = {
     .ICON_TARGET_MOVE,
@@ -196,6 +229,7 @@ move_token_tool_config: ToolConfig = {
     nil,
     proc(state: ^GameState) -> bool {return state.active_tool == .MOVE_TOKEN},
     proc(state: ^GameState) {state.active_tool = .MOVE_TOKEN},
+    {},
 }
 
 tool_menu: []ToolConfig = {
@@ -208,14 +242,19 @@ tool_menu: []ToolConfig = {
     edit_token_tool_config,
 }
 
-get_tool_tool_menu_rect :: proc(state: ^GameState, tool_menu: ^[]ToolConfig, index: int) -> [4]f32 {
+get_tool_tool_menu_rect :: proc(
+    state: ^GameState,
+    tool_menu: ^[]ToolConfig,
+    index: int,
+    option_index := -1,
+) -> [4]f32 {
     offset := 250 + 32 * index
-    return {f32(state.screen_width) - 30, f32(offset), 30, 30}
+    return {f32(int(state.screen_width) - 30 - 32 * (option_index + 1)), f32(offset), 30, 30}
 }
 
 config: []Config = {
-    {key_triggers = {{.LEFT, .PRESSED}}, bindings = {{.ICON_ARROW_LEFT, "Move to the left", nil, nil, move_left}}},
-    {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, "Move to the right", nil, nil, move_right}}},
+    {key_triggers = {{.LEFT, .PRESSED}}, bindings = {{.ICON_ARROW_LEFT, "Move to the left", nil, nil, move_left, {}}}},
+    {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, "Move to the right", nil, nil, move_right, {}}}},
     {
         key_triggers = {{.UP, .PRESSED}},
         bindings = {
@@ -233,6 +272,7 @@ config: []Config = {
                     state.selected_index -= 1
                     state.selected_index = math.max(state.selected_index, 0)
                 },
+                {},
             },
             {.ICON_ARROW_UP, "Move up", nil, nil, proc(state: ^GameState) {
                     if state.debug == .ACTIONS {
@@ -244,7 +284,7 @@ config: []Config = {
                     } else {
                         state.camera_pos.rel_tile.y -= 10
                     }
-                }},
+                }, {}},
         },
     },
     {
@@ -264,6 +304,7 @@ config: []Config = {
                     state.selected_index += 1
                     state.selected_index = math.min(state.selected_index, len(state.menu_items) - 1)
                 },
+                {},
             },
             {.ICON_ARROW_DOWN, "Move down", nil, nil, proc(state: ^GameState) {
                     if state.debug == .ACTIONS {
@@ -275,7 +316,7 @@ config: []Config = {
                     } else {
                         state.camera_pos.rel_tile.y += 10
                     }
-                }},
+                }, {}},
         },
     },
     {{{.P, .PRESSED}}, {paintbrush_tool_config}},
@@ -292,7 +333,7 @@ config: []Config = {
                     strings.write_string(&builder, s)
                     store_save(state, strings.to_string(builder))
                     show_message(state, "Saved!", 60)
-                }}}},
+                }, {}}}},
     {
         {{.D, .PRESSED}},
         {
@@ -324,6 +365,7 @@ config: []Config = {
 
                     }
                 },
+                {},
             },
         },
     },
@@ -339,7 +381,7 @@ config: []Config = {
                             break
                         }
                     }
-                }}}},
+                }, {}}}},
     {{{.A, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_REDO, "Redo all actions", nil, nil, proc(state: ^GameState) {
                     tokens_reset(state)
                     tilemap_clear(tile_map)
@@ -353,33 +395,33 @@ config: []Config = {
                         }
                         fmt.println("redone all")
                     }
-                }}}},
+                }, {}}}},
     {{{.LEFT_CONTROL, .PRESSED}}, {{.ICON_COLOR_PICKER, "Active colorpicker", nil, nil, proc(state: ^GameState) {
                     if state.previous_tool == nil {
                         state.previous_tool = state.active_tool
                         state.active_tool = .COLOR_PICKER
-                    }}}}},
+                    }}, {}}}},
     {{{.LEFT_CONTROL, .RELEASED}}, {{nil, "Deactive colorpicker", nil, nil, proc(state: ^GameState) {
                     if state.previous_tool != nil {
                         state.active_tool = state.previous_tool.?
                         state.previous_tool = nil
-                    }}}}},
+                    }}, {}}}},
     {{{.SLASH, .PRESSED}}, {{.ICON_HELP, "Active help", nil, nil, proc(state: ^GameState) {
                     if state.previous_tool == nil {
                         state.previous_tool = state.active_tool
                         state.active_tool = .HELP
-                    }}}}},
+                    }}, {}}}},
     {{{.SLASH, .RELEASED}}, {{nil, "Deactive help", nil, nil, proc(state: ^GameState) {
                     if state.previous_tool != nil {
                         state.active_tool = state.previous_tool.?
                         state.previous_tool = nil
-                    }}}}},
+                    }}, {}}}},
     {{{.O, .PRESSED}}, {cone_tool_config}},
     {{{.E, .PRESSED}}, {{nil, "Print all actions to console", nil, nil, proc(state: ^GameState) {
                     for &action, index in state.undo_history {
                         fmt.println(index, ". ", action)
                     }
-                }}}},
+                }, {}}}},
     {
         {{.J, .PRESSED}},
         {
@@ -389,6 +431,7 @@ config: []Config = {
                 proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
                 nil,
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {0, 1})},
+                {},
             },
         },
     },
@@ -401,6 +444,7 @@ config: []Config = {
                 proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
                 nil,
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {0, -1})},
+                {},
             },
         },
     },
@@ -413,6 +457,7 @@ config: []Config = {
                 proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
                 nil,
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {-1, 0})},
+                {},
             },
         },
     },
@@ -425,6 +470,7 @@ config: []Config = {
                 proc(state: ^GameState) -> bool {return tool_is(state, .MOVE_TOKEN)},
                 nil,
                 proc(state: ^GameState) {move_selected_tokens_by_delta(state, {1, 0})},
+                {},
             },
             {
                 .ICON_CURSOR_SCALE_LEFT,
@@ -432,6 +478,7 @@ config: []Config = {
                 nil,
                 nil,
                 proc(state: ^GameState) {state.active_tool = .LIGHT_SOURCE},
+                {},
             },
         },
     },
@@ -444,6 +491,7 @@ config: []Config = {
                 are_tokens_selected,
                 nil,
                 proc(state: ^GameState) {clear_selected_tokens(state)},
+                {},
             },
             {nil, "Main Menu", nil, nil, proc(state: ^GameState) {
                     if state.active_tool == .MAIN_MENU {
@@ -464,7 +512,7 @@ config: []Config = {
                             append(&state.menu_items, strings.clone(item.name))
                         }
                     }
-                }},
+                }, {}},
         },
     },
     {
@@ -494,12 +542,13 @@ config: []Config = {
                         }
                     }
                 },
+                {},
             },
         },
     },
     {
         {{.F, .PRESSED}},
-        {{nil, "Toggle offline state", nil, nil, proc(state: ^GameState) {state.offline = !state.offline}}},
+        {{nil, "Toggle offline state", nil, nil, proc(state: ^GameState) {state.offline = !state.offline}, {}}},
     },
     {{{.ENTER, .PRESSED}}, {{nil, "Confirm", nil, nil, proc(state: ^GameState) {
                     #partial switch state.active_tool {
@@ -574,5 +623,5 @@ config: []Config = {
                             }
                         }
                     }
-                }}}},
+                }, {}}}},
 }

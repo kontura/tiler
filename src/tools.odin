@@ -31,6 +31,13 @@ Tool :: enum {
     MAIN_MENU,
 }
 
+ToolOtions :: enum {
+    ADD_WALLS,
+    DITHERING,
+}
+
+ToolOptionsSet :: bit_set[ToolOtions]
+
 dist :: proc(p1: [2]$T, p2: [2]T) -> f32 {
     dx := f32(p2.x) - f32(p1.x)
     dx *= dx
@@ -237,6 +244,7 @@ rectangle_tool :: proc(
     selected_color: [4]u8,
     do_walls: bool,
     walls_color: [4]u8,
+    dithering: bool,
     tile_map: ^TileMap,
     action: ^Action,
 ) -> cstring {
@@ -253,6 +261,7 @@ rectangle_tool :: proc(
     action.color = selected_color
     action.walls = do_walls
     action.walls_color = walls_color
+    action.dithering = dithering
 
     for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
         for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
@@ -310,55 +319,57 @@ rectangle_tool :: proc(
     }
     set_dirty_for_all_lights(state)
 
-    // Waveform collapse - add patina around edges
-    // Ensure we always get the same collpase for the same
-    // start, end and color. This prevents flickering of the drawn
-    // region with new different solutions each frame.
-    rand.reset(
-        u64(
-            start_mouse_tile.abs_tile.x +
-            start_mouse_tile.abs_tile.y +
-            end_mouse_tile.abs_tile.x +
-            end_mouse_tile.abs_tile.y +
-            u32(selected_color.r) +
-            u32(selected_color.g) +
-            u32(selected_color.b) +
-            u32(selected_color.a),
-        ),
-    )
-    rand_i32 := -rand.int31_max(5) - 5
-    // Since we compute chance of darker color using different neighbouring tiles
-    // we cannot loop row by row (the ending rows would never have growths of darker
-    // color), instead iterate in a spiral from the outside in.
-    top, bottom := start_tile.y, end_tile.y
-    left, right := start_tile.x, end_tile.x
-    for top <= bottom && left <= right {
-        // left → right
-        for col in left..=right {
-            offset_tile_color_by_chance(tile_map, col, top, rand_i32, action)
-        }
-        top += 1
-
-        // top → bottom
-        for row in top..=bottom {
-            offset_tile_color_by_chance(tile_map, right, row, rand_i32, action)
-        }
-        right -= 1
-
-        if top <= bottom {
-            // right → left
-            for col:=right; col >= left; col -= 1 {
-                offset_tile_color_by_chance(tile_map, col, bottom, rand_i32, action)
+    if dithering {
+        // Waveform collapse - add patina around edges
+        // Ensure we always get the same collpase for the same
+        // start, end and color. This prevents flickering of the drawn
+        // region with new different solutions each frame.
+        rand.reset(
+            u64(
+                start_mouse_tile.abs_tile.x +
+                start_mouse_tile.abs_tile.y +
+                end_mouse_tile.abs_tile.x +
+                end_mouse_tile.abs_tile.y +
+                u32(selected_color.r) +
+                u32(selected_color.g) +
+                u32(selected_color.b) +
+                u32(selected_color.a),
+            ),
+        )
+        rand_i32 := -rand.int31_max(5) - 5
+        // Since we compute chance of darker color using different neighbouring tiles
+        // we cannot loop row by row (the ending rows would never have growths of darker
+        // color), instead iterate in a spiral from the outside in.
+        top, bottom := start_tile.y, end_tile.y
+        left, right := start_tile.x, end_tile.x
+        for top <= bottom && left <= right {
+            // left → right
+            for col in left ..= right {
+                offset_tile_color_by_chance(tile_map, col, top, rand_i32, action)
             }
-            bottom -= 1
-        }
+            top += 1
 
-        if left <= right {
-            // bottom → top
-            for row := bottom; row >= top; row -= 1 {
-                offset_tile_color_by_chance(tile_map, left, row, rand_i32, action)
+            // top → bottom
+            for row in top ..= bottom {
+                offset_tile_color_by_chance(tile_map, right, row, rand_i32, action)
             }
-            left += 1
+            right -= 1
+
+            if top <= bottom {
+                // right → left
+                for col := right; col >= left; col -= 1 {
+                    offset_tile_color_by_chance(tile_map, col, bottom, rand_i32, action)
+                }
+                bottom -= 1
+            }
+
+            if left <= right {
+                // bottom → top
+                for row := bottom; row >= top; row -= 1 {
+                    offset_tile_color_by_chance(tile_map, left, row, rand_i32, action)
+                }
+                left += 1
+            }
         }
     }
 

@@ -53,6 +53,7 @@ basic_rectangle_test :: proc(t: ^testing.T) {
         [4]u8{255, 0, 0, 255},
         false,
         [4]u8{255, 0, 0, 255},
+        false,
         &tile_map,
         &temp_action,
     )
@@ -302,7 +303,16 @@ merge_and_redo_actions_duplicate :: proc(t: ^testing.T) {
     action := make_action(.RECTANGLE)
     start_tile: TileMapPosition = {{0, 0}, {0, 0}}
     end_tile: TileMapPosition = {{2, 2}, {0, 0}}
-    rectangle_tool(start_tile, end_tile, [4]u8{255, 0, 0, 155}, false, [4]u8{255, 0, 0, 155}, &tile_map, &action)
+    rectangle_tool(
+        start_tile,
+        end_tile,
+        [4]u8{255, 0, 0, 155},
+        false,
+        [4]u8{255, 0, 0, 155},
+        false,
+        &tile_map,
+        &action,
+    )
 
     testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{185, 30, 30, 255})
     testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{185, 30, 30, 255})
@@ -333,7 +343,16 @@ merge_and_redo_actions_duplicate_with_different_hash :: proc(t: ^testing.T) {
     action.hash = 1
     start_tile: TileMapPosition = {{0, 0}, {0, 0}}
     end_tile: TileMapPosition = {{2, 2}, {0, 0}}
-    rectangle_tool(start_tile, end_tile, [4]u8{255, 0, 0, 155}, false, [4]u8{255, 0, 0, 155}, &tile_map, &action)
+    rectangle_tool(
+        start_tile,
+        end_tile,
+        [4]u8{255, 0, 0, 155},
+        false,
+        [4]u8{255, 0, 0, 155},
+        false,
+        &tile_map,
+        &action,
+    )
 
     testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{185, 30, 30, 255})
     testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{185, 30, 30, 255})

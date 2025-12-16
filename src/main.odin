@@ -41,6 +41,7 @@ GameState :: struct {
     draw_grid:              bool,
     draw_initiative:        bool,
     active_tool:            Tool,
+    selected_options:       ToolOptionsSet,
     previous_tool:          Maybe(Tool),
     tool_start_position:    Maybe([2]f32),
     temp_actions:           [dynamic]Action,
@@ -97,6 +98,7 @@ Widget :: enum {
     COLORBARALPHA,
     INITIATIVE,
     TOOLMENU,
+    TOOLMENU_OPTIONS,
 }
 
 draw_quad_ordered :: proc(v1, v2, v3, v4: [2]f32, color: [4]u8) {
@@ -369,6 +371,14 @@ update :: proc() {
         state.gui_rectangles[.COLORBARALPHA] = {f32(state.screen_width - 230), 215, 200, 20}
     }
     state.gui_rectangles[.TOOLMENU] = {f32(state.screen_width - 30), 250, 30, f32(32 * len(tool_menu))}
+    if state.active_tool == .RECTANGLE {
+        state.gui_rectangles[.TOOLMENU_OPTIONS] = {
+            f32(state.screen_width - 30 - 32 * i32(len(tool_menu[1].options))),
+            250 + 32,
+            f32(32 * len(tool_menu[1].options)),
+            30,
+        }
+    }
     if state.draw_initiative {
         state.gui_rectangles[.INITIATIVE] = {0, 0, 120, f32(state.screen_height)}
     }
@@ -416,7 +426,7 @@ update :: proc() {
     touch_count := rl.GetTouchPointCount()
 
 
-    if selected_widget != .TOOLMENU {
+    if selected_widget != .TOOLMENU && selected_widget != .TOOLMENU_OPTIONS {
         switch state.active_tool {
         case .LIGHT_SOURCE:
             {
@@ -476,10 +486,8 @@ update :: proc() {
             }
         case .RECTANGLE:
             {
-                walls := false
                 icon = .ICON_BOX
-                if rl.IsKeyDown(.LEFT_SHIFT) {
-                    walls = true
+                if .ADD_WALLS in state.selected_options {
                     icon = .ICON_BOX_GRID_BIG
                 }
                 if rl.IsMouseButtonDown(.LEFT) {
@@ -495,8 +503,9 @@ update :: proc() {
                         start_mouse_tile,
                         end_mouse_tile,
                         state.selected_color,
-                        walls,
+                        .ADD_WALLS in state.selected_options,
                         state.selected_wall_color,
+                        .DITHERING in state.selected_options,
                         tile_map,
                         temp_action,
                     )
@@ -514,8 +523,9 @@ update :: proc() {
                             start_mouse_tile,
                             end_mouse_tile,
                             state.selected_color,
-                            walls,
+                            .ADD_WALLS in state.selected_options,
                             state.selected_wall_color,
+                            .DITHERING in state.selected_options,
                             tile_map,
                             action,
                         )
@@ -1458,7 +1468,7 @@ update :: proc() {
                 bg_color = {255, 255, 255, 95}
             } else {
                 if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
-                    if rl.IsMouseButtonDown(.LEFT) {
+                    if rl.IsMouseButtonPressed(.LEFT) {
                         tool.action(state)
                     }
                     bg_color = {255, 0, 0, 95}
@@ -1467,6 +1477,38 @@ update :: proc() {
         }
         rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, bg_color.xyzw)
         rl.GuiDrawIcon(tool.icon, i32(rect[0]) + 7, i32(rect[1]) + 7, 1, rl.WHITE)
+
+        for &config, ii in tool.options {
+            rect = get_tool_tool_menu_rect(state, &tool_menu, i, ii)
+            bg_color: [4]u8 = {0, 0, 0, 95}
+            cond_proc, cond_ok := config.condition.?
+            if cond_ok {
+                if !cond_proc(state) {
+                    continue
+                }
+            }
+            is_active_proc, is_active_ok := config.is_active.?
+            if is_active_ok {
+                if is_active_proc(state) {
+                    bg_color = {255, 255, 255, 95}
+                    if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
+                        if rl.IsMouseButtonPressed(.LEFT) {
+                            config.action(state)
+                            bg_color = {255, 0, 0, 95}
+                        }
+                    }
+                } else {
+                    if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
+                        if rl.IsMouseButtonPressed(.LEFT) {
+                            config.action(state)
+                        }
+                        bg_color = {255, 0, 0, 95}
+                    }
+                }
+            }
+            rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, bg_color.xyzw)
+            rl.GuiDrawIcon(config.icon, i32(rect[0]) + 7, i32(rect[1]) + 7, 1, rl.WHITE)
+        }
     }
 
     {
@@ -1475,7 +1517,7 @@ update :: proc() {
         case .RECTANGLE:
             {
                 draw_selected_color = true
-                if (rl.IsKeyDown(.LEFT_SHIFT)) {
+                if .ADD_WALLS in state.selected_options {
                     draw_selected_wall_color = true
                 }
             }

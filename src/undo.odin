@@ -57,6 +57,7 @@ Action :: struct {
     authors_index:          u64,
     walls:                  bool,
     walls_color:            [4]u8,
+    dithering:               bool,
 
     // Actions that have already been reverted or are reverting
     // actions (reverts) cannot be reverted again.
@@ -227,6 +228,7 @@ duplicate_action :: proc(a: ^Action, with_tile_history := true, allocator := con
     action.token_id = a.token_id
     action.walls = a.walls
     action.walls_color = a.walls_color
+    action.dithering = a.dithering
     action.old_name = strings.clone(a.old_name, allocator = allocator)
     action.new_name = strings.clone(a.new_name, allocator = allocator)
     action.tile_history = make(map[[2]u32]Tile, allocator = allocator)
@@ -270,6 +272,7 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, mem.ptr_to_bytes(&action.author_id))
     sha2.update(&hash, mem.ptr_to_bytes(&action.walls))
     sha2.update(&hash, mem.ptr_to_bytes(&action.walls_color))
+    sha2.update(&hash, mem.ptr_to_bytes(&action.dithering))
 
     if action.type == .BRUSH || action.state == .REVERTS {
         tile_keys := make([dynamic][2]u32, allocator = context.temp_allocator)
@@ -394,6 +397,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     action.color,
                     action.walls,
                     action.walls_color,
+                    action.dithering,
                     tile_map,
                     action,
                 )
