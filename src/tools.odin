@@ -287,7 +287,22 @@ rectangle_tool :: proc(
     }
     set_dirty_for_all_lights(state)
 
-    // waveform collapse - add patina around edges
+    // Waveform collapse - add patina around edges
+    // Ensure we always get the same collpase for the same
+    // start, end and color. This prevents flickering of the drawn
+    // region with new different solutions each frame.
+    rand.reset(
+        u64(
+            start_mouse_tile.abs_tile.x +
+            start_mouse_tile.abs_tile.y +
+            end_mouse_tile.abs_tile.x +
+            end_mouse_tile.abs_tile.y +
+            u32(selected_color.r) +
+            u32(selected_color.g) +
+            u32(selected_color.b) +
+            u32(selected_color.a),
+        ),
+    )
     rand_i32 := -rand.int31_max(5) - 5
     for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
         for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
