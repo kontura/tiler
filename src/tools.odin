@@ -155,7 +155,9 @@ circle_tool :: proc(
 
     action.start = start_mouse_tile
     action.color = state.selected_color
-    action.radius = auto_cast max_dist_in_feet
+    action.walls = do_walls
+    action.walls_color = walls_color
+    action.dithering = dithering
 
     draw_tile_circle(
         tile_map,
@@ -211,6 +213,76 @@ draw_tile_circle :: proc(
                 )
                 action.tile_history[{x, y}] = tile_xor(&old_tile, &new_tile)
                 set_tile(tile_map, {x, y}, new_tile)
+            }
+        }
+    }
+
+    if do_walls {
+        for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
+            for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
+                temp_tile_pos: TileMapPosition = {{x, y}, {0, 0}}
+                dist := tile_distance(tile_map, temp_tile_pos, center)
+                if (radius > dist) {
+                    old_tile := get_tile(tile_map, {x, y})
+
+                    walls := old_tile.walls
+                    wall_colors := old_tile.wall_colors
+
+                    new_color := old_tile.color
+
+                    tile_plus_minus_y := get_tile(tile_map, {x, y - 1})
+                    if colors_roughly_match(tile_plus_minus_y.color, new_color) {
+                        walls -= {.TOP}
+                    }
+                    tile_plus_minus_x := get_tile(tile_map, {x - 1, y})
+                    if colors_roughly_match(tile_plus_minus_x.color, new_color) {
+                        walls -= {.LEFT}
+                    }
+
+                    tile_minus_one_x := get_tile(tile_map, {x - 1, y})
+                    if !colors_roughly_match(tile_minus_one_x.color, new_color) {
+                        wall_colors[.LEFT] = walls_color
+                        walls |= {.LEFT}
+                    }
+                    tile_minus_one_y := get_tile(tile_map, {x, y - 1})
+                    if !colors_roughly_match(tile_minus_one_y.color, new_color) {
+                        wall_colors[.TOP] = walls_color
+                        walls |= {.TOP}
+                    }
+
+                    tile_plus_one_y := get_tile(tile_map, {x, y + 1})
+                    if !colors_roughly_match(tile_plus_one_y.color, new_color) {
+                        tile_plus_one_y.wall_colors[.TOP] = walls_color
+                        tile_plus_one_y.walls |= {.TOP}
+                        o := get_tile(tile_map, {x, y + 1})
+                        action.tile_history[{x, y + 1}] = tile_xor(&o, &tile_plus_one_y)
+                        set_tile(tile_map, {x, y + 1}, tile_plus_one_y)
+                    }
+
+                    tile_plus_one_x := get_tile(tile_map, {x + 1, y})
+                    if !colors_roughly_match(tile_plus_one_x.color, new_color) {
+                        tile_plus_one_x.wall_colors[.LEFT] = walls_color
+                        tile_plus_one_x.walls |= {.LEFT}
+                        o := get_tile(tile_map, {x + 1, y})
+
+                        current_tile_from_history, ok := &action.tile_history[{x + 1, y}]
+                        // If this tile already has a change in this action (it can happen in last quadrant of a circle
+                        if ok {
+                            orig_tile := tile_xor(current_tile_from_history, &o)
+                            action.tile_history[{x + 1, y}] = tile_xor(&orig_tile, &tile_plus_one_x)
+                            set_tile(tile_map, {x + 1, y}, tile_plus_one_x)
+                        } else {
+                            action.tile_history[{x + 1, y}] = tile_xor(&o, &tile_plus_one_x)
+                            set_tile(tile_map, {x + 1, y}, tile_plus_one_x)
+                        }
+                    }
+
+                    new_tile := tile_make_color_walls_colors(new_color, walls, wall_colors)
+
+                    orig_tile := tile_xor(&action.tile_history[{x, y}], &old_tile)
+                    action.tile_history[{x, y}] = tile_xor(&orig_tile, &new_tile)
+                    set_tile(tile_map, {x, y}, new_tile)
+                }
             }
         }
     }
