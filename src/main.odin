@@ -579,7 +579,15 @@ update :: proc() {
                     } else {
                         append(&state.temp_actions, make_action(.CIRCLE, context.temp_allocator))
                         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                        tooltip = circle_tool(state, tile_map, mouse_pos, temp_action)
+                        tooltip = circle_tool(
+                            state,
+                            tile_map,
+                            mouse_pos,
+                            .ADD_WALLS in state.selected_options,
+                            state.selected_wall_color,
+                            .DITHERING in state.selected_options,
+                            temp_action,
+                        )
                     }
                 } else if rl.IsMouseButtonReleased(.LEFT) {
                     if selected_action_circle != nil {
@@ -595,7 +603,15 @@ update :: proc() {
                         //TODO(amatej): don't add the action if the circle has size 0
                         append(&state.undo_history, make_action(.CIRCLE))
                         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                        tooltip = circle_tool(state, tile_map, mouse_pos, action)
+                        tooltip = circle_tool(
+                            state,
+                            tile_map,
+                            mouse_pos,
+                            .ADD_WALLS in state.selected_options,
+                            state.selected_wall_color,
+                            .DITHERING in state.selected_options,
+                            action,
+                        )
                     }
                     state.needs_sync = true
                     finish_last_undo_history_action(state)

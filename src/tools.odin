@@ -127,7 +127,15 @@ wall_tool :: proc(tile_map: ^TileMap, start, end: TileMapPosition, color: [4]u8,
 }
 
 //TODO(amatej): circle tool doesn't work after looping tile_chunks
-circle_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
+circle_tool :: proc(
+    state: ^GameState,
+    tile_map: ^TileMap,
+    current_pos: [2]f32,
+    do_walls: bool,
+    walls_color: [4]u8,
+    dithering: bool,
+    action: ^Action,
+) -> cstring {
     start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
 
     half := tile_map.tile_side_in_feet / 2
@@ -149,7 +157,16 @@ circle_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, 
     action.color = state.selected_color
     action.radius = auto_cast max_dist_in_feet
 
-    draw_tile_circle(tile_map, start_mouse_tile, max_dist_in_feet, state.selected_color, action)
+    draw_tile_circle(
+        tile_map,
+        start_mouse_tile,
+        max_dist_in_feet,
+        state.selected_color,
+        do_walls,
+        walls_color,
+        dithering,
+        action,
+    )
 
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(
@@ -165,7 +182,16 @@ circle_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, 
 }
 
 // radius is in feet
-draw_tile_circle :: proc(tile_map: ^TileMap, center: TileMapPosition, radius: f32, color: [4]u8, action: ^Action) {
+draw_tile_circle :: proc(
+    tile_map: ^TileMap,
+    center: TileMapPosition,
+    radius: f32,
+    color: [4]u8,
+    do_walls: bool,
+    walls_color: [4]u8,
+    dithering: bool,
+    action: ^Action,
+) {
     max_dist_up := u32(math.ceil_f32(radius / tile_map.tile_side_in_feet)) + 2
 
     start_tile: [2]u32 = {center.abs_tile.x - max_dist_up, center.abs_tile.y - max_dist_up}
@@ -185,6 +211,60 @@ draw_tile_circle :: proc(tile_map: ^TileMap, center: TileMapPosition, radius: f3
                 )
                 action.tile_history[{x, y}] = tile_xor(&old_tile, &new_tile)
                 set_tile(tile_map, {x, y}, new_tile)
+            }
+        }
+    }
+
+    if dithering {
+        // Waveform collapse - add patina around edges
+        // Ensure we always get the same collpase for the same
+        // start, end and color. This prevents flickering of the drawn
+        // region with new different solutions each frame.
+        rand.reset(
+            u64(
+                start_tile.x +
+                start_tile.y +
+                end_tile.x +
+                end_tile.y +
+                u32(color.r) +
+                u32(color.g) +
+                u32(color.b) +
+                u32(color.a),
+            ),
+        )
+        rand_i32 := -rand.int31_max(5) - 5
+        // Since we compute chance of darker color using different neighbouring tiles
+        // we cannot loop row by row (the ending rows would never have growths of darker
+        // color), instead iterate in a spiral from the outside in.
+        top, bottom := start_tile.y, end_tile.y
+        left, right := start_tile.x, end_tile.x
+        for top <= bottom && left <= right {
+            // left → right
+            for col in left ..= right {
+                offset_tile_color_by_chance_circle(tile_map, col, top, rand_i32, center, radius, action)
+            }
+            top += 1
+
+            // top → bottom
+            for row in top ..= bottom {
+                offset_tile_color_by_chance_circle(tile_map, right, row, rand_i32, center, radius, action)
+            }
+            right -= 1
+
+            if top <= bottom {
+                // right → left
+                for col := right; col >= left; col -= 1 {
+                    offset_tile_color_by_chance_circle(tile_map, col, bottom, rand_i32, center, radius, action)
+                }
+                bottom -= 1
+            }
+
+            if left <= right {
+                // bottom → top
+                for row := bottom; row >= top; row -= 1 {
+                    offset_tile_color_by_chance_circle(tile_map, left, row, rand_i32, center, radius, action)
+                }
+                left += 1
             }
         }
     }
@@ -218,6 +298,22 @@ compute_chance_of_darker :: proc(tile_map: ^TileMap, x, y: u32) -> f32 {
     }
 
     return prob
+}
+
+offset_tile_color_by_chance_circle :: proc(
+    tile_map: ^TileMap,
+    x, y: u32,
+    color_offset: i32,
+    center: TileMapPosition,
+    radius: f32,
+    action: ^Action,
+) {
+    temp_tile_pos: TileMapPosition = {{x, y}, {0, 0}}
+
+    dist := tile_distance(tile_map, temp_tile_pos, center)
+    if (radius > dist) {
+        offset_tile_color_by_chance(tile_map, x, y, color_offset, action)
+    }
 }
 
 offset_tile_color_by_chance :: proc(tile_map: ^TileMap, x, y: u32, color_offset: i32, action: ^Action) {
@@ -520,7 +616,7 @@ move_token_tool :: proc(
             // Grow the raidus by the size of the token (-1 because size 1 is the default)
             radius += (f32(token.size - 1) * half)
         }
-        draw_tile_circle(tile_map, pos, radius, GREEN_HIGHLIGH, temp_action)
+        draw_tile_circle(tile_map, pos, radius, GREEN_HIGHLIGH, false, 0, false, temp_action)
         token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token.position.abs_tile, temp_action)
     } else {
         token.moved = 0

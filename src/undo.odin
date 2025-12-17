@@ -57,7 +57,7 @@ Action :: struct {
     authors_index:          u64,
     walls:                  bool,
     walls_color:            [4]u8,
-    dithering:               bool,
+    dithering:              bool,
 
     // Actions that have already been reverted or are reverting
     // actions (reverts) cannot be reverted again.
@@ -411,7 +411,16 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
                 }
             } else {
-                draw_tile_circle(tile_map, action.start, auto_cast action.radius, action.color, action)
+                draw_tile_circle(
+                    tile_map,
+                    action.start,
+                    auto_cast action.radius,
+                    action.color,
+                    action.walls,
+                    action.walls_color,
+                    action.dithering,
+                    action,
+                )
             }
         }
     case .CONE:
