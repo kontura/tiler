@@ -352,6 +352,7 @@ delete_action :: proc(action: ^Action) {
 }
 
 revert_action :: proc(action: ^Action, allocator := context.allocator) -> Action {
+    //TODO(amatej): It might be better to add a switch here
     reverted := duplicate_action(action, true, allocator)
     // Rectangle/Wall is always drawn from start to end, if we swap it the
     // rectangle_tool will swap them back which could lead to different
