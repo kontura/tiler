@@ -481,7 +481,7 @@ update :: proc() {
 
         draw_selected_color, draw_selected_wall_color: bool
         #partial switch state.active_tool {
-        case .RECTANGLE:
+        case .RECTANGLE, .CIRCLE:
             {
                 draw_selected_color = true
                 if .ADD_WALLS in state.selected_options {
@@ -500,7 +500,7 @@ update :: proc() {
             {
                 draw_selected_wall_color = true
             }
-        case .BRUSH, .CIRCLE, .EDIT_TOKEN, .CONE:
+        case .BRUSH, .EDIT_TOKEN, .CONE:
             {
                 draw_selected_color = true
             }
