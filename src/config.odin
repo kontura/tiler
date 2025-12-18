@@ -176,15 +176,15 @@ rectangle_tool_config: ToolConfig = {
         {
             .ICON_BOX_GRID_BIG,
             "Surround with walls",
-            proc(state: ^GameState) -> bool {return state.active_tool == .RECTANGLE},
+            proc(state: ^GameState) -> bool {return state.active_tool == .RECTANGLE || state.active_tool == .CIRCLE},
             proc(state: ^GameState) -> bool {return .ADD_WALLS in state.selected_options},
             proc(state: ^GameState) {toggle_tool_option(state, .ADD_WALLS)},
             {},
         },
         {
             .ICON_DITHERING,
-            "Vary rectangle colors",
-            proc(state: ^GameState) -> bool {return state.active_tool == .RECTANGLE},
+            "Color dithering",
+            proc(state: ^GameState) -> bool {return state.active_tool == .RECTANGLE || state.active_tool == .CIRCLE},
             proc(state: ^GameState) -> bool {return .DITHERING in state.selected_options},
             proc(state: ^GameState) {toggle_tool_option(state, .DITHERING)},
             {},
@@ -232,7 +232,7 @@ move_token_tool_config: ToolConfig = {
     {},
 }
 
-tool_menu: []ToolConfig = {
+config_tool_menu: []ToolConfig = {
     move_token_tool_config,
     rectangle_tool_config,
     circle_tool_config,

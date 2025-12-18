@@ -45,7 +45,6 @@ GameState :: struct {
     previous_tool:          Maybe(Tool),
     tool_start_position:    Maybe([2]f32),
     temp_actions:           [dynamic]Action,
-    key_consumed:           bool,
     needs_sync:             bool,
     needs_images:           [dynamic]string,
     mobile:                 bool,
@@ -65,7 +64,6 @@ GameState :: struct {
     // permanent state
     textures:               map[string]rl.Texture2D,
     images:                 map[string]rl.Image,
-    gui_rectangles:         map[Widget]rl.Rectangle,
     done_circle_actions:    [dynamic]int,
 
     //TODO(amatej): check if the tool actually does any color change before recoding
@@ -89,6 +87,9 @@ GameState :: struct {
     // network
     socket_ready:           bool,
     peers:                  map[u64]PeerState,
+
+    // UI
+    root:                   ^UIWidget,
 }
 
 Widget :: enum {
@@ -365,26 +366,9 @@ update :: proc() {
         set_dirty_for_all_lights(state)
     }
 
-    if state.active_tool == .COLOR_PICKER {
-        state.gui_rectangles[.COLORPICKER] = {f32(state.screen_width - 230), 10, 200, 200}
-        state.gui_rectangles[.COLORBARHUE] = {f32(state.screen_width - 30), 5, 30, 205}
-        state.gui_rectangles[.COLORBARALPHA] = {f32(state.screen_width - 230), 215, 200, 20}
-    }
-    state.gui_rectangles[.TOOLMENU] = {f32(state.screen_width - 30), 250, 30, f32(32 * len(tool_menu))}
-    if state.active_tool == .RECTANGLE {
-        state.gui_rectangles[.TOOLMENU_OPTIONS] = {
-            f32(state.screen_width - 30 - 32 * i32(len(tool_menu[1].options))),
-            250 + 32,
-            f32(32 * len(tool_menu[1].options)),
-            30,
-        }
-    }
-    if state.draw_initiative {
-        state.gui_rectangles[.INITIATIVE] = {0, 0, 120, f32(state.screen_height)}
-    }
-
+    mouse_pos: [2]f32 = rl.GetMousePosition()
     state.temp_actions = make([dynamic]Action, context.temp_allocator)
-    state.key_consumed = false
+    key_consumed := false
 
     //TODO(amatej): somehow use the icons configured from config.odin,
     //              but it is complicated by colorpicker
@@ -392,17 +376,9 @@ update :: proc() {
     //TODO(amatej): convert to temp action
     highligh_current_tile := false
     highligh_current_tile_intersection := false
-    mouse_pos: [2]f32 = rl.GetMousePosition()
 
     mouse_tile_pos: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
     tooltip: Maybe(cstring) = nil
-
-    selected_widget: Widget = .MAP
-    for widget, &rec in state.gui_rectangles {
-        if (rl.CheckCollisionPointRec(mouse_pos, rec)) {
-            selected_widget = widget
-        }
-    }
 
     particles_update(state, tile_map, rl.GetFrameTime())
 
@@ -426,7 +402,126 @@ update :: proc() {
     touch_count := rl.GetTouchPointCount()
 
 
-    if selected_widget != .TOOLMENU && selected_widget != .TOOLMENU_OPTIONS {
+    // Build UI widgets
+    {
+        state.root = ui_make_widget(nil, {.HOVERABLE}, "tile_map")
+        state.root.rect = {0, 0, f32(state.screen_width), f32(state.screen_height)}
+
+        if state.draw_initiative {
+            initiative_widget := ui_make_widget(state.root, {.DRAWBACKGROUNDGRADIENT}, "initiative")
+            initiative_widget.rect = {0, 0, 120, f32(state.screen_height)}
+            if ui_widget_interaction(initiative_widget).hovering && state.active_tool == .EDIT_TOKEN {
+                if rl.IsMouseButtonDown(.LEFT) {
+                    append(&state.temp_actions, make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator))
+                    temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+                    move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, temp_action)
+                } else if rl.IsMouseButtonReleased(.LEFT) {
+                    if (state.tool_start_position != nil) {
+                        append(&state.undo_history, make_action(.EDIT_TOKEN_INITIATIVE))
+                        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                        move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, action)
+                        state.needs_sync = true
+                        finish_last_undo_history_action(state)
+                    }
+                }
+                icon = .ICON_SHUFFLE
+            }
+
+        }
+
+        if state.active_tool == .COLOR_PICKER {
+            //TODO(amatej): remove this hack
+            target_color: ^[4]u8
+            if state.previous_tool.? == .WALL {
+                target_color = &state.selected_wall_color
+            } else {
+                target_color = &state.selected_color
+            }
+            target_color^ = rl.ColorAlpha(target_color^.xyzw, state.selected_alpha).xyzw
+
+            color_picker_widget := ui_make_widget(state.root, {.DRAWCOLORPICKER}, "colorpicker")
+            color_picker_widget.rect = {f32(state.screen_width - 230), 10, 200, 200}
+            color_picker_widget.colorpicker_color = target_color
+
+            color_bar_hue_widget := ui_make_widget(state.root, {}, "colorbar_hue")
+            color_bar_hue_widget.rect = {f32(state.screen_width - 30), 5, 30, 205}
+
+            color_bar_alpha_widget := ui_make_widget(state.root, {.DRAWCOLORBARALPHA}, "colorbar_alpha")
+            color_bar_alpha_widget.rect = {f32(state.screen_width - 230), 215, 200, 20}
+            color_bar_alpha_widget.colorpicker_alpha = &state.selected_alpha
+        }
+
+        tool_menu_widget := ui_make_widget(state.root, {}, "tool_menu")
+        for &tool, i in config_tool_menu {
+            rect := get_tool_tool_menu_rect(state, &config_tool_menu, i)
+            r: rl.Rectangle = {rect.x, rect.y, rect.z, rect.w}
+            is_active_proc, is_active_ok := tool.is_active.?
+            if is_active_ok {
+                if ui_radio_button(tool_menu_widget, "tool menu button", is_active_proc(state), tool.icon, r).clicked {
+                    tool.action(state)
+                }
+            }
+            for &config, ii in tool.options {
+                rect = get_tool_tool_menu_rect(state, &config_tool_menu, i, ii)
+                cond_proc, cond_ok := config.condition.?
+                r = {rect.x, rect.y, rect.z, rect.w}
+                if cond_ok {
+                    if !cond_proc(state) {
+                        continue
+                    }
+                }
+                is_active_proc, is_active_ok := config.is_active.?
+                if is_active_ok {
+                    if ui_radio_button(tool_menu_widget, "tool menu button", is_active_proc(state), config.icon, r).clicked {
+                        config.action(state)
+                    }
+                }
+            }
+        }
+
+        draw_selected_color, draw_selected_wall_color: bool
+        #partial switch state.active_tool {
+        case .RECTANGLE:
+            {
+                draw_selected_color = true
+                if .ADD_WALLS in state.selected_options {
+                    draw_selected_wall_color = true
+                }
+            }
+        case .COLOR_PICKER:
+            {
+                if state.previous_tool.? == .WALL {
+                    draw_selected_wall_color = true
+                } else {
+                    draw_selected_color = true
+                }
+            }
+        case .WALL:
+            {
+                draw_selected_wall_color = true
+            }
+        case .BRUSH, .CIRCLE, .EDIT_TOKEN, .CONE:
+            {
+                draw_selected_color = true
+            }
+        }
+
+
+        if draw_selected_color {
+            selected_color_widget := ui_make_widget(state.root, {.DRAWBACKGROUND}, "selected_color")
+            selected_color_widget.background_color = state.selected_color
+            rect := get_tool_tool_menu_rect(state, &config_tool_menu, 8)
+            selected_color_widget.rect = {rect[0], rect[1], rect[2], rect[3]}
+        }
+        if draw_selected_wall_color {
+            selected_wall_color_widget := ui_make_widget(state.root, {.DRAWBACKGROUND}, "selected_wall_color")
+            selected_wall_color_widget.background_color = state.selected_wall_color
+            rect := get_tool_tool_menu_rect(state, &config_tool_menu, 9)
+            selected_wall_color_widget.rect = {rect[0], rect[1], rect[2], rect[3]}
+        }
+    }
+
+    if ui_widget_interaction(state.root).hovering {
         switch state.active_tool {
         case .LIGHT_SOURCE:
             {
@@ -438,31 +533,27 @@ update :: proc() {
                     state.light.radius -= 1
                     state.light.dirty = true
                 }
-                if selected_widget == .MAP {
-                    if rl.IsMouseButtonDown(.LEFT) {
-                        state.light_pos = screen_coord_to_tile_map(mouse_pos, state, tile_map)
-                        state.light.dirty = true
-                    }
+                if rl.IsMouseButtonDown(.LEFT) {
+                    state.light_pos = screen_coord_to_tile_map(mouse_pos, state, tile_map)
+                    state.light.dirty = true
                 }
                 icon = .ICON_CURSOR_SCALE_LEFT
             }
         case .BRUSH:
             {
-                if selected_widget == .MAP {
-                    if rl.IsMouseButtonPressed(.LEFT) {
-                        append(&state.undo_history, make_action(.BRUSH))
-                    } else if rl.IsMouseButtonDown(.LEFT) {
-                        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                        if (!(mouse_tile_pos.abs_tile in action.tile_history)) {
-                            old_tile := get_tile(tile_map, mouse_tile_pos.abs_tile)
-                            new_tile := old_tile
-                            new_tile.color = state.selected_color
-                            action.tile_history[mouse_tile_pos.abs_tile] = tile_xor(&old_tile, &new_tile)
-                            set_tile(tile_map, mouse_tile_pos.abs_tile, new_tile)
-                        }
-                    } else if rl.IsMouseButtonReleased(.LEFT) {
-                        finish_last_undo_history_action(state)
+                if rl.IsMouseButtonPressed(.LEFT) {
+                    append(&state.undo_history, make_action(.BRUSH))
+                } else if rl.IsMouseButtonDown(.LEFT) {
+                    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                    if (!(mouse_tile_pos.abs_tile in action.tile_history)) {
+                        old_tile := get_tile(tile_map, mouse_tile_pos.abs_tile)
+                        new_tile := old_tile
+                        new_tile.color = state.selected_color
+                        action.tile_history[mouse_tile_pos.abs_tile] = tile_xor(&old_tile, &new_tile)
+                        set_tile(tile_map, mouse_tile_pos.abs_tile, new_tile)
                     }
+                } else if rl.IsMouseButtonReleased(.LEFT) {
+                    finish_last_undo_history_action(state)
                 }
                 icon = .ICON_PENCIL
                 highligh_current_tile = true
@@ -674,28 +765,26 @@ update :: proc() {
         case .COLOR_PICKER:
             {
                 picked_color: Maybe([4]u8)
-                if selected_widget == .MAP {
-                    if rl.IsMouseButtonPressed(.LEFT) {
-                        token := find_token_at_screen(tile_map, state, mouse_pos)
-                        if token != nil {
-                            picked_color = token.color
-                        } else {
-                            mouse_tile: Tile = get_tile(tile_map, mouse_tile_pos.abs_tile)
-                            picked_color = mouse_tile.color
-                        }
+                if rl.IsMouseButtonPressed(.LEFT) {
+                    token := find_token_at_screen(tile_map, state, mouse_pos)
+                    if token != nil {
+                        picked_color = token.color
+                    } else {
+                        mouse_tile: Tile = get_tile(tile_map, mouse_tile_pos.abs_tile)
+                        picked_color = mouse_tile.color
                     }
-
-                    c, ok := picked_color.?
-                    if ok {
-                        if state.previous_tool.? == .WALL {
-                            state.selected_wall_color = c
-                        } else {
-                            state.selected_color = c
-                        }
-                    }
-
-                    icon = .ICON_COLOR_PICKER
                 }
+
+                c, ok := picked_color.?
+                if ok {
+                    if state.previous_tool.? == .WALL {
+                        state.selected_wall_color = c
+                    } else {
+                        state.selected_color = c
+                    }
+                }
+
+                icon = .ICON_COLOR_PICKER
             }
         case .WALL:
             {
@@ -742,158 +831,136 @@ update :: proc() {
             }
         case .EDIT_TOKEN:
             {
-                #partial switch selected_widget {
-                case .MAP:
-                    {
-                        token: ^Token = nil
-                        if len(state.selected_tokens) > 0 {
-                            token = &state.tokens[state.selected_tokens[0]]
-                        }
-                        if token != nil && !rl.IsKeyPressed(.TAB) {
-                            key := rl.GetKeyPressed()
-                            // Trigger only once for each press
-                            if rl.IsKeyPressed(key) {
-                                if key == .DELETE {
-                                    append(&state.undo_history, make_action(.EDIT_TOKEN_LIFE))
-                                    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                    token_kill(state, tile_map, token, action)
-                                    clear_selected_tokens(state)
-                                    state.needs_sync = true
-                                    finish_last_undo_history_action(state)
-                                    set_dirty_for_all_lights(state)
-                                } else {
-                                    if rl.IsKeyDown(.BACKSPACE) {
-                                        key = .BACKSPACE
-                                    }
-                                    byte: u8 = u8(key)
-                                    if byte != 0 {
-                                        builder: strings.Builder
-                                        strings.write_string(&builder, token.name)
-                                        #partial switch key {
-                                        case .MINUS:
-                                            {
-                                                if token.size > 1 {
-                                                    token.size -= 1
-                                                    append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
-                                                    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                                    action.token_id = token.id
-                                                    action.token_size = -1
-                                                    finish_last_undo_history_action(state)
-                                                    state.needs_sync = true
-                                                }
-                                            }
-                                        case .EQUAL:
-                                            {
-                                                if token.size < 10 &&
-                                                   (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
-                                                    token.size += 1
-                                                    append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
-                                                    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                                    action.token_id = token.id
-                                                    action.token_size = 1
-                                                    finish_last_undo_history_action(state)
-                                                    //TODO(amatej): I could set needs_sync only after deselecting
-                                                    // the EDIT token (and if there is some new actions?)
-                                                    state.needs_sync = true
-                                                }
-                                            }
-                                        case .RIGHT_SHIFT, .LEFT_SHIFT:
-                                            {
-                                            }
-                                        case:
-                                            if key == .BACKSPACE {
-                                                strings.pop_rune(&builder)
-                                            } else {
-                                                strings.write_byte(&builder, byte)
-                                            }
-                                            append(&state.undo_history, make_action(.EDIT_TOKEN_NAME))
+                token: ^Token = nil
+                if len(state.selected_tokens) > 0 {
+                    token = &state.tokens[state.selected_tokens[0]]
+                }
+                if token != nil && !rl.IsKeyPressed(.TAB) {
+                    key := rl.GetKeyPressed()
+                    // Trigger only once for each press
+                    if rl.IsKeyPressed(key) {
+                        if key == .DELETE {
+                            append(&state.undo_history, make_action(.EDIT_TOKEN_LIFE))
+                            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                            token_kill(state, tile_map, token, action)
+                            clear_selected_tokens(state)
+                            state.needs_sync = true
+                            finish_last_undo_history_action(state)
+                            set_dirty_for_all_lights(state)
+                        } else {
+                            if rl.IsKeyDown(.BACKSPACE) {
+                                key = .BACKSPACE
+                            }
+                            byte: u8 = u8(key)
+                            if byte != 0 {
+                                builder: strings.Builder
+                                strings.write_string(&builder, token.name)
+                                #partial switch key {
+                                case .MINUS:
+                                    {
+                                        if token.size > 1 {
+                                            token.size -= 1
+                                            append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
                                             action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                             action.token_id = token.id
-                                            action.old_name = strings.clone(token.name)
-                                            action.new_name = strings.clone(strings.to_string(builder))
+                                            action.token_size = -1
                                             finish_last_undo_history_action(state)
-
-                                            delete(token.name)
-                                            token.name = strings.to_string(builder)
-
-                                            state.key_consumed = true
-                                            set_texture_based_on_name(state, token)
+                                            state.needs_sync = true
                                         }
-
                                     }
-                                }
-                            }
-                        } else if rl.IsMouseButtonPressed(.LEFT) {
-                            token := find_token_at_screen(tile_map, state, mouse_pos)
-                            if token != nil {
-                                append(&state.selected_tokens, token.id)
-                            } else if rl.IsKeyDown(.LEFT_SHIFT) {
-                                pos_offset: u32 = 0
-                                for name in PLAYERS {
-                                    append(&state.undo_history, make_action(.EDIT_TOKEN_LIFE))
+                                case .EQUAL:
+                                    {
+                                        if token.size < 10 &&
+                                           (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
+                                            token.size += 1
+                                            append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
+                                            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                                            action.token_id = token.id
+                                            action.token_size = 1
+                                            finish_last_undo_history_action(state)
+                                            //TODO(amatej): I could set needs_sync only after deselecting
+                                            // the EDIT token (and if there is some new actions?)
+                                            state.needs_sync = true
+                                        }
+                                    }
+                                case .RIGHT_SHIFT, .LEFT_SHIFT:
+                                    {
+                                    }
+                                case:
+                                    if key == .BACKSPACE {
+                                        strings.pop_rune(&builder)
+                                    } else {
+                                        strings.write_byte(&builder, byte)
+                                    }
+                                    append(&state.undo_history, make_action(.EDIT_TOKEN_NAME))
                                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                    token_pos := mouse_tile_pos
-                                    token_pos.rel_tile = {0, 0}
-                                    token_pos.abs_tile.y += pos_offset
-
-                                    token_id := token_spawn(state, action, token_pos, state.selected_color, name)
-                                    new_token: ^Token = &state.tokens[token_id]
-                                    new_token.light = LightInfo(
-                                        {
-                                            rl.LoadRenderTexture(state.screen_width, state.screen_height),
-                                            TOKEN_DEFAULT_LIGHT_RADIUS,
-                                            true,
-                                        },
-                                    )
-                                    pos_offset += 2
+                                    action.token_id = token.id
+                                    action.old_name = strings.clone(token.name)
+                                    action.new_name = strings.clone(strings.to_string(builder))
                                     finish_last_undo_history_action(state)
-                                    set_dirty_for_all_lights(state)
+
+                                    delete(token.name)
+                                    token.name = strings.to_string(builder)
+
+                                    key_consumed = true
+                                    set_texture_based_on_name(state, token)
                                 }
-                                state.needs_sync = true
-                            } else {
-                                action := make_action(.EDIT_TOKEN_LIFE)
-                                token_pos := mouse_tile_pos
-                                token_pos.rel_tile = {0, 0}
-                                token_spawn(state, &action, token_pos, state.selected_color)
-                                append(&state.undo_history, action)
-                                finish_last_undo_history_action(state)
-                                set_dirty_for_all_lights(state)
+
                             }
-                        } else {
-                            c := state.selected_color
-                            c.a = 90
-                            token, ok := &state.tokens[0]
-                            if ok {
-                                token.alive = true
-                                token.position = mouse_tile_pos
-                                token.color = c
-                            }
-                            append(&state.temp_actions, make_action(.EDIT_TOKEN_LIFE, context.temp_allocator))
-                            temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                            temp_action.token_id = 0
-                            temp_action.token_life = true
+                        }
+                    }
+                } else if rl.IsMouseButtonPressed(.LEFT) {
+                    token := find_token_at_screen(tile_map, state, mouse_pos)
+                    if token != nil {
+                        append(&state.selected_tokens, token.id)
+                    } else if rl.IsKeyDown(.LEFT_SHIFT) {
+                        pos_offset: u32 = 0
+                        for name in PLAYERS {
+                            append(&state.undo_history, make_action(.EDIT_TOKEN_LIFE))
+                            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                            token_pos := mouse_tile_pos
+                            token_pos.rel_tile = {0, 0}
+                            token_pos.abs_tile.y += pos_offset
+
+                            token_id := token_spawn(state, action, token_pos, state.selected_color, name)
+                            new_token: ^Token = &state.tokens[token_id]
+                            new_token.light = LightInfo(
+                                {
+                                    rl.LoadRenderTexture(state.screen_width, state.screen_height),
+                                    TOKEN_DEFAULT_LIGHT_RADIUS,
+                                    true,
+                                },
+                            )
+                            pos_offset += 2
+                            finish_last_undo_history_action(state)
                             set_dirty_for_all_lights(state)
                         }
-                        icon = .ICON_PLAYER
+                        state.needs_sync = true
+                    } else {
+                        action := make_action(.EDIT_TOKEN_LIFE)
+                        token_pos := mouse_tile_pos
+                        token_pos.rel_tile = {0, 0}
+                        token_spawn(state, &action, token_pos, state.selected_color)
+                        append(&state.undo_history, action)
+                        finish_last_undo_history_action(state)
+                        set_dirty_for_all_lights(state)
                     }
-                case .INITIATIVE:
-                    {
-                        if rl.IsMouseButtonDown(.LEFT) {
-                            append(&state.temp_actions, make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator))
-                            temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                            move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, temp_action)
-                        } else if rl.IsMouseButtonReleased(.LEFT) {
-                            if (state.tool_start_position != nil) {
-                                append(&state.undo_history, make_action(.EDIT_TOKEN_INITIATIVE))
-                                action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, action)
-                                state.needs_sync = true
-                                finish_last_undo_history_action(state)
-                            }
-                        }
-                        icon = .ICON_SHUFFLE
+                } else {
+                    c := state.selected_color
+                    c.a = 90
+                    token, ok := &state.tokens[0]
+                    if ok {
+                        token.alive = true
+                        token.position = mouse_tile_pos
+                        token.color = c
                     }
+                    append(&state.temp_actions, make_action(.EDIT_TOKEN_LIFE, context.temp_allocator))
+                    temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+                    temp_action.token_id = 0
+                    temp_action.token_life = true
+                    set_dirty_for_all_lights(state)
                 }
+                icon = .ICON_PLAYER
             }
         case .TOUCH_MOVE:
             {
@@ -964,7 +1031,7 @@ update :: proc() {
                             strings.pop_rune(&builder)
                             delete(state.menu_items[0])
                             state.menu_items[0] = strings.to_string(builder)
-                            state.key_consumed = true
+                            key_consumed = true
                         case .RIGHT_SHIFT, .LEFT_SHIFT, .ENTER, .ESCAPE:
                             {
                             }
@@ -972,7 +1039,7 @@ update :: proc() {
                             strings.write_byte(&builder, byte)
                             delete(state.menu_items[0])
                             state.menu_items[0] = strings.to_string(builder)
-                            state.key_consumed = true
+                            key_consumed = true
                         }
 
                     }
@@ -1007,7 +1074,7 @@ update :: proc() {
         }
         state.previous_touch_count = touch_count
     } else {
-        if !state.key_consumed {
+        if !key_consumed {
             for c in config {
                 triggered: bool = true
                 for trigger in c.key_triggers {
@@ -1254,13 +1321,6 @@ update :: proc() {
 
     // draw initiative tracker
     if (state.draw_initiative) {
-        rl.DrawRectangleGradientEx(
-            state.gui_rectangles[.INITIATIVE],
-            {40, 40, 40, 45},
-            {40, 40, 40, 45},
-            {0, 0, 0, 0},
-            {0, 0, 0, 0},
-        )
         row_offset: i32 = 10
         for i: i32 = 1; i < INITIATIVE_COUNT; i += 1 {
             tokens := state.initiative_to_tokens[i]
@@ -1437,18 +1497,6 @@ update :: proc() {
         }
     }
 
-    if state.active_tool == .COLOR_PICKER {
-        target_color: ^[4]u8
-        if state.previous_tool.? == .WALL {
-            target_color = &state.selected_wall_color
-        } else {
-            target_color = &state.selected_color
-        }
-        rl.GuiColorBarAlpha(state.gui_rectangles[.COLORBARALPHA], "color picker alpha", &state.selected_alpha)
-        rl.GuiColorPicker(state.gui_rectangles[.COLORPICKER], "color picker", (^rl.Color)(target_color))
-        target_color^ = rl.ColorAlpha(target_color^.xyzw, state.selected_alpha).xyzw
-    }
-
     if state.active_tool == .HELP {
         rl.DrawRectangleV({30, 30}, {f32(state.screen_width) - 60, f32(state.screen_height) - 60}, {0, 0, 0, 155})
         offset: i32 = 100
@@ -1474,98 +1522,7 @@ update :: proc() {
         }
     }
 
-    // Draw tool menu
-    for &tool, i in tool_menu {
-        rect := get_tool_tool_menu_rect(state, &tool_menu, i)
-        bg_color: [4]u8 = {0, 0, 0, 95}
-        cond_proc, cond_ok := tool.is_active.?
-        if cond_ok {
-            if cond_proc(state) {
-                bg_color = {255, 255, 255, 95}
-            } else {
-                if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
-                    if rl.IsMouseButtonPressed(.LEFT) {
-                        tool.action(state)
-                    }
-                    bg_color = {255, 0, 0, 95}
-                }
-            }
-        }
-        rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, bg_color.xyzw)
-        rl.GuiDrawIcon(tool.icon, i32(rect[0]) + 7, i32(rect[1]) + 7, 1, rl.WHITE)
-
-        for &config, ii in tool.options {
-            rect = get_tool_tool_menu_rect(state, &tool_menu, i, ii)
-            bg_color: [4]u8 = {0, 0, 0, 95}
-            cond_proc, cond_ok := config.condition.?
-            if cond_ok {
-                if !cond_proc(state) {
-                    continue
-                }
-            }
-            is_active_proc, is_active_ok := config.is_active.?
-            if is_active_ok {
-                if is_active_proc(state) {
-                    bg_color = {255, 255, 255, 95}
-                    if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
-                        if rl.IsMouseButtonPressed(.LEFT) {
-                            config.action(state)
-                            bg_color = {255, 0, 0, 95}
-                        }
-                    }
-                } else {
-                    if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
-                        if rl.IsMouseButtonPressed(.LEFT) {
-                            config.action(state)
-                        }
-                        bg_color = {255, 0, 0, 95}
-                    }
-                }
-            }
-            rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, bg_color.xyzw)
-            rl.GuiDrawIcon(config.icon, i32(rect[0]) + 7, i32(rect[1]) + 7, 1, rl.WHITE)
-        }
-    }
-
-    {
-        draw_selected_color, draw_selected_wall_color: bool
-        #partial switch state.active_tool {
-        case .RECTANGLE:
-            {
-                draw_selected_color = true
-                if .ADD_WALLS in state.selected_options {
-                    draw_selected_wall_color = true
-                }
-            }
-        case .COLOR_PICKER:
-            {
-                if state.previous_tool.? == .WALL {
-                    draw_selected_wall_color = true
-                } else {
-                    draw_selected_color = true
-                }
-            }
-        case .WALL:
-            {
-                draw_selected_wall_color = true
-            }
-        case .BRUSH, .CIRCLE, .EDIT_TOKEN, .CONE:
-            {
-                draw_selected_color = true
-            }
-        }
-
-
-        if draw_selected_color {
-            rect := get_tool_tool_menu_rect(state, &tool_menu, 8)
-            rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, state.selected_color.xyzw)
-        }
-        if draw_selected_wall_color {
-            rect := get_tool_tool_menu_rect(state, &tool_menu, 9)
-            rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, state.selected_wall_color.xyzw)
-        }
-    }
-
+    ui_draw_tree(state.root)
 
     // draw gathered circle movables
     if state.active_tool == .CIRCLE {
@@ -1653,7 +1610,6 @@ shutdown :: proc() {
         delete(name)
     }
     delete(state.textures)
-    delete(state.gui_rectangles)
 
     tokens_reset(state)
     delete_token(&state.tokens[0])
