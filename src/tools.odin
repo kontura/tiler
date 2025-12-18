@@ -158,6 +158,7 @@ circle_tool :: proc(
     action.walls = do_walls
     action.walls_color = walls_color
     action.dithering = dithering
+    action.radius = auto_cast max_dist_in_feet
 
     draw_tile_circle(
         tile_map,
