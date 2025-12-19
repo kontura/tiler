@@ -836,6 +836,19 @@ update :: proc() {
                         state.needs_sync = true
                         finish_last_undo_history_action(state)
                     }
+                } else if rl.IsKeyPressed(.DELETE) {
+                    tile_pos: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
+                    old_tile := get_tile(tile_map, tile_pos.abs_tile)
+                    if old_tile.walls != {} {
+                        new_tile := old_tile
+                        new_tile.walls = {}
+                        append(&state.undo_history, make_action(.WALL))
+                        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                        action.tile_history[tile_pos.abs_tile] = tile_xor(&old_tile, &new_tile)
+                        set_tile(tile_map, tile_pos.abs_tile, new_tile)
+                        finish_last_undo_history_action(state, .DELETES)
+                        state.needs_sync = true
+                    }
                 } else {
                     highligh_current_tile_intersection = true
                 }
