@@ -90,6 +90,7 @@ GameState :: struct {
 
     // UI
     root:                   ^UIWidget,
+    widget_cache:           map[string]UIWidget,
 }
 
 Widget :: enum {
@@ -404,11 +405,11 @@ update :: proc() {
 
     // Build UI widgets
     {
-        state.root = ui_make_widget(nil, {.HOVERABLE}, "tile_map")
+        state.root = ui_make_widget(state, nil, {.HOVERABLE}, "tile_map")
         state.root.rect = {0, 0, f32(state.screen_width), f32(state.screen_height)}
 
         if state.draw_initiative {
-            initiative_widget := ui_make_widget(state.root, {.DRAWBACKGROUNDGRADIENT}, "initiative")
+            initiative_widget := ui_make_widget(state, state.root, {.DRAWBACKGROUNDGRADIENT}, "initiative")
             initiative_widget.rect = {0, 0, 120, f32(state.screen_height)}
             if ui_widget_interaction(initiative_widget).hovering && state.active_tool == .EDIT_TOKEN {
                 if rl.IsMouseButtonDown(.LEFT) {
@@ -439,25 +440,27 @@ update :: proc() {
             }
             target_color^ = rl.ColorAlpha(target_color^.xyzw, state.selected_alpha).xyzw
 
-            color_picker_widget := ui_make_widget(state.root, {.DRAWCOLORPICKER}, "colorpicker")
+            color_picker_widget := ui_make_widget(state, state.root, {.DRAWCOLORPICKER}, "colorpicker")
             color_picker_widget.rect = {f32(state.screen_width - 230), 10, 200, 200}
             color_picker_widget.colorpicker_color = target_color
 
-            color_bar_hue_widget := ui_make_widget(state.root, {}, "colorbar_hue")
+            color_bar_hue_widget := ui_make_widget(state, state.root, {}, "colorbar_hue")
             color_bar_hue_widget.rect = {f32(state.screen_width - 30), 5, 30, 205}
 
-            color_bar_alpha_widget := ui_make_widget(state.root, {.DRAWCOLORBARALPHA}, "colorbar_alpha")
+            color_bar_alpha_widget := ui_make_widget(state, state.root, {.DRAWCOLORBARALPHA}, "colorbar_alpha")
             color_bar_alpha_widget.rect = {f32(state.screen_width - 230), 215, 200, 20}
             color_bar_alpha_widget.colorpicker_alpha = &state.selected_alpha
         }
 
-        tool_menu_widget := ui_make_widget(state.root, {}, "tool_menu")
+        tool_menu_widget := ui_make_widget(state, state.root, {}, "tool_menu")
         for &tool, i in config_tool_menu {
             rect := get_tool_tool_menu_rect(state, &config_tool_menu, i)
             r: rl.Rectangle = {rect.x, rect.y, rect.z, rect.w}
             is_active_proc, is_active_ok := tool.is_active.?
             if is_active_ok {
-                if ui_radio_button(tool_menu_widget, "tool menu button", is_active_proc(state), tool.icon, r).clicked {
+                id := fmt.aprint("tool menu button", i, allocator = context.temp_allocator)
+                inter := ui_radio_button(state, tool_menu_widget, id, is_active_proc(state), tool.icon, r)
+                if inter.clicked {
                     tool.action(state)
                 }
             }
@@ -472,7 +475,8 @@ update :: proc() {
                 }
                 is_active_proc, is_active_ok := config.is_active.?
                 if is_active_ok {
-                    if ui_radio_button(tool_menu_widget, "tool menu button", is_active_proc(state), config.icon, r).clicked {
+                    id := fmt.aprint("tool config menu button", i, ii, allocator = context.temp_allocator)
+                    if ui_radio_button(state, tool_menu_widget, id, is_active_proc(state), config.icon, r).clicked {
                         config.action(state)
                     }
                 }
@@ -507,13 +511,13 @@ update :: proc() {
         }
 
         if draw_selected_color {
-            selected_color_widget := ui_make_widget(state.root, {.DRAWBACKGROUND}, "selected_color")
+            selected_color_widget := ui_make_widget(state, state.root, {.DRAWBACKGROUND}, "selected_color")
             selected_color_widget.background_color = state.selected_color
             rect := get_tool_tool_menu_rect(state, &config_tool_menu, 8)
             selected_color_widget.rect = {rect[0], rect[1], rect[2], rect[3]}
         }
         if draw_selected_wall_color {
-            selected_wall_color_widget := ui_make_widget(state.root, {.DRAWBACKGROUND}, "selected_wall_color")
+            selected_wall_color_widget := ui_make_widget(state, state.root, {.DRAWBACKGROUND}, "selected_wall_color")
             selected_wall_color_widget.background_color = state.selected_wall_color
             rect := get_tool_tool_menu_rect(state, &config_tool_menu, 9)
             selected_wall_color_widget.rect = {rect[0], rect[1], rect[2], rect[3]}
@@ -1577,6 +1581,8 @@ update :: proc() {
         rl.DrawText(tooltip.?, i32(mouse_pos.x) + 10, i32(mouse_pos.y) + 30, 28, rl.WHITE)
     }
 
+    ui_update_widget_cache(state, state.root)
+
     // Before ending the loop revert all temp actions
     for _, index in state.temp_actions {
         undo_action(state, tile_map, &state.temp_actions[index])
@@ -1614,6 +1620,11 @@ shutdown :: proc() {
         delete(name)
     }
     delete(state.textures)
+
+    for name, _ in state.widget_cache {
+        delete(name)
+    }
+    delete(state.widget_cache)
 
     tokens_reset(state)
     delete_token(&state.tokens[0])

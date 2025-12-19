@@ -1,10 +1,13 @@
 package tiler
 
 import "core:fmt"
+import "core:math"
 import "core:strings"
 import rl "vendor:raylib"
 
 // rfleury ui
+
+SPEED :: 5
 
 UIWidgetFlag :: enum {
     CLICKABLE,
@@ -44,6 +47,7 @@ UIWidget :: struct {
     background_color:      [4]u8,
     colorpicker_color:     ^[4]u8,
     colorpicker_alpha:     ^f32,
+    active:                bool,
 
     // computed every frame
     //TODO(amatej): for now I set these also by builders
@@ -51,12 +55,20 @@ UIWidget :: struct {
     computed_size:         [2]f32,
     // final position on screen
     rect:                  rl.Rectangle,
+
+    // persistent data
+    hot_t:                 f32,
+    active_t:              f32,
 }
 
 UIInteraction :: struct {
     widget:   ^UIWidget,
     clicked:  bool,
     hovering: bool,
+}
+
+exponential_smoothing :: proc(target, current: f32) -> f32 {
+    return current + (target - current) * (1 - math.exp(-rl.GetFrameTime() * SPEED))
 }
 
 ui_widget_interaction :: proc(widget: ^UIWidget) -> UIInteraction {
@@ -108,7 +120,38 @@ ui_widget_interaction :: proc(widget: ^UIWidget) -> UIInteraction {
     return interaction
 }
 
+ui_update_widget_cache :: proc(state: ^GameState, root: ^UIWidget) {
+    stack := make([dynamic]^UIWidget, context.temp_allocator)
+    append(&stack, root)
+
+    for len(stack) > 0 {
+        current := pop(&stack)
+
+        widget, ok := &state.widget_cache[current.string]
+
+        if ok {
+            widget.computed_rel_position = current.computed_rel_position
+            widget.computed_size = current.computed_size
+            widget.rect = current.rect
+            widget.hot_t = current.hot_t
+            widget.active_t = current.active_t
+        } else {
+            state.widget_cache[current.string] = current^
+        }
+
+        if current.next != nil {
+            append(&stack, current.next)
+        }
+
+        if current.first != nil {
+            append(&stack, current.first)
+        }
+    }
+
+}
+
 ui_make_widget :: proc(
+    state: ^GameState,
     parent: ^UIWidget,
     flags: UIWidgetFlags,
     string: string,
@@ -117,6 +160,15 @@ ui_make_widget :: proc(
     widget := new(UIWidget, allocator)
     widget.string = string
     widget.flags = flags
+
+    widget_cached, ok := &state.widget_cache[string]
+    if ok {
+        widget.computed_rel_position = widget_cached.computed_rel_position
+        widget.computed_size = widget_cached.computed_size
+        widget.rect = widget_cached.rect
+        widget.hot_t = widget_cached.hot_t
+        widget.active_t = widget_cached.active_t
+    }
 
     // Update widgets tree
     if parent != nil {
@@ -139,6 +191,7 @@ ui_make_widget :: proc(
 }
 
 ui_radio_button :: proc(
+    state: ^GameState,
     parent: ^UIWidget,
     string: string,
     active: bool,
@@ -146,9 +199,15 @@ ui_radio_button :: proc(
     rect: rl.Rectangle,
     allocator := context.temp_allocator,
 ) -> UIInteraction {
-    radio := ui_make_widget(parent, {.CLICKABLE, .HOVERABLE, .DRAWICON, .DRAWBACKGROUND}, string)
+    radio := ui_make_widget(
+        state,
+        parent,
+        {.CLICKABLE, .HOVERABLE, .DRAWICON, .DRAWBACKGROUND, .HOTANIMATION},
+        string,
+    )
     radio.icon = icon
     radio.background_color = active ? {255, 255, 255, 95} : {0, 0, 0, 95}
+    radio.active = active
 
     radio.rect = rect
     return ui_widget_interaction(radio)
@@ -162,9 +221,15 @@ ui_draw_tree :: proc(root: ^UIWidget) {
         current := pop(&stack)
         interaction := ui_widget_interaction(current)
         if .DRAWBACKGROUND in current.flags {
-            if interaction.hovering {
-                rl.DrawRectangleRec(current.rect, {100, 0, 0, 255})
+            if !current.active && interaction.hovering {
+                current.hot_t = exponential_smoothing(1, current.hot_t)
+                if .HOTANIMATION in current.flags {
+                    rl.DrawRectangleRec(current.rect, {200, 0, 0, u8(255 * current.hot_t)})
+                } else {
+                    rl.DrawRectangleRec(current.rect, {100, 0, 0, 255})
+                }
             } else {
+                current.hot_t = 0
                 rl.DrawRectangleRec(current.rect, current.background_color.xyzw)
             }
         }
