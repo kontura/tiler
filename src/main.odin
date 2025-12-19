@@ -634,14 +634,17 @@ update :: proc() {
                 //TODO(amatej): this leaks at the end
                 clear(&state.done_circle_actions)
                 selected_action_circle: ^Action = nil
-                key := rl.GetKeyPressed()
                 for i in 0 ..< len(state.undo_history) {
                     action := &state.undo_history[i]
-                    if action.type == .CIRCLE && action.state != .REVERTED && action.state != .REVERTS && action.state != .DELETES && action.state != .DELETED {
+                    if action.type == .CIRCLE &&
+                       action.state != .REVERTED &&
+                       action.state != .REVERTS &&
+                       action.state != .DELETES &&
+                       action.state != .DELETED {
                         append(&state.done_circle_actions, i)
                         rect := get_circle_action_rect(state, tile_map, action)
                         // Trigger only once for each press
-                        if rl.IsKeyPressed(key) && key == .DELETE {
+                        if rl.IsKeyPressed(.DELETE) {
                             if rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]}) {
                                 deletes := revert_action(action)
                                 deletes.revert_prev = false
