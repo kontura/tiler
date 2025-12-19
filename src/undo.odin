@@ -33,6 +33,8 @@ ActionState :: enum {
     DONE,
     REVERTED,
     REVERTS,
+    DELETED,
+    DELETES,
 }
 
 Action :: struct {
@@ -58,6 +60,7 @@ Action :: struct {
     walls:                  bool,
     walls_color:            [4]u8,
     dithering:              bool,
+    revert_prev:            bool,
 
     // Actions that have already been reverted or are reverting
     // actions (reverts) cannot be reverted again.
@@ -90,7 +93,10 @@ to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -
     strings.write_int(&builder, int(action.hash[4]))
     strings.write_string(&builder, "..., ")
     at, _ := fmt.enum_value_to_string(action.type)
+    state, _ := fmt.enum_value_to_string(action.state)
     strings.write_string(&builder, at)
+    strings.write_string(&builder, " - ")
+    strings.write_string(&builder, state)
     switch action.type {
     case .BRUSH:
         {
@@ -229,6 +235,7 @@ duplicate_action :: proc(a: ^Action, with_tile_history := true, allocator := con
     action.walls = a.walls
     action.walls_color = a.walls_color
     action.dithering = a.dithering
+    action.revert_prev = a.revert_prev
     action.old_name = strings.clone(a.old_name, allocator = allocator)
     action.new_name = strings.clone(a.new_name, allocator = allocator)
     action.tile_history = make(map[[2]u32]Tile, allocator = allocator)
@@ -273,6 +280,7 @@ compute_hash_with_prev :: proc(action: ^Action, prev_action_hash: ^[32]u8) -> [3
     sha2.update(&hash, mem.ptr_to_bytes(&action.walls))
     sha2.update(&hash, mem.ptr_to_bytes(&action.walls_color))
     sha2.update(&hash, mem.ptr_to_bytes(&action.dithering))
+    sha2.update(&hash, mem.ptr_to_bytes(&action.revert_prev))
 
     if action.type == .BRUSH || action.state == .REVERTS {
         tile_keys := make([dynamic][2]u32, allocator = context.temp_allocator)

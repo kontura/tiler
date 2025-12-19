@@ -506,7 +506,6 @@ update :: proc() {
             }
         }
 
-
         if draw_selected_color {
             selected_color_widget := ui_make_widget(state.root, {.DRAWBACKGROUND}, "selected_color")
             selected_color_widget.background_color = state.selected_color
@@ -634,16 +633,18 @@ update :: proc() {
                 key := rl.GetKeyPressed()
                 for i in 0 ..< len(state.undo_history) {
                     action := &state.undo_history[i]
-                    if action.type == .CIRCLE && action.state != .REVERTED && action.state != .REVERTS {
+                    if action.type == .CIRCLE && action.state != .REVERTED && action.state != .REVERTS && action.state != .DELETES && action.state != .DELETED {
                         append(&state.done_circle_actions, i)
                         rect := get_circle_action_rect(state, tile_map, action)
                         // Trigger only once for each press
                         if rl.IsKeyPressed(key) && key == .DELETE {
                             if rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]}) {
-                                reverted := revert_action(action)
-                                redo_action(state, tile_map, &reverted)
-                                append(&state.undo_history, reverted)
-                                finish_last_undo_history_action(state)
+                                deletes := revert_action(action)
+                                deletes.revert_prev = false
+                                redo_action(state, tile_map, &deletes)
+                                append(&state.undo_history, deletes)
+                                finish_last_undo_history_action(state, .DELETES)
+                                action.state = .DELETED
                             }
                         } else if state.tool_start_position != nil {
                             if rl.CheckCollisionPointRec(
@@ -658,7 +659,6 @@ update :: proc() {
 
                 if rl.IsMouseButtonDown(.LEFT) {
                     if selected_action_circle != nil {
-                        //TODO(amatej): This leaves behind circle centers
                         reverted := revert_action(selected_action_circle, context.temp_allocator)
                         redo_action(state, tile_map, &reverted)
                         append(&state.temp_actions, reverted)
@@ -682,13 +682,18 @@ update :: proc() {
                     }
                 } else if rl.IsMouseButtonReleased(.LEFT) {
                     if selected_action_circle != nil {
+                        //TODO(amatej): This leaves behind circle centers
                         dupe := duplicate_action(selected_action_circle, false, context.allocator)
                         reverted := revert_action(selected_action_circle)
+                        reverted.revert_prev = false
+                        selected_action_circle.state = .DELETED
+                        reverted.state = .DELETES
                         redo_action(state, tile_map, &reverted)
                         append(&state.undo_history, reverted)
                         finish_last_undo_history_action(state)
                         move_action(state, tile_map, &dupe, mouse_pos)
                         redo_action(state, tile_map, &dupe)
+                        dupe.revert_prev = true
                         append(&state.undo_history, dupe)
                     } else {
                         //TODO(amatej): don't add the action if the circle has size 0
@@ -1446,7 +1451,6 @@ update :: proc() {
                 i += 1
             }
         }
-
     }
     if state.debug != .OFF {
         offset: i32 = 30

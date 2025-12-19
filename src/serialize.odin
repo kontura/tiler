@@ -398,8 +398,9 @@ serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_locatio
     serialize(s, &action.walls, loc) or_return
     serialize(s, &action.walls_color, loc) or_return
     serialize(s, &action.dithering, loc) or_return
+    serialize(s, &action.revert_prev, loc) or_return
 
-    if action.type == .BRUSH || action.state == .REVERTS {
+    if action.type == .BRUSH || action.state == .REVERTS || action.state == .DELETES {
         serialize(s, &action.tile_history, loc) or_return
     }
 
