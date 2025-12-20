@@ -64,9 +64,12 @@ async def handler(websocket):
     except Exception as e:
         print(f"Error: {e}", flush=True)
     finally:
-        client_id, room_id = active_websockets[websocket.id]
-        del connected_clients[client_id]
-        rooms[room_id].remove(client_id)
+        try:
+            client_id, room_id = active_websockets[websocket.id]
+            del connected_clients[client_id]
+            rooms[room_id].remove(client_id)
+        except:
+            print(f"Error in finally: failed to delete: {websocket.id} - perhaps it was already deleted.")
 
 
 async def main():
