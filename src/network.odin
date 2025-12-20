@@ -62,7 +62,7 @@ build_register_msg :: proc(my_id: u64, state: ^GameState) -> []u8 {
     return build_binary_message(
         my_id,
         .ACTIONS,
-        0,
+        state.room_id,
         serialize_actions(state.undo_history[actions_num:], context.temp_allocator),
     )
 }

@@ -71,9 +71,17 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
     if !sender_already_registered {
         game.state.peers[sender_id] = {.WAITING, {}, {}}
         peer_state := &game.state.peers[sender_id]
+
+        if target_id == game.state.room_id {
+            fmt.println("Registering: ", sender_id)
+            make_webrtc_offer(sender_id)
+            peer_state.webrtc = .OFFERED
+            binary := game.build_binary_message(game.state.id, .HELLO, sender_id, nil)
+            send_binary_to_peer(sender_id, &binary[0], u32(len(binary)))
+        }
     }
 
-    if game.state.id != target_id && target_id != 0 {
+    if game.state.id != target_id && target_id != game.state.room_id {
         fmt.println("This message is not for me: ", target_id, " (target) x ", game.state.id, " (me)")
         assert(false)
     }
@@ -99,13 +107,6 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
             if game.merge_and_redo_actions(game.state, game.tile_map, actions) {
                 game.state.needs_sync = true
             }
-        }
-        if target_id == 0 {
-            fmt.println("Registering: ", sender_id)
-            make_webrtc_offer(sender_id)
-            peer_state.webrtc = .OFFERED
-            binary := game.build_binary_message(game.state.id, .HELLO, sender_id, nil)
-            send_binary_to_peer(sender_id, &binary[0], u32(len(binary)))
         }
     } else if type == .WEBRTC {
         if peer_state.webrtc == .WAITING {

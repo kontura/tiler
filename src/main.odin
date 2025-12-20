@@ -1,6 +1,7 @@
 package tiler
 
 import "core:fmt"
+import "core:hash/xxhash"
 import "core:math"
 import "core:math/rand"
 import "core:mem"
@@ -72,6 +73,7 @@ GameState :: struct {
     tokens:                 map[u64]Token,
     initiative_to_tokens:   map[i32][dynamic]u64,
     path:                   string,
+    room_id:                u64,
     offline:                bool,
     particles:              [1024]Particle,
     particle_index:         u32,
@@ -310,6 +312,11 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
         size = 1,
     }
     state.path = path
+    room_hash_state: xxhash.XXH3_state
+    xxhash.XXH3_init_state(&room_hash_state)
+    xxhash.XXH3_64_update(&room_hash_state, transmute([]u8)(state.path))
+    state.room_id = xxhash.XXH3_64_digest(&room_hash_state)
+
     state.bg_pos.rel_tile = 2.5
     state.bg_pos.abs_tile = 100
 
