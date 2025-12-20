@@ -31,11 +31,12 @@ addToLibrary({
             const d_ptr = Module.HEAP32[data >> 2];
             const msg = new Uint8Array(Module.HEAPU8.buffer, d_ptr, d_len);
             Module.signalingSocket.send(msg)
-            Module.ccall('set_socket_ready', null, [], []);
+            Module.ccall('set_socket_ready', null, ['number'], [BigInt(1)]);
         });
 
         Module.signalingSocket.addEventListener("close", (event) => {
             console.log("signaling connection closed: ", event.data)
+            Module.ccall('set_socket_ready', null, ['number'], [BigInt(0)]);
         });
 
         Module.signalingSocket.addEventListener("error", (event) => {

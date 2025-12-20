@@ -52,8 +52,8 @@ build_register_msg_c :: proc "c" (out_len: ^u32, out_data: ^rawptr) {
 }
 
 @(export)
-set_socket_ready :: proc "c" () {
-    game.state.socket_ready = true
+set_socket_ready :: proc "c" (socket_state: u64) {
+    game.state.socket_ready = bool(socket_state)
 }
 
 @(export)
