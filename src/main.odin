@@ -394,9 +394,7 @@ update :: proc() {
     if !state.mobile && state.bg_snap[0] == nil {
         // Mouse clicks
         if rl.IsMouseButtonPressed(.LEFT) {
-            if (state.tool_start_position == nil) {
-                state.tool_start_position = mouse_pos
-            }
+            state.tool_start_position = mouse_pos
         } else if rl.IsMouseButtonDown(.RIGHT) {
             if rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8 != 0 {
                 state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
@@ -1133,12 +1131,6 @@ update :: proc() {
             }
         case .LOAD_GAME, .SAVE_GAME, .OPTIONS_MENU, .MAIN_MENU, .HELP:
             {}
-        }
-    }
-
-    if rl.IsMouseButtonReleased(.LEFT) {
-        if (state.tool_start_position != nil) {
-            state.tool_start_position = nil
         }
     }
 
