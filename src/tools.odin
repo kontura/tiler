@@ -657,18 +657,15 @@ move_token_tool :: proc(
     state: ^GameState,
     token: ^Token,
     tile_map: ^TileMap,
-    end_pos: [2]f32,
+    token_pos_delta: [2]i32,
     action: ^Action,
     feedback: bool,
 ) {
-    mouse_tile_pos: TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
-    token_pos_delta: [2]i32 = {
-        i32(token.position.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x),
-        i32(token.position.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
-    }
     action.token_id = token.id
     action.start = token.position
-    action.end = mouse_tile_pos
+    end : [2]i32 = {i32(token.position.abs_tile.x), i32(token.position.abs_tile.y)} - token_pos_delta
+    action.end = token.position
+    action.end.abs_tile = {u32(end.x), u32(end.y)}
     // We want to keep the tokens at the center of each tile
     action.end.rel_tile = {0, 0}
     if feedback {
@@ -690,7 +687,7 @@ move_token_tool :: proc(
             radius += (f32(token.size - 1) * half)
         }
         draw_tile_circle(tile_map, pos, radius, GREEN_HIGHLIGH, false, 0, false, temp_action)
-        token.moved = DDA(state, tile_map, mouse_tile_pos.abs_tile, token.position.abs_tile, temp_action)
+        token.moved = DDA(state, tile_map, action.end.abs_tile, token.position.abs_tile, temp_action)
     } else {
         token.moved = 0
         //Spawn particles on move

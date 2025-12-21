@@ -45,6 +45,7 @@ GameState :: struct {
     selected_options:       ToolOptionsSet,
     previous_tool:          Maybe(Tool),
     tool_start_position:    Maybe([2]f32),
+    move_start_position:    Maybe([2]f32),
     temp_actions:           [dynamic]Action,
     needs_sync:             bool,
     needs_images:           [dynamic]string,
@@ -732,18 +733,34 @@ update :: proc() {
             }
         case .MOVE_TOKEN:
             {
+                // We have 3 workflows here:
+                // 1. drag and drop: no selected - press -> mouse move -> selected - release
+                // 2. pick and move: no selected - press + release -> mouse move -> selected - press + release
+                // 3. tab and move:  no selected - tab -> mouse move -> selected - press + release
                 if len(state.selected_tokens) > 0 {
                     if rl.IsMouseButtonPressed(.LEFT) || rl.IsKeyPressed(.ENTER) {
                         for token_id in state.selected_tokens {
                             token := &state.tokens[token_id]
+                            start_pos, ok := state.move_start_position.?
+                            start_mouse_tile: TileMapPosition
+                            if ok {
+                                start_mouse_tile = screen_coord_to_tile_map(start_pos, state, tile_map)
+                            } else {
+                                start_mouse_tile = token.position
+                            }
+                            token_pos_delta: [2]i32 = {
+                                i32(start_mouse_tile.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x),
+                                i32(start_mouse_tile.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
+                            }
                             if mouse_tile_pos.abs_tile != token.position.abs_tile {
                                 append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                move_token_tool(state, token, tile_map, mouse_pos, action, false)
+                                move_token_tool(state, token, tile_map, token_pos_delta, action, false)
                                 state.needs_sync = true
                                 finish_last_undo_history_action(state)
                             }
                         }
+                        state.move_start_position = nil
                         if rl.IsMouseButtonPressed(.LEFT) {
                             clear_selected_tokens(state)
                         }
@@ -752,28 +769,64 @@ update :: proc() {
                             moved: bool = false
                             for token_id in state.selected_tokens {
                                 token := &state.tokens[token_id]
-                                if mouse_tile_pos.abs_tile != token.position.abs_tile {
+                                start_mouse_tile := screen_coord_to_tile_map(
+                                    state.tool_start_position.?,
+                                    state,
+                                    tile_map,
+                                )
+                                token_pos_delta: [2]i32 = {
+                                    i32(start_mouse_tile.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x),
+                                    i32(start_mouse_tile.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
+                                }
+                                if mouse_tile_pos.abs_tile != token.position.abs_tile &&
+                                   start_mouse_tile.abs_tile != mouse_tile_pos.abs_tile {
                                     append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
                                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                    move_token_tool(state, token, tile_map, mouse_pos, action, true)
+                                    move_token_tool(state, token, tile_map, token_pos_delta, action, true)
                                     moved = true
                                     state.needs_sync = true
                                     finish_last_undo_history_action(state)
+                                    token.moved = 0
+                                    // This works for only one selected token
+                                    state.move_start_position = nil
                                 }
                             }
                             if moved {
                                 clear_selected_tokens(state)
                             }
                         }
+
+                        // Temp move
                         for token_id in state.selected_tokens {
+                            token := &state.tokens[token_id]
+                            start_pos, ok := state.move_start_position.?
+                            start_mouse_tile: TileMapPosition
+                            if ok {
+                                start_mouse_tile = screen_coord_to_tile_map(start_pos, state, tile_map)
+                            } else {
+                                fmt.println("using token pos")
+                                start_mouse_tile = token.position
+                            }
                             append(&state.temp_actions, make_action(.EDIT_TOKEN_POSITION, context.temp_allocator))
                             temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                            move_token_tool(state, &state.tokens[token_id], tile_map, mouse_pos, temp_action, true)
+                            token_pos_delta: [2]i32 = {
+                                i32(start_mouse_tile.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x),
+                                i32(start_mouse_tile.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
+                            }
+                            move_token_tool(
+                                state,
+                                &state.tokens[token_id],
+                                tile_map,
+                                token_pos_delta,
+                                temp_action,
+                                true,
+                            )
                         }
                     }
                 } else {
                     if rl.IsMouseButtonPressed(.LEFT) {
                         token := find_token_at_screen(tile_map, state, mouse_pos)
+                        state.move_start_position = mouse_pos
                         if token != nil {
                             append(&state.selected_tokens, token.id)
                         }
