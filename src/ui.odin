@@ -136,7 +136,7 @@ ui_update_widget_cache :: proc(state: ^GameState, root: ^UIWidget) {
             widget.hot_t = current.hot_t
             widget.active_t = current.active_t
         } else {
-            state.widget_cache[current.string] = current^
+            state.widget_cache[strings.clone(current.string)] = current^
         }
 
         if current.next != nil {
