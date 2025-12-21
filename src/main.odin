@@ -31,69 +31,69 @@ DebugMode :: enum {
 
 //TODO(amatej): make GameState and TileMap not global
 GameState :: struct {
-    screen_width:           i32,
-    screen_height:          i32,
-    camera_pos:             TileMapPosition,
-    selected_color:         [4]u8,
-    selected_wall_color:    [4]u8,
-    selected_alpha:         f32,
-    selected_tokens:        [dynamic]u64,
-    last_selected_token_id: u64,
-    draw_grid:              bool,
-    draw_initiative:        bool,
-    active_tool:            Tool,
-    selected_options:       ToolOptionsSet,
-    previous_tool:          Maybe(Tool),
-    tool_start_position:    Maybe([2]f32),
-    move_start_position:    Maybe([2]f32),
-    temp_actions:           [dynamic]Action,
-    needs_sync:             bool,
-    needs_images:           [dynamic]string,
-    mobile:                 bool,
-    previous_touch_dist:    f32,
-    previous_touch_pos:     [2]f32,
-    previous_touch_count:   i32,
-    timeout:                uint,
-    timeout_string:         string,
-    debug:                  DebugMode,
-    should_run:             bool,
-    undone:                 int,
-    bg_id:                  string,
-    bg_pos:                 TileMapPosition,
-    bg_scale:               f32,
-    bg_snap:                [3]Maybe([2]f32),
+    screen_width:               i32,
+    screen_height:              i32,
+    camera_pos:                 TileMapPosition,
+    selected_color:             [4]u8,
+    selected_wall_color:        [4]u8,
+    selected_alpha:             f32,
+    selected_tokens:            [dynamic]u64,
+    last_selected_token_id:     u64,
+    draw_grid:                  bool,
+    draw_initiative:            bool,
+    active_tool:                Tool,
+    selected_options:           ToolOptionsSet,
+    previous_tool:              Maybe(Tool),
+    last_left_button_press_pos: Maybe([2]f32),
+    move_start_position:        Maybe([2]f32),
+    temp_actions:               [dynamic]Action,
+    needs_sync:                 bool,
+    needs_images:               [dynamic]string,
+    mobile:                     bool,
+    previous_touch_dist:        f32,
+    previous_touch_pos:         [2]f32,
+    previous_touch_count:       i32,
+    timeout:                    uint,
+    timeout_string:             string,
+    debug:                      DebugMode,
+    should_run:                 bool,
+    undone:                     int,
+    bg_id:                      string,
+    bg_pos:                     TileMapPosition,
+    bg_scale:                   f32,
+    bg_snap:                    [3]Maybe([2]f32),
 
     // permanent state
-    textures:               map[string]rl.Texture2D,
-    images:                 map[string]rl.Image,
-    done_circle_actions:    [dynamic]int,
+    textures:                   map[string]rl.Texture2D,
+    images:                     map[string]rl.Image,
+    done_circle_actions:        [dynamic]int,
 
     //TODO(amatej): check if the tool actually does any color change before recoding
     //              undoing non-color changes does nothing
-    undo_history:           [dynamic]Action,
-    tokens:                 map[u64]Token,
-    initiative_to_tokens:   map[i32][dynamic]u64,
-    path:                   string,
-    room_id:                u64,
-    offline:                bool,
-    particles:              [1024]Particle,
-    particle_index:         u32,
-    id:                     u64,
-    menu_items:             [dynamic]string,
-    selected_index:         int,
+    undo_history:               [dynamic]Action,
+    tokens:                     map[u64]Token,
+    initiative_to_tokens:       map[i32][dynamic]u64,
+    path:                       string,
+    room_id:                    u64,
+    offline:                    bool,
+    particles:                  [1024]Particle,
+    particle_index:             u32,
+    id:                         u64,
+    menu_items:                 [dynamic]string,
+    selected_index:             int,
 
     // light
-    light:                  LightInfo,
-    light_pos:              TileMapPosition,
-    light_mask:             rl.RenderTexture,
+    light:                      LightInfo,
+    light_pos:                  TileMapPosition,
+    light_mask:                 rl.RenderTexture,
 
     // network
-    socket_ready:           bool,
-    peers:                  map[u64]PeerState,
+    socket_ready:               bool,
+    peers:                      map[u64]PeerState,
 
     // UI
-    root:                   ^UIWidget,
-    widget_cache:           map[string]UIWidget,
+    root:                       ^UIWidget,
+    widget_cache:               map[string]UIWidget,
 }
 
 Widget :: enum {
@@ -394,7 +394,7 @@ update :: proc() {
     if !state.mobile && state.bg_snap[0] == nil {
         // Mouse clicks
         if rl.IsMouseButtonPressed(.LEFT) {
-            state.tool_start_position = mouse_pos
+            state.last_left_button_press_pos = mouse_pos
         } else if rl.IsMouseButtonDown(.RIGHT) {
             if rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8 != 0 {
                 state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
@@ -421,12 +421,12 @@ update :: proc() {
                 if rl.IsMouseButtonDown(.LEFT) {
                     append(&state.temp_actions, make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator))
                     temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                    move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, temp_action)
+                    move_initiative_token_tool(state, state.last_left_button_press_pos.?.y, mouse_pos.y, temp_action)
                 } else if rl.IsMouseButtonReleased(.LEFT) {
-                    if (state.tool_start_position != nil) {
+                    if (state.last_left_button_press_pos != nil) {
                         append(&state.undo_history, make_action(.EDIT_TOKEN_INITIATIVE))
                         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                        move_initiative_token_tool(state, state.tool_start_position.?.y, mouse_pos.y, action)
+                        move_initiative_token_tool(state, state.last_left_button_press_pos.?.y, mouse_pos.y, action)
                         state.needs_sync = true
                         finish_last_undo_history_action(state)
                     }
@@ -594,7 +594,7 @@ update :: proc() {
                     append(&state.temp_actions, make_action(.RECTANGLE, context.temp_allocator))
                     temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
                     start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(
-                        state.tool_start_position.?,
+                        state.last_left_button_press_pos.?,
                         state,
                         tile_map,
                     )
@@ -610,11 +610,11 @@ update :: proc() {
                         temp_action,
                     )
                 } else if rl.IsMouseButtonReleased(.LEFT) {
-                    if (state.tool_start_position != nil) {
+                    if (state.last_left_button_press_pos != nil) {
                         append(&state.undo_history, make_action(.RECTANGLE))
                         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                         start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(
-                            state.tool_start_position.?,
+                            state.last_left_button_press_pos.?,
                             state,
                             tile_map,
                         )
@@ -659,9 +659,9 @@ update :: proc() {
                                 finish_last_undo_history_action(state, .DELETES)
                                 action.state = .DELETED
                             }
-                        } else if state.tool_start_position != nil {
+                        } else if state.last_left_button_press_pos != nil {
                             if rl.CheckCollisionPointRec(
-                                state.tool_start_position.?,
+                                state.last_left_button_press_pos.?,
                                 {rect[0], rect[1], rect[2], rect[3]},
                             ) {
                                 selected_action_circle = action
@@ -768,7 +768,7 @@ update :: proc() {
                             for token_id in state.selected_tokens {
                                 token := &state.tokens[token_id]
                                 start_mouse_tile := screen_coord_to_tile_map(
-                                    state.tool_start_position.?,
+                                    state.last_left_button_press_pos.?,
                                     state,
                                     tile_map,
                                 )
@@ -862,7 +862,7 @@ update :: proc() {
                     append(&state.temp_actions, make_action(.WALL, context.temp_allocator))
                     temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
                     start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(
-                        state.tool_start_position.?,
+                        state.last_left_button_press_pos.?,
                         state,
                         tile_map,
                     )
@@ -875,11 +875,11 @@ update :: proc() {
                         temp_action,
                     )
                 } else if rl.IsMouseButtonReleased(.LEFT) {
-                    if (state.tool_start_position != nil) {
+                    if (state.last_left_button_press_pos != nil) {
                         append(&state.undo_history, make_action(.WALL))
                         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                         start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(
-                            state.tool_start_position.?,
+                            state.last_left_button_press_pos.?,
                             state,
                             tile_map,
                         )

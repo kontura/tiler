@@ -136,7 +136,7 @@ circle_tool :: proc(
     dithering: bool,
     action: ^Action,
 ) -> cstring {
-    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
+    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.last_left_button_press_pos.?, state, tile_map)
 
     half := tile_map.tile_side_in_feet / 2
     start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? half : -half
@@ -663,7 +663,7 @@ move_token_tool :: proc(
 ) {
     action.token_id = token.id
     action.start = token.position
-    end : [2]i32 = {i32(token.position.abs_tile.x), i32(token.position.abs_tile.y)} - token_pos_delta
+    end: [2]i32 = {i32(token.position.abs_tile.x), i32(token.position.abs_tile.y)} - token_pos_delta
     action.end = token.position
     action.end.abs_tile = {u32(end.x), u32(end.y)}
     // We want to keep the tokens at the center of each tile
@@ -766,7 +766,7 @@ DDA :: proc(state: ^GameState, tile_map: ^TileMap, p0: [2]u32, p1: [2]u32, temp_
 
 cone_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
     // First snap starting point to grid
-    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.tool_start_position.?, state, tile_map)
+    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.last_left_button_press_pos.?, state, tile_map)
     half := tile_map.tile_side_in_feet / 2
     start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? half : -half
     start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? half : -half
