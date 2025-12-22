@@ -802,7 +802,6 @@ update :: proc() {
                             if ok {
                                 start_mouse_tile = screen_coord_to_tile_map(start_pos, state, tile_map)
                             } else {
-                                fmt.println("using token pos")
                                 start_mouse_tile = token.position
                             }
                             append(&state.temp_actions, make_action(.EDIT_TOKEN_POSITION, context.temp_allocator))
