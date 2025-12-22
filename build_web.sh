@@ -19,7 +19,7 @@ ODIN_BIN=odin
 # up in env.o
 #
 # Note that there is a rayGUI equivalent: -define:RAYGUI_WASM_LIB=env.o
-$ODIN_BIN build src/main_web -target:js_wasm32 -build-mode:obj -define:RAYLIB_WASM_LIB=env.o -define:RAYGUI_WASM_LIB=env.o -strict-style -out:$OUT_DIR/game
+$ODIN_BIN build src/main_web -define:PLATFORM_WEB=true -target:js_wasm32 -build-mode:obj -define:RAYLIB_WASM_LIB=env.o -define:RAYGUI_WASM_LIB=env.o -strict-style -out:$OUT_DIR/game
 
 ODIN_PATH=$($ODIN_BIN root)
 

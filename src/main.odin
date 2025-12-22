@@ -23,6 +23,14 @@ SELECTED_TRANSPARENT_COLOR: [4]u8 : {0, 255, 0, 180}
 INITIATIVE_COUNT: i32 : 50
 PLAYERS := [?]string{"Wesley", "AR100", "Daren", "Max", "Mardun", "Rodion"}
 
+PLATFORM_WEB :: #config(PLATFORM_WEB, false)
+
+when PLATFORM_WEB {
+    GLSL_VERSION :: "100"
+} else {
+    GLSL_VERSION :: "330"
+}
+
 DebugMode :: enum {
     OFF,
     ACTIONS,
@@ -39,7 +47,16 @@ GameState :: struct {
     selected_alpha:             f32,
     selected_tokens:            [dynamic]u64,
     last_selected_token_id:     u64,
+
     draw_grid:                  bool,
+    draw_grid_mask:             bool,
+    grid_mask:                  rl.RenderTexture,
+    grid_tex:                   rl.RenderTexture,
+    tiles_tex:                  rl.RenderTexture,
+    grid_shader:                rl.Shader,
+    mask_loc:                   i32,
+    tiles_loc:                  i32,
+
     draw_initiative:            bool,
     active_tool:                Tool,
     selected_options:           ToolOptionsSet,
@@ -290,6 +307,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.screen_height = height
     state.screen_width = width
     state.draw_grid = true
+    state.draw_grid_mask = true
     state.draw_initiative = true
     state.active_tool = Tool.MOVE_TOKEN
     state.selected_color.a = 255
@@ -297,7 +315,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.selected_color.r = u8(rand.int_max(255))
     state.selected_color.g = u8(rand.int_max(255))
     state.selected_color.b = u8(rand.int_max(255))
-    state.selected_wall_color = state.selected_color
+    state.selected_wall_color = state.selected_color + 90
     for state.id == 0 {
         state.id = rand.uint64()
     }
@@ -324,6 +342,18 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     // light
     state.light = {rl.LoadRenderTexture(width, height), 20, true}
     state.light_mask = rl.LoadRenderTexture(width, height)
+    state.grid_mask = rl.LoadRenderTexture(width, height)
+    state.grid_tex = rl.LoadRenderTexture(width, height)
+    state.tiles_tex = rl.LoadRenderTexture(width, height)
+
+    builder := strings.builder_make(context.temp_allocator)
+    strings.write_string(&builder, "assets/shaders/")
+    strings.write_string(&builder, GLSL_VERSION)
+    strings.write_string(&builder, "_mask.fs")
+
+    state.grid_shader = rl.LoadShader(nil, strings.to_cstring(&builder))
+    state.mask_loc = rl.GetShaderLocation(state.grid_shader, "mask")
+    state.tiles_loc = rl.GetShaderLocation(state.grid_shader, "tiles")
 }
 
 tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {
@@ -351,12 +381,14 @@ init :: proc(path: string = "root", mobile := false) {
     tile_map_init(tile_map, mobile)
 
     // Load all tokens from assets dir
-    for file_name in list_files_in_dir("assets") {
+    for file_name in list_files_in_dir("assets/textures") {
         split := strings.split(file_name, ".", allocator = context.temp_allocator)
-        join := strings.join({"assets/", file_name}, "", allocator = context.temp_allocator)
-        state.textures[strings.clone(split[0])] = rl.LoadTexture(
-            strings.clone_to_cstring(join, context.temp_allocator),
-        )
+        if split[1] == "png" {
+            join := strings.join({"assets/textures/", file_name}, "", allocator = context.temp_allocator)
+            state.textures[strings.clone(split[0])] = rl.LoadTexture(
+                strings.clone_to_cstring(join, context.temp_allocator),
+            )
+        }
     }
 }
 
@@ -366,6 +398,9 @@ update :: proc() {
         state.screen_width = rl.GetScreenWidth()
         state.light.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
         state.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+        state.grid_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+        state.grid_tex = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+        state.tiles_tex = rl.LoadRenderTexture(state.screen_width, state.screen_height)
         for _, &token in state.tokens {
             l, ok := &token.light.?
             if ok {
@@ -1206,10 +1241,15 @@ update :: proc() {
         }
     }
     merge_light_masks(state, tile_map)
+    draw_grid_mask(state, tile_map)
 
     rl.BeginDrawing()
+
     rl.ClearBackground(EMPTY_COLOR.xyzw)
 
+
+    rl.BeginTextureMode(state.tiles_tex)
+    rl.ClearBackground({0, 0, 0, 0})
     // draw bg
     pos: rl.Vector2 = tile_map_to_screen_coord(state.bg_pos, state, tile_map)
     pos += state.bg_pos.rel_tile * tile_map.feet_to_pixels
@@ -1278,9 +1318,82 @@ update :: proc() {
                 }
             }
         }
+    }
+    rl.EndTextureMode()
+    rl.DrawTextureRec(
+        state.tiles_tex.texture,
+        {0, 0, f32(state.screen_width), f32(-state.screen_height)},
+        {0, 0},
+        {255, 255, 255, 255},
+    )
 
-        if (state.draw_grid) {
-            rl.DrawLineV({0, min_y}, {f32(state.screen_width), min_y}, {0, 0, 0, 20})
+
+    if rl.IsKeyPressed(.G) {
+        state.draw_grid = !state.draw_grid
+    }
+    if rl.IsKeyPressed(.H) {
+        state.draw_grid_mask = !state.draw_grid_mask
+    }
+
+    if (state.draw_grid || state.draw_grid_mask) {
+        rl.BeginTextureMode(state.grid_tex)
+        {
+            rl.ClearBackground({0, 0, 0, 0})
+            // draw grid
+            //rl.DrawRectangleV({0, 0}, {f32(state.screen_width)/2, f32(state.screen_height)}, rl.RED)
+            //rl.DrawTextureRec(
+            //    state.grid_mask.texture,
+            //    {0, 0, f32(state.screen_width), f32(-state.screen_height)},
+            //    {0, 0},
+            //    {255, 255, 255, 255},
+            //)
+            for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
+                row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
+                row_offset += 1 {
+                cen_y: f32 =
+                    screen_center.y -
+                    tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
+                    f32(row_offset * tile_map.tile_side_in_pixels)
+                min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
+                rl.DrawLineV({0, min_y}, {f32(state.screen_width), min_y}, {0, 0, 0, 255})
+            }
+            for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
+                column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
+                column_offset += 1 {
+                cen_x: f32 =
+                    screen_center.x -
+                    tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
+                    f32(column_offset * tile_map.tile_side_in_pixels)
+                min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
+                min_x = math.max(0, min_x)
+                rl.DrawLineV({min_x, 0}, {min_x, f32(state.screen_height)}, {0, 0, 0, 255})
+            }
+        }
+        rl.EndTextureMode()
+
+
+        if state.draw_grid {
+            rl.DrawTextureRec(
+                state.grid_tex.texture,
+                {0, 0, f32(state.screen_width), f32(-state.screen_height)},
+                {0, 0},
+                {255, 255, 255, 25},
+            )
+        }
+
+        if state.draw_grid_mask {
+            rl.BeginShaderMode(state.grid_shader)
+            {
+                rl.SetShaderValueTexture(state.grid_shader, state.mask_loc, state.grid_mask.texture)
+                rl.SetShaderValueTexture(state.grid_shader, state.tiles_loc, state.tiles_tex.texture)
+                rl.DrawTextureRec(
+                    state.grid_tex.texture,
+                    {0, 0, f32(state.screen_width), f32(-state.screen_height)},
+                    {0, 0},
+                    {255, 255, 255, 155},
+                )
+            }
+            rl.EndShaderMode()
         }
     }
 
@@ -1371,20 +1484,6 @@ update :: proc() {
         // particle lifetime is 0 to 1, multiply by 255 to get opacity
         color.w = u8(particle.lifetime_remaining / particle.lifetime * 255)
         rl.DrawCircleV(pos, particle.size, color.xyzw)
-    }
-
-    if (state.draw_grid) {
-        for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-            column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
-            column_offset += 1 {
-            cen_x: f32 =
-                screen_center.x -
-                tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-                f32(column_offset * tile_map.tile_side_in_pixels)
-            min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-            min_x = math.max(0, min_x)
-            rl.DrawLineV({min_x, 0}, {min_x, f32(state.screen_height)}, {0, 0, 0, 20})
-        }
     }
 
     // Overlay the global shadow mask
