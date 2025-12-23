@@ -1242,7 +1242,6 @@ update :: proc() {
         }
     }
     merge_light_masks(state, tile_map)
-    draw_grid_mask(state, tile_map)
 
     rl.BeginDrawing()
 
@@ -1329,41 +1328,7 @@ update :: proc() {
     )
 
     if (state.draw_grid || state.draw_grid_mask) {
-        rl.BeginTextureMode(state.grid_tex)
-        {
-            rl.ClearBackground({0, 0, 0, 0})
-            // draw grid
-            //rl.DrawRectangleV({0, 0}, {f32(state.screen_width)/2, f32(state.screen_height)}, rl.RED)
-            //rl.DrawTextureRec(
-            //    state.grid_mask.texture,
-            //    {0, 0, f32(state.screen_width), f32(-state.screen_height)},
-            //    {0, 0},
-            //    {255, 255, 255, 255},
-            //)
-            for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
-                row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
-                row_offset += 1 {
-                cen_y: f32 =
-                    screen_center.y -
-                    tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
-                    f32(row_offset * tile_map.tile_side_in_pixels)
-                min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
-                rl.DrawLineV({0, min_y}, {f32(state.screen_width), min_y}, {0, 0, 0, 255})
-            }
-            for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-                column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
-                column_offset += 1 {
-                cen_x: f32 =
-                    screen_center.x -
-                    tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-                    f32(column_offset * tile_map.tile_side_in_pixels)
-                min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-                min_x = math.max(0, min_x)
-                rl.DrawLineV({min_x, 0}, {min_x, f32(state.screen_height)}, {0, 0, 0, 255})
-            }
-        }
-        rl.EndTextureMode()
-
+        draw_grid_to_tex(state, tile_map, &state.grid_tex)
 
         if state.draw_grid {
             rl.DrawTextureRec(
@@ -1375,6 +1340,7 @@ update :: proc() {
         }
 
         if state.draw_grid_mask {
+            draw_grid_mask_to_tex(state, tile_map, &state.grid_mask)
             rl.BeginShaderMode(state.grid_shader)
             {
                 rl.SetShaderValueTexture(state.grid_shader, state.mask_loc, state.grid_mask.texture)

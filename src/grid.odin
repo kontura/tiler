@@ -5,23 +5,42 @@ import "core:fmt"
 import "core:math"
 import "core:math/rand"
 
-draw_grid_mask :: proc(state: ^GameState, tile_map: ^TileMap) {
-    rl.BeginTextureMode(state.grid_mask)
+draw_grid_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
+    screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
+    tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
+    rl.BeginTextureMode(tex^)
     {
         rl.ClearBackground({0, 0, 0, 0})
-        //for _, &token in state.tokens {
-        //    if token.id == 0 {
-        //        continue
-        //    }
-        //    token_pos, token_circle_radius := get_token_circle(tile_map, state, token)
-        //    rl.DrawCircleGradient(
-        //        i32(token_pos.x),
-        //        i32(token_pos.y),
-        //        10 * f32(tile_map.tile_side_in_pixels),
-        //        {0, 0, 0, 255},
-        //        {0, 0, 0, 0},
-        //    )
-        //}
+        // draw grid
+        for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
+            row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
+            row_offset += 1 {
+            cen_y: f32 =
+                screen_center.y -
+                tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
+                f32(row_offset * tile_map.tile_side_in_pixels)
+            min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
+            rl.DrawLineV({0, min_y}, {f32(state.screen_width), min_y}, {0, 0, 0, 255})
+        }
+        for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
+            column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
+            column_offset += 1 {
+            cen_x: f32 =
+                screen_center.x -
+                tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
+                f32(column_offset * tile_map.tile_side_in_pixels)
+            min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
+            min_x = math.max(0, min_x)
+            rl.DrawLineV({min_x, 0}, {min_x, f32(state.screen_height)}, {0, 0, 0, 255})
+        }
+    }
+    rl.EndTextureMode()
+}
+
+draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
+    rl.BeginTextureMode(tex^)
+    {
+        rl.ClearBackground({0, 0, 0, 0})
 
         rand.reset(u64(1))
 
@@ -62,20 +81,8 @@ draw_grid_mask :: proc(state: ^GameState, tile_map: ^TileMap) {
                             {0, 0, 0, 0},
                         )
                 }
-
-
-                if current_tile_value.color.w != 0 {
-                    rl.DrawRectangleV(
-                        {min_x, min_y},
-                        {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
-                        {0, 0, 0, 0},
-                    )
-                }
-
             }
         }
-
-
     }
     rl.EndTextureMode()
 
