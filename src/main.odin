@@ -307,7 +307,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.screen_height = height
     state.screen_width = width
     state.draw_grid = true
-    state.draw_grid_mask = true
+    state.draw_grid_mask = !mobile
     state.draw_initiative = true
     state.active_tool = Tool.MOVE_TOKEN
     state.selected_color.a = 255
