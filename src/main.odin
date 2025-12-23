@@ -47,6 +47,7 @@ GameState :: struct {
     selected_alpha:             f32,
     selected_tokens:            [dynamic]u64,
     last_selected_token_id:     u64,
+    animated_temp_token:        bool,
 
     draw_grid:                  bool,
     draw_grid_mask:             bool,
@@ -355,6 +356,8 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.grid_shader = rl.LoadShader(nil, strings.to_cstring(&builder))
     state.mask_loc = rl.GetShaderLocation(state.grid_shader, "mask")
     state.tiles_loc = rl.GetShaderLocation(state.grid_shader, "tiles")
+
+    state.debug = .TOKENS
 }
 
 tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {
@@ -786,13 +789,13 @@ update :: proc() {
                                 i32(start_mouse_tile.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x),
                                 i32(start_mouse_tile.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
                             }
-                            if mouse_tile_pos.abs_tile != token.position.abs_tile {
+                            //if mouse_tile_pos.abs_tile != token.position.abs_tile {
                                 append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
                                 action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                 move_token_tool(state, token, tile_map, token_pos_delta, action, false)
                                 state.needs_sync = true
                                 finish_last_undo_history_action(state)
-                            }
+                            //}
                         }
                         state.move_start_position = nil
                         if rl.IsMouseButtonPressed(.LEFT) {
@@ -813,7 +816,7 @@ update :: proc() {
                                     i32(start_mouse_tile.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
                                 }
                                 if mouse_tile_pos.abs_tile != token.position.abs_tile &&
-                                   start_mouse_tile.abs_tile != mouse_tile_pos.abs_tile {
+                                    start_mouse_tile.abs_tile != mouse_tile_pos.abs_tile {
                                     append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
                                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                     move_token_tool(state, token, tile_map, token_pos_delta, action, true)
@@ -833,27 +836,22 @@ update :: proc() {
                         // Temp move
                         for token_id in state.selected_tokens {
                             token := &state.tokens[token_id]
-                            start_pos, ok := state.move_start_position.?
                             start_mouse_tile: TileMapPosition
-                            if ok {
-                                start_mouse_tile = screen_coord_to_tile_map(start_pos, state, tile_map)
-                            } else {
-                                start_mouse_tile = token.position
-                            }
-                            append(&state.temp_actions, make_action(.EDIT_TOKEN_POSITION, context.temp_allocator))
-                            temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+                            start_mouse_tile = token.target_position
                             token_pos_delta: [2]i32 = {
                                 i32(start_mouse_tile.abs_tile.x) - i32(mouse_tile_pos.abs_tile.x),
                                 i32(start_mouse_tile.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
                             }
-                            move_token_tool(
-                                state,
-                                &state.tokens[token_id],
-                                tile_map,
-                                token_pos_delta,
-                                temp_action,
-                                true,
-                            )
+                            add_tile_pos_delta(&token.target_position, token_pos_delta)
+                            if !state.animated_temp_token {
+                                add_tile_pos_delta(&token.position, token_pos_delta)
+                            }
+                            set_dirty_for_all_lights(state)
+                            start_pos, ok := state.move_start_position.?
+                            if ok {
+                                start_tile := screen_coord_to_tile_map(start_pos, state, tile_map)
+                                token.moved = show_token_moved_feedback(state, start_tile, mouse_tile_pos, token.size)
+                            }
                         }
                     }
                 } else {
@@ -1070,6 +1068,8 @@ update :: proc() {
                     if ok {
                         token.alive = true
                         token.position = mouse_tile_pos
+                        token.position.rel_tile = {0, 0}
+                        token.target_position = token.position
                         token.color = c
                     }
                     append(&state.temp_actions, make_action(.EDIT_TOKEN_LIFE, context.temp_allocator))
@@ -1088,6 +1088,8 @@ update :: proc() {
                 }
 
                 state.previous_touch_pos = mouse_pos
+                set_dirty_for_all_lights(state)
+
             }
         case .TOUCH_ZOOM:
             {
@@ -1100,6 +1102,7 @@ update :: proc() {
                         zoom_amount := i32((state.previous_touch_dist - dist) * 0.1)
                         tile_map.tile_side_in_pixels -= zoom_amount
                         tile_map.tile_side_in_pixels = math.max(20, tile_map.tile_side_in_pixels)
+                        set_dirty_for_all_lights(state)
                     }
 
                     state.previous_touch_dist = dist
@@ -1169,6 +1172,10 @@ update :: proc() {
         }
     }
 
+    if rl.IsKeyPressed(.G) {
+        state.animated_temp_token = !state.animated_temp_token
+    }
+
     if state.mobile {
         // We support only move and touch tools for mobile
         if touch_count > state.previous_touch_count {
@@ -1232,6 +1239,7 @@ update :: proc() {
 
     screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
+    tokens_animate_pos(tile_map, state)
     //TODO(amatej): extract into render method
 
     draw_light_mask(state, tile_map, &state.light, state.light_pos)
@@ -1359,7 +1367,6 @@ update :: proc() {
     // draw tokens on map
     for _, &token in state.tokens {
         if token.alive {
-            pos: rl.Vector2 = tile_map_to_screen_coord(token.position, state, tile_map)
             token_pos, token_radius := get_token_circle(tile_map, state, token)
             // Make tokens pop from background
             // Draw shadows only for real tokens, skip temp 0 token
@@ -1390,6 +1397,7 @@ update :: proc() {
             } else {
                 rl.DrawCircleV(token_pos, token_radius, token.color.xyzw)
             }
+            pos: rl.Vector2 = tile_map_to_screen_coord_full(token.position, state, tile_map)
             rl.DrawText(
                 get_token_name_temp(&token),
                 i32(pos.x) - tile_map.tile_side_in_pixels / 2,

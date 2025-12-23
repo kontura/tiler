@@ -19,10 +19,11 @@ Token :: struct {
     texture:    ^rl.Texture2D,
     alive:      bool,
     light:      Maybe(LightInfo),
+    target_position: TileMapPosition,
 }
 
 get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (center: [2]f32, radius: f32) {
-    center = tile_map_to_screen_coord(token.position, state, tile_map)
+    center = tile_map_to_screen_coord_full(token.position, state, tile_map)
     if math.mod_f32(token.size, 2) <= 0.5 {
         center -= {f32(tile_map.tile_side_in_pixels) / 2, f32(tile_map.tile_side_in_pixels) / 2}
     }
@@ -31,8 +32,30 @@ get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) ->
     return center, radius
 }
 
+tokens_animate_pos:: proc(tile_map: ^TileMap, state: ^GameState) {
+    for id, &token in state.tokens {
+        //if id == 0 {
+        //    continue
+        //}
+        if token.position != token.target_position {
+            current_dist : = tile_distance(tile_map, token.position, token.target_position)
+            new_dist := exponential_smoothing(0, current_dist)
+
+            tile_vec := tile_difference(token.target_position, token.position)
+            tile_vec_normal := tile_vec_div(tile_vec, current_dist)
+            tile_vec_multed := tile_vec_mul(tile_vec_normal, current_dist - new_dist)
+            token.position = recanonicalize_position(tile_map, tile_pos_add_tile_vec(token.position, tile_vec_multed))
+            l, ok := &token.light.?
+            if ok {
+                l.dirty = true
+            }
+        }
+    }
+
+}
+
 get_token_texture_pos_size :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (pos: [2]f32, scale: f32) {
-    pos = tile_map_to_screen_coord(token.position, state, tile_map)
+    pos = tile_map_to_screen_coord_full(token.position, state, tile_map)
     if math.mod_f32(token.size, 2) <= 0.5 {
         pos -= f32(tile_map.tile_side_in_pixels) / 2.0
     }
@@ -53,9 +76,9 @@ get_token_name_temp :: proc(token: ^Token) -> cstring {
 
 make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name: string = "", initiative: i32 = -1) -> Token {
     if initiative == -1 {
-        return Token{id, pos, color, strings.clone(name), 0, 1, rand.int31_max(22) + 1, nil, true, nil}
+        return Token{id, pos, color, strings.clone(name), 0, 1, rand.int31_max(22) + 1, nil, true, nil, pos}
     } else {
-        return Token{id, pos, color, strings.clone(name), 0, 1, initiative, nil, true, nil}
+        return Token{id, pos, color, strings.clone(name), 0, 1, initiative, nil, true, nil, pos}
     }
 }
 

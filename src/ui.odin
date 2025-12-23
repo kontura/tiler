@@ -7,7 +7,7 @@ import rl "vendor:raylib"
 
 // rfleury ui
 
-SPEED :: 5
+SPEED :: 15
 
 UIWidgetFlag :: enum {
     CLICKABLE,

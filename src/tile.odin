@@ -24,6 +24,11 @@ TileMapPosition :: struct {
     rel_tile: [2]f32,
 }
 
+TileMapVec :: struct {
+    abs_tile: [2]f32,
+    rel_tile: [2]f32,
+}
+
 TileChunkPosition :: struct {
     tile_chunk: [2]u32,
     rel_tile:   [2]u32,
@@ -72,6 +77,63 @@ tile_xor :: proc(t1: ^Tile, t2: ^Tile) -> Tile {
     delta.wall_colors[Direction.LEFT] = t1.wall_colors[Direction.LEFT] ~ t2.wall_colors[Direction.LEFT]
 
     return delta
+}
+
+//TODO(amatej): rename these to tile_pos_..
+tile_difference :: proc(p1: TileMapPosition, p2: TileMapPosition) -> TileMapVec {
+    res: TileMapVec
+    res.abs_tile.x = f32(p1.abs_tile.x) - f32(p2.abs_tile.x)
+    res.abs_tile.y = f32(p1.abs_tile.y) - f32(p2.abs_tile.y)
+    res.rel_tile = p1.rel_tile - p2.rel_tile
+
+    return res
+}
+
+tile_pos_add_tile_vec :: proc(p: TileMapPosition, v: TileMapVec) -> TileMapPosition {
+    p := p
+
+    p_abs_tile_float: [2]f32 = {f32(p.abs_tile.x), f32(p.abs_tile.y)}
+    p_abs_tile_float += v.abs_tile
+
+    p_abs_tile_float_floored : [2]f32 = {math.floor(p_abs_tile_float.x), math.floor(p_abs_tile_float.y)}
+
+    p.abs_tile = {u32(p_abs_tile_float_floored.x), u32(p_abs_tile_float_floored.y)}
+
+    rel_overflow : [2]f32 = p_abs_tile_float - p_abs_tile_float_floored
+
+    p.rel_tile += v.rel_tile
+    p.rel_tile += rel_overflow * tile_map.tile_side_in_feet
+
+    return p
+}
+
+tile_vec_div :: proc(v: TileMapVec, mul: f32) -> TileMapVec {
+    if mul == 0 {
+        return v
+    }
+    v := v
+
+    v.abs_tile /= mul
+    v.rel_tile /= mul
+
+    return v
+}
+
+
+tile_vec_mul :: proc(v: TileMapVec, mul: f32) -> TileMapVec {
+    v := v
+
+    v.abs_tile *= mul
+    v.rel_tile *= mul
+
+    return v
+}
+
+tile_vec_len :: proc(p: TileMapVec) -> (abs, rel: f32) {
+    abs = math.sqrt(f32(p.abs_tile.x * p.abs_tile.x + p.abs_tile.y * p.abs_tile.y))
+    rel = math.sqrt(p.rel_tile.x * p.rel_tile.x + p.rel_tile.y * p.rel_tile.y)
+
+    return
 }
 
 tile_distance :: proc(tile_map: ^TileMap, p1: TileMapPosition, p2: TileMapPosition) -> f32 {
@@ -189,6 +251,9 @@ recanonicalize_coord :: proc(tile_map: ^TileMap, abs_tile: ^u32, rel_tile: ^f32)
     offset: i32 = i32(math.round(rel_tile^ / tile_map.tile_side_in_feet))
     abs_tile^ += u32(offset)
     rel_tile^ -= f32(offset) * tile_map.tile_side_in_feet
+    if math.abs(rel_tile^) < EPS {
+        rel_tile^ = 0
+    }
 }
 
 recanonicalize_position :: proc(tile_map: ^TileMap, pos: TileMapPosition) -> TileMapPosition {

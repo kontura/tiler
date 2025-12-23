@@ -465,7 +465,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         {
             token, ok := &state.tokens[action.token_id]
             if ok {
-                token.position = action.end
+                token.target_position = action.end
             }
         }
     case .EDIT_TOKEN_INITIATIVE:

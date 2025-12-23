@@ -653,6 +653,28 @@ move_initiative_token_tool :: proc(state: ^GameState, start_pos, end_pos: f32, a
     }
 }
 
+show_token_moved_feedback :: proc(state: ^GameState, start_pos: TileMapPosition, end_pos: TileMapPosition, token_size: f32) -> u32 {
+    append(&state.temp_actions, make_action(.BRUSH, context.temp_allocator))
+    temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+    //assert(token.position.rel_tile == {0, 0})
+    start_pos := start_pos
+    //TODO(amatej): This breaks down for bigger tokens (size > 2)
+    // We start with 31 because it works emirically
+    radius: f32 = 31
+    if token_size > 1 {
+        half := tile_map.tile_side_in_feet / 2
+        // If the token size is even shift the center of the token
+        // to the Tile corners
+        if math.mod_f32(token_size, 2) <= 0.5 {
+            start_pos.rel_tile = {-half, -half}
+        }
+        // Grow the raidus by the size of the token (-1 because size 1 is the default)
+        radius += (f32(token_size - 1) * half)
+    }
+    draw_tile_circle(tile_map, start_pos, radius, GREEN_HIGHLIGH, false, 0, false, temp_action)
+    return DDA(state, tile_map, end_pos.abs_tile, start_pos.abs_tile, temp_action)
+}
+
 move_token_tool :: proc(
     state: ^GameState,
     token: ^Token,
@@ -661,56 +683,17 @@ move_token_tool :: proc(
     action: ^Action,
     feedback: bool,
 ) {
-    action.token_id = token.id
-    action.start = token.position
-    end: [2]i32 = {i32(token.position.abs_tile.x), i32(token.position.abs_tile.y)} - token_pos_delta
-    action.end = token.position
-    action.end.abs_tile = {u32(end.x), u32(end.y)}
-    // We want to keep the tokens at the center of each tile
-    action.end.rel_tile = {0, 0}
-    if feedback {
-        append(&state.temp_actions, make_action(.BRUSH, context.temp_allocator))
-        temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-        assert(token.position.rel_tile == {0, 0})
-        pos := token.position
-        //TODO(amatej): This breaks down for bigger tokens (size > 2)
-        // We start with 31 because it works emirically
-        radius: f32 = 31
-        if token.size > 1 {
-            half := tile_map.tile_side_in_feet / 2
-            // If the token size is even shift the center of the token
-            // to the Tile corners
-            if math.mod_f32(token.size, 2) <= 0.5 {
-                pos.rel_tile = {-half, -half}
-            }
-            // Grow the raidus by the size of the token (-1 because size 1 is the default)
-            radius += (f32(token.size - 1) * half)
-        }
-        draw_tile_circle(tile_map, pos, radius, GREEN_HIGHLIGH, false, 0, false, temp_action)
-        token.moved = DDA(state, tile_map, action.end.abs_tile, token.position.abs_tile, temp_action)
-    } else {
-        token.moved = 0
-        //Spawn particles on move
-        //for i := 0; i < 9 * int(token.size) * int(token.size); i += 1 {
-        //    angle := rand.float32() * 2 * math.PI
-        //    radius := f32(token.size) * tile_map.tile_side_in_feet / 2
-        //    random_pos_on_token_circle := mouse_tile_pos
-        //    random_pos_on_token_circle.rel_tile = {0, 0}
-        //    random_pos_on_token_circle.rel_tile.x += radius * math.cos(angle)
-        //    random_pos_on_token_circle.rel_tile.y += radius * math.sin(angle)
-        //    random_pos_on_token_circle = recanonicalize_position(tile_map, random_pos_on_token_circle)
-        //    particle_emit(
-        //        state,
-        //        random_pos_on_token_circle,
-        //        PARTICLE_BASE_VELOCITY + f32(token.size) * 28,
-        //        0.3,
-        //        {122, 122, 122, 255},
-        //        3,
-        //    )
-        //}
+    end: [2]i32 = {i32(token.position.abs_tile.x), i32(token.position.abs_tile.y)}
+    if action != nil {
+        action.token_id = token.id
+        action.start = token.position
+        action.end = token.position
+        action.end.abs_tile = {u32(end.x), u32(end.y)}
+        // We want to keep the tokens at the center of each tile
+        action.end.rel_tile = {0, 0}
     }
-    set_dirty_for_all_lights(state)
-    add_tile_pos_delta(&token.position, token_pos_delta)
+    //set_dirty_for_all_lights(state)
+    //add_tile_pos_delta(&token.target_position, token_pos_delta)
 }
 
 //TODO(amatej): this doesn't work when we loop to previous tile_chunk
