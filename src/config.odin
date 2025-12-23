@@ -103,12 +103,23 @@ select_next_init_token :: proc(state: ^GameState, init_start: i32, init_index_st
 }
 
 
-options_menu: []MenuItem = {{"Toggle Draw Grid", proc(state: ^GameState) {
+options_menu: []MenuItem = {
+    {
+        "Toggle Draw Grid", proc(state: ^GameState) {
             state.draw_grid = !state.draw_grid
-
-        }}, {"Toggle Draw Initiative", proc(state: ^GameState) {
+        }
+    },
+    {
+        "Toggle Draw Initiative", proc(state: ^GameState) {
             state.draw_initiative = !state.draw_initiative
-        }}}
+        }
+    },
+    {
+        "Toggle Draw grid mask", proc(state: ^GameState) {
+            state.draw_grid_mask = !state.draw_grid_mask
+        }
+    }
+}
 
 main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
             tilemap_clear(tile_map)

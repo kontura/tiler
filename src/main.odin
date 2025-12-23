@@ -1328,14 +1328,6 @@ update :: proc() {
         {255, 255, 255, 255},
     )
 
-
-    if rl.IsKeyPressed(.G) {
-        state.draw_grid = !state.draw_grid
-    }
-    if rl.IsKeyPressed(.H) {
-        state.draw_grid_mask = !state.draw_grid_mask
-    }
-
     if (state.draw_grid || state.draw_grid_mask) {
         rl.BeginTextureMode(state.grid_tex)
         {
