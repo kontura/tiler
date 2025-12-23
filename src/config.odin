@@ -107,18 +107,18 @@ options_menu: []MenuItem = {
     {
         "Toggle Draw Grid", proc(state: ^GameState) {
             state.draw_grid = !state.draw_grid
-        }
+        },
     },
     {
         "Toggle Draw Initiative", proc(state: ^GameState) {
             state.draw_initiative = !state.draw_initiative
-        }
+        },
     },
     {
         "Toggle Draw grid mask", proc(state: ^GameState) {
             state.draw_grid_mask = !state.draw_grid_mask
-        }
-    }
+        },
+    },
 }
 
 main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
