@@ -316,6 +316,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.selected_color.g = u8(rand.int_max(255))
     state.selected_color.b = u8(rand.int_max(255))
     state.selected_wall_color = state.selected_color + 90
+    state.selected_wall_color.a = 255
     for state.id == 0 {
         state.id = rand.uint64()
     }
