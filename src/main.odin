@@ -1070,6 +1070,8 @@ update :: proc() {
                     if ok {
                         token.alive = true
                         token.position = mouse_tile_pos
+                        token.position.rel_tile = {0, 0}
+                        token.target_position = token.position
                         token.color = c
                     }
                     append(&state.temp_actions, make_action(.EDIT_TOKEN_LIFE, context.temp_allocator))
@@ -1232,6 +1234,7 @@ update :: proc() {
 
     screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
+    tokens_animate_pos(tile_map, state)
     //TODO(amatej): extract into render method
 
     draw_light_mask(state, tile_map, &state.light, state.light_pos)
@@ -1359,7 +1362,6 @@ update :: proc() {
     // draw tokens on map
     for _, &token in state.tokens {
         if token.alive {
-            pos: rl.Vector2 = tile_map_to_screen_coord(token.position, state, tile_map)
             token_pos, token_radius := get_token_circle(tile_map, state, token)
             // Make tokens pop from background
             // Draw shadows only for real tokens, skip temp 0 token
@@ -1390,6 +1392,7 @@ update :: proc() {
             } else {
                 rl.DrawCircleV(token_pos, token_radius, token.color.xyzw)
             }
+            pos: rl.Vector2 = tile_map_to_screen_coord_full(token.position, state, tile_map)
             rl.DrawText(
                 get_token_name_temp(&token),
                 i32(pos.x) - tile_map.tile_side_in_pixels / 2,

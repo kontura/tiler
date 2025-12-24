@@ -151,7 +151,7 @@ circle_tool :: proc(
 
     current_mouse_tile: TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
 
-    max_dist_in_feet := tile_distance(tile_map, start_mouse_tile, current_mouse_tile)
+    max_dist_in_feet := tile_pos_distance(tile_map, start_mouse_tile, current_mouse_tile)
 
     action.start = start_mouse_tile
     action.color = state.selected_color
@@ -204,7 +204,7 @@ draw_tile_circle :: proc(
         for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
             temp_tile_pos: TileMapPosition = {{x, y}, {0, 0}}
 
-            dist := tile_distance(tile_map, temp_tile_pos, center)
+            dist := tile_pos_distance(tile_map, temp_tile_pos, center)
             if (radius > dist) {
                 old_tile := get_tile(tile_map, {x, y})
                 new_tile := tile_make_color_walls_colors(
@@ -222,7 +222,7 @@ draw_tile_circle :: proc(
         for y: u32 = start_tile.y; y <= end_tile.y; y += 1 {
             for x: u32 = start_tile.x; x <= end_tile.x; x += 1 {
                 temp_tile_pos: TileMapPosition = {{x, y}, {0, 0}}
-                dist := tile_distance(tile_map, temp_tile_pos, center)
+                dist := tile_pos_distance(tile_map, temp_tile_pos, center)
                 if (radius > dist) {
                     old_tile := get_tile(tile_map, {x, y})
 
@@ -383,7 +383,7 @@ offset_tile_color_by_chance_circle :: proc(
 ) {
     temp_tile_pos: TileMapPosition = {{x, y}, {0, 0}}
 
-    dist := tile_distance(tile_map, temp_tile_pos, center)
+    dist := tile_pos_distance(tile_map, temp_tile_pos, center)
     if (radius > dist) {
         offset_tile_color_by_chance(tile_map, x, y, color_offset, action)
     }
@@ -671,7 +671,6 @@ move_token_tool :: proc(
     if feedback {
         append(&state.temp_actions, make_action(.BRUSH, context.temp_allocator))
         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-        assert(token.position.rel_tile == {0, 0})
         pos := token.position
         //TODO(amatej): This breaks down for bigger tokens (size > 2)
         // We start with 31 because it works emirically
@@ -711,6 +710,7 @@ move_token_tool :: proc(
     }
     set_dirty_for_all_lights(state)
     add_tile_pos_delta(&token.position, token_pos_delta)
+    token.target_position = token.position
 }
 
 //TODO(amatej): this doesn't work when we loop to previous tile_chunk
@@ -779,7 +779,7 @@ cone_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, ac
 
     end_pos_tile: TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
 
-    max_dist_in_feet := tile_distance(tile_map, start_mouse_tile, end_pos_tile)
+    max_dist_in_feet := tile_pos_distance(tile_map, start_mouse_tile, end_pos_tile)
 
     draw_cone_tiles(tile_map, start_mouse_tile, end_pos_tile, state.selected_color, action)
 

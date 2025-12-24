@@ -464,8 +464,15 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
     case .EDIT_TOKEN_POSITION:
         {
             token, ok := &state.tokens[action.token_id]
-            if ok {
+            // Don't animate mine actions, this is important because normally we would
+            // animate undo actions (revert + redo) even for temp actions but those
+            // need to happen in one frame otherwise the move isn't complete the next
+            // frame and adding the move delta shoots the token far far away.
+            if action.mine {
                 token.position = action.end
+            }
+            if ok {
+                token.target_position = action.end
             }
         }
     case .EDIT_TOKEN_INITIATIVE:

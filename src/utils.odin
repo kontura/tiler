@@ -2,6 +2,8 @@
 
 package tiler
 
+EPS :: 1.0e-3
+
 @(require_results)
 read_entire_file :: proc(
     name: string,
