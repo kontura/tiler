@@ -722,6 +722,7 @@ update :: proc() {
                         tooltip = circle_tool(
                             state,
                             tile_map,
+                            state.last_left_button_press_pos.?,
                             mouse_pos,
                             .ADD_WALLS in state.selected_options,
                             state.selected_wall_color,
@@ -744,22 +745,26 @@ update :: proc() {
                         redo_action(state, tile_map, &dupe)
                         dupe.revert_prev = true
                         append(&state.undo_history, dupe)
+                        state.needs_sync = true
+                        finish_last_undo_history_action(state)
                     } else {
-                        //TODO(amatej): don't add the action if the circle has size 0
-                        append(&state.undo_history, make_action(.CIRCLE))
-                        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                        tooltip = circle_tool(
-                            state,
-                            tile_map,
-                            mouse_pos,
-                            .ADD_WALLS in state.selected_options,
-                            state.selected_wall_color,
-                            .DITHERING in state.selected_options,
-                            action,
-                        )
+                        if screen_coord_to_tile_map(mouse_pos, state, tile_map) != screen_coord_to_tile_map(state.last_left_button_press_pos.?, state, tile_map) {
+                            append(&state.undo_history, make_action(.CIRCLE))
+                            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                            tooltip = circle_tool(
+                                state,
+                                tile_map,
+                                state.last_left_button_press_pos.?,
+                                mouse_pos,
+                                .ADD_WALLS in state.selected_options,
+                                state.selected_wall_color,
+                                .DITHERING in state.selected_options,
+                                action,
+                            )
+                            state.needs_sync = true
+                            finish_last_undo_history_action(state)
+                        }
                     }
-                    state.needs_sync = true
-                    finish_last_undo_history_action(state)
                 } else {
                     highligh_current_tile_intersection = true
                 }

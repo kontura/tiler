@@ -130,13 +130,14 @@ wall_tool :: proc(tile_map: ^TileMap, start, end: TileMapPosition, color: [4]u8,
 circle_tool :: proc(
     state: ^GameState,
     tile_map: ^TileMap,
+    start_pos: [2]f32,
     current_pos: [2]f32,
     do_walls: bool,
     walls_color: [4]u8,
     dithering: bool,
     action: ^Action,
 ) -> cstring {
-    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.last_left_button_press_pos.?, state, tile_map)
+    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(start_pos, state, tile_map)
 
     half := tile_map.tile_side_in_feet / 2
     start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? half : -half
