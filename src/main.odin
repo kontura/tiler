@@ -1087,6 +1087,7 @@ update :: proc() {
                 if state.previous_touch_pos != 0 {
                     d := state.previous_touch_pos - mouse_pos
                     state.camera_pos.rel_tile += d / 5
+                    set_dirty_for_all_lights(state)
                 }
 
                 state.previous_touch_pos = mouse_pos
@@ -1102,6 +1103,7 @@ update :: proc() {
                         zoom_amount := i32((state.previous_touch_dist - dist) * 0.1)
                         tile_map.tile_side_in_pixels -= zoom_amount
                         tile_map.tile_side_in_pixels = math.max(20, tile_map.tile_side_in_pixels)
+                        set_dirty_for_all_lights(state)
                     }
 
                     state.previous_touch_dist = dist
