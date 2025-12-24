@@ -813,7 +813,7 @@ update :: proc() {
                                     i32(start_mouse_tile.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
                                 }
                                 if mouse_tile_pos.abs_tile != token.position.abs_tile &&
-                                   start_mouse_tile.abs_tile != mouse_tile_pos.abs_tile {
+                                    start_mouse_tile.abs_tile != mouse_tile_pos.abs_tile {
                                     append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
                                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                     move_token_tool(state, token, tile_map, token_pos_delta, action, true)
