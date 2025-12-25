@@ -12,7 +12,7 @@ SPEED :: 5
 UIWidgetFlag :: enum {
     CLICKABLE,
     HOVERABLE,
-    VIEWSCROLL,
+    DRAGABLE,
     DRAWTEXT,
     DRAWICON,
     DRAWBORDER,
@@ -21,9 +21,9 @@ UIWidgetFlag :: enum {
     DRAWDROPSHADOW,
     DRAWCOLORPICKER,
     DRAWCOLORBARALPHA,
-    CLIP,
     HOTANIMATION,
     ACTIVEANIMATION,
+    USETILEMAPPOS,
     // ...
 }
 
@@ -55,24 +55,30 @@ UIWidget :: struct {
     computed_size:         [2]f32,
     // final position on screen
     rect:                  rl.Rectangle,
+    dragged:               bool,
+    map_pos:               Maybe(TileMapPosition),
 
-    // persistent data
+    // persistent data6
     hot_t:                 f32,
     active_t:              f32,
+
+    state:                 ^GameState,
 }
 
 UIInteraction :: struct {
     widget:   ^UIWidget,
     clicked:  bool,
     hovering: bool,
+    dragging: bool,
+    released: bool,
 }
 
 exponential_smoothing :: proc(target, current: f32) -> f32 {
     return current + (target - current) * (1 - math.exp(-rl.GetFrameTime() * SPEED))
 }
 
-ui_widget_interaction :: proc(widget: ^UIWidget) -> UIInteraction {
-    mouse_pos: [2]f32 = rl.GetMousePosition()
+// We pass mouse_pos so it can be overriden
+ui_widget_interaction :: proc(widget: ^UIWidget, mouse_pos: [2]f32) -> UIInteraction {
     interaction: UIInteraction
 
     stack := make([dynamic]^UIWidget, context.temp_allocator)
@@ -91,7 +97,7 @@ ui_widget_interaction :: proc(widget: ^UIWidget) -> UIInteraction {
                 current = peek.next
             } else {
                 // visiting peek
-                if (rl.CheckCollisionPointRec(mouse_pos, peek.rect)) {
+                if (rl.CheckCollisionPointRec(mouse_pos, ui_widget_get_rect(peek))) {
                     if (peek == widget) {
                         widget_selected = true
                     } else {
@@ -115,6 +121,17 @@ ui_widget_interaction :: proc(widget: ^UIWidget) -> UIInteraction {
                 interaction.clicked = true
             }
         }
+
+        if .DRAGABLE in widget.flags {
+            if rl.IsMouseButtonPressed(.LEFT) {
+                widget.dragged = true
+            }
+            if rl.IsMouseButtonReleased(.LEFT) {
+                interaction.released = true
+                widget.dragged = false
+            }
+            interaction.dragging = widget.dragged
+        }
     }
 
     return interaction
@@ -135,6 +152,8 @@ ui_update_widget_cache :: proc(state: ^GameState, root: ^UIWidget) {
             widget.rect = current.rect
             widget.hot_t = current.hot_t
             widget.active_t = current.active_t
+            widget.dragged = current.dragged
+            widget.map_pos = current.map_pos
         } else {
             state.widget_cache[strings.clone(current.string)] = current^
         }
@@ -150,16 +169,24 @@ ui_update_widget_cache :: proc(state: ^GameState, root: ^UIWidget) {
 
 }
 
-ui_make_widget :: proc(
+ui_make_widget :: proc {
+    ui_make_widget_basic,
+    ui_make_widget_rect,
+}
+
+ui_make_widget_rect :: proc(
     state: ^GameState,
     parent: ^UIWidget,
     flags: UIWidgetFlags,
     string: string,
+    rect: [4]f32,
     allocator := context.temp_allocator,
 ) -> ^UIWidget {
     widget := new(UIWidget, allocator)
     widget.string = string
     widget.flags = flags
+    widget.rect = {rect[0], rect[1], rect[2], rect[3]}
+    widget.state = state
 
     widget_cached, ok := &state.widget_cache[string]
     if ok {
@@ -168,6 +195,8 @@ ui_make_widget :: proc(
         widget.rect = widget_cached.rect
         widget.hot_t = widget_cached.hot_t
         widget.active_t = widget_cached.active_t
+        widget.dragged = widget_cached.dragged
+        widget.map_pos = widget_cached.map_pos
     }
 
     // Update widgets tree
@@ -187,7 +216,28 @@ ui_make_widget :: proc(
         }
     }
 
+    if widget.dragged {
+        mouse_pos := rl.GetMousePosition()
+        if .USETILEMAPPOS in widget.flags {
+            mouse_tile_pos: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, state.tile_map)
+            widget.map_pos = mouse_tile_pos
+        } else {
+            widget.rect.x = mouse_pos.x - widget.rect.width/2
+            widget.rect.y = mouse_pos.y - widget.rect.height/2
+        }
+    }
+
     return widget
+}
+
+ui_make_widget_basic :: proc(
+    state: ^GameState,
+    parent: ^UIWidget,
+    flags: UIWidgetFlags,
+    string: string,
+    allocator := context.temp_allocator,
+) -> ^UIWidget {
+    return ui_make_widget_rect(state, parent, flags, string, [4]f32{0, 0, 0, 0}, allocator)
 }
 
 ui_radio_button :: proc(
@@ -196,7 +246,7 @@ ui_radio_button :: proc(
     string: string,
     active: bool,
     icon: rl.GuiIconName,
-    rect: rl.Rectangle,
+    rect: [4]f32,
     allocator := context.temp_allocator,
 ) -> UIInteraction {
     radio := ui_make_widget(
@@ -208,9 +258,24 @@ ui_radio_button :: proc(
     radio.icon = icon
     radio.background_color = active ? {255, 255, 255, 95} : {0, 0, 0, 95}
     radio.active = active
+    radio.rect = {rect[0], rect[1], rect[2], rect[3]}
 
-    radio.rect = rect
-    return ui_widget_interaction(radio)
+    return ui_widget_interaction(radio, rl.GetMousePosition())
+}
+
+ui_widget_get_rect :: proc(widget: ^UIWidget) -> rl.Rectangle {
+    rect: rl.Rectangle
+    if .USETILEMAPPOS in widget.flags {
+        center := tile_map_to_screen_coord_full(widget.map_pos.?, state, tile_map)
+        start := center - (f32(widget.state.tile_map.tile_side_in_pixels)/2)
+        end := center + (f32(widget.state.tile_map.tile_side_in_pixels)/2)
+
+        rect = {start.x, start.y, end.x - start.x, end.y - start.y}
+    } else {
+        rect = widget.rect
+    }
+
+    return rect
 }
 
 ui_draw_tree :: proc(root: ^UIWidget) {
@@ -219,48 +284,51 @@ ui_draw_tree :: proc(root: ^UIWidget) {
 
     for len(stack) > 0 {
         current := pop(&stack)
-        interaction := ui_widget_interaction(current)
+        interaction := ui_widget_interaction(current, rl.GetMousePosition())
+
+        rect: rl.Rectangle = ui_widget_get_rect(current)
+
         if .DRAWBACKGROUND in current.flags {
             if !current.active && interaction.hovering {
                 current.hot_t = exponential_smoothing(1, current.hot_t)
                 if .HOTANIMATION in current.flags {
-                    rl.DrawRectangleRec(current.rect, {200, 0, 0, u8(255 * current.hot_t)})
+                    rl.DrawRectangleRec(rect, {200, 0, 0, u8(255 * current.hot_t)})
                 } else {
-                    rl.DrawRectangleRec(current.rect, {100, 0, 0, 255})
+                    rl.DrawRectangleRec(rect, {100, 0, 0, 255})
                 }
             } else {
                 current.hot_t = 0
-                rl.DrawRectangleRec(current.rect, current.background_color.xyzw)
+                rl.DrawRectangleRec(rect, current.background_color.xyzw)
             }
         }
 
         if .DRAWBACKGROUNDGRADIENT in current.flags {
-            rl.DrawRectangleGradientEx(current.rect, {40, 40, 40, 45}, {40, 40, 40, 45}, {0, 0, 0, 0}, {0, 0, 0, 0})
+            rl.DrawRectangleGradientEx(rect, {40, 40, 40, 45}, {40, 40, 40, 45}, {0, 0, 0, 0}, {0, 0, 0, 0})
         }
 
         if .DRAWBORDER in current.flags {
-            rl.DrawRectangleLinesEx(current.rect, 3, {255, 0, 0, 255})
+            rl.DrawRectangleLinesEx(rect, 3, {255, 0, 0, 255})
         }
 
         if .DRAWTEXT in current.flags {
             rl.DrawText(
                 strings.clone_to_cstring(current.string, context.temp_allocator),
-                i32(current.rect.x) + 4,
-                i32(current.rect.y) + 4,
+                i32(rect.x) + 4,
+                i32(rect.y) + 4,
                 18,
                 rl.WHITE,
             )
         }
 
         if .DRAWICON in current.flags {
-            rl.GuiDrawIcon(current.icon, i32(current.rect.x) + 7, i32(current.rect.y) + 7, 1, rl.WHITE)
+            rl.GuiDrawIcon(current.icon, i32(rect.x) + 7, i32(rect.y) + 7, 1, rl.WHITE)
         }
 
         if .DRAWCOLORPICKER in current.flags {
-            rl.GuiColorPicker(current.rect, "color picker", (^rl.Color)(current.colorpicker_color))
+            rl.GuiColorPicker(rect, "color picker", (^rl.Color)(current.colorpicker_color))
         }
         if .DRAWCOLORBARALPHA in current.flags {
-            rl.GuiColorBarAlpha(current.rect, "color picker alpha", current.colorpicker_alpha)
+            rl.GuiColorBarAlpha(rect, "color picker alpha", current.colorpicker_alpha)
         }
 
         if current.next != nil {

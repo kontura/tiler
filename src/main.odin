@@ -39,6 +39,7 @@ DebugMode :: enum {
 
 //TODO(amatej): make GameState and TileMap not global
 GameState :: struct {
+    tile_map:                   ^TileMap,
     screen_width:               i32,
     screen_height:              i32,
     camera_pos:                 TileMapPosition,
@@ -380,6 +381,7 @@ init :: proc(path: string = "root", mobile := false) {
 
     tile_map = new(TileMap)
     tile_map_init(tile_map, mobile)
+    state.tile_map = tile_map
 
     // Load all tokens from assets dir
     for file_name in list_files_in_dir("assets/textures") {
@@ -432,7 +434,7 @@ update :: proc() {
         if rl.IsMouseButtonPressed(.LEFT) {
             state.last_left_button_press_pos = mouse_pos
         } else if rl.IsMouseButtonDown(.RIGHT) {
-            if rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8 != 0 {
+            if rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) != 0 {
                 state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
                 set_dirty_for_all_lights(state)
             }
@@ -453,7 +455,7 @@ update :: proc() {
         if state.draw_initiative {
             initiative_widget := ui_make_widget(state, state.root, {.DRAWBACKGROUNDGRADIENT}, "initiative")
             initiative_widget.rect = {0, 0, 120, f32(state.screen_height)}
-            if ui_widget_interaction(initiative_widget).hovering && state.active_tool == .EDIT_TOKEN {
+            if ui_widget_interaction(initiative_widget, mouse_pos).hovering && state.active_tool == .EDIT_TOKEN {
                 if rl.IsMouseButtonDown(.LEFT) {
                     append(&state.temp_actions, make_action(.EDIT_TOKEN_INITIATIVE, context.temp_allocator))
                     temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
@@ -469,8 +471,61 @@ update :: proc() {
                 }
                 icon = .ICON_SHUFFLE
             }
-
         }
+
+        // Add circle modifications
+        if state.active_tool == .CIRCLE {
+            // Since we will be modifying undo_history in the loop
+            // get the len before we start adding.
+            current_undo_hist_en := len(state.undo_history)
+            for i in 0 ..< current_undo_hist_en {
+                action := &state.undo_history[i]
+                if action.type == .CIRCLE &&
+                    action.state != .REVERTED &&
+                    action.state != .REVERTS &&
+                    action.state != .DELETES &&
+                    action.state != .DELETED {
+                        id := fmt.aprint("circle action", i, allocator = context.temp_allocator)
+                        circle_action_widget := ui_make_widget(state, state.root, {.HOVERABLE, .CLICKABLE, .DRAWBACKGROUND, .DRAGABLE, .USETILEMAPPOS}, id, [4]f32{0, 0, 60, 60})
+                        circle_action_widget.background_color = {255, 255, 255, 95}
+                        if circle_action_widget.map_pos == nil {
+                            circle_action_widget.map_pos = action.start
+                        }
+                        interaction := ui_widget_interaction(circle_action_widget, mouse_pos)
+                        if interaction.hovering && rl.IsKeyPressed(.DELETE) {
+                            deletes := revert_action(action)
+                            deletes.revert_prev = false
+                            redo_action(state, tile_map, &deletes)
+                            append(&state.undo_history, deletes)
+                            finish_last_undo_history_action(state, .DELETES)
+                            action.state = .DELETED
+                        } else if interaction.dragging {
+                            reverted := revert_action(action, context.temp_allocator)
+                            redo_action(state, tile_map, &reverted)
+                            append(&state.temp_actions, reverted)
+                            dupe := duplicate_action(action, false, context.temp_allocator)
+                            move_action(state, tile_map, &dupe, mouse_pos)
+                            redo_action(state, tile_map, &dupe)
+                            append(&state.temp_actions, dupe)
+                        } else if interaction.released {
+                            dupe := duplicate_action(action, false, context.allocator)
+                            reverted := revert_action(action)
+                            reverted.revert_prev = false
+                            action.state = .DELETED
+                            reverted.state = .DELETES
+                            redo_action(state, tile_map, &reverted)
+                            append(&state.undo_history, reverted)
+                            finish_last_undo_history_action(state)
+                            move_action(state, tile_map, &dupe, mouse_pos)
+                            redo_action(state, tile_map, &dupe)
+                            dupe.revert_prev = true
+                            append(&state.undo_history, dupe)
+                            state.needs_sync = true
+                            finish_last_undo_history_action(state)
+                        }
+                    }
+                }
+            }
 
         if state.active_tool == .COLOR_PICKER {
             //TODO(amatej): remove this hack
@@ -496,20 +551,17 @@ update :: proc() {
 
         tool_menu_widget := ui_make_widget(state, state.root, {}, "tool_menu")
         for &tool, i in config_tool_menu {
-            rect := get_tool_tool_menu_rect(state, &config_tool_menu, i)
-            r: rl.Rectangle = {rect.x, rect.y, rect.z, rect.w}
             is_active_proc, is_active_ok := tool.is_active.?
             if is_active_ok {
                 id := fmt.aprint("tool menu button", i, allocator = context.temp_allocator)
-                inter := ui_radio_button(state, tool_menu_widget, id, is_active_proc(state), tool.icon, r)
+                rect := get_tool_tool_menu_rect(state, &config_tool_menu, i)
+                inter := ui_radio_button(state, tool_menu_widget, id, is_active_proc(state), tool.icon, rect)
                 if inter.clicked {
                     tool.action(state)
                 }
             }
             for &config, ii in tool.options {
-                rect = get_tool_tool_menu_rect(state, &config_tool_menu, i, ii)
                 cond_proc, cond_ok := config.condition.?
-                r = {rect.x, rect.y, rect.z, rect.w}
                 if cond_ok {
                     if !cond_proc(state) {
                         continue
@@ -518,7 +570,8 @@ update :: proc() {
                 is_active_proc, is_active_ok := config.is_active.?
                 if is_active_ok {
                     id := fmt.aprint("tool config menu button", i, ii, allocator = context.temp_allocator)
-                    if ui_radio_button(state, tool_menu_widget, id, is_active_proc(state), config.icon, r).clicked {
+                    rect := get_tool_tool_menu_rect(state, &config_tool_menu, i, ii)
+                    if ui_radio_button(state, tool_menu_widget, id, is_active_proc(state), config.icon, rect).clicked {
                         config.action(state)
                     }
                 }
@@ -566,7 +619,7 @@ update :: proc() {
         }
     }
 
-    if ui_widget_interaction(state.root).hovering {
+    if ui_widget_interaction(state.root, mouse_pos).hovering {
         switch state.active_tool {
         case .LIGHT_SOURCE:
             {
@@ -673,52 +726,23 @@ update :: proc() {
             }
         case .CIRCLE:
             {
-                //TODO(amatej): this leaks at the end
-                clear(&state.done_circle_actions)
-                selected_action_circle: ^Action = nil
-                for i in 0 ..< len(state.undo_history) {
-                    action := &state.undo_history[i]
-                    if action.type == .CIRCLE &&
-                       action.state != .REVERTED &&
-                       action.state != .REVERTS &&
-                       action.state != .DELETES &&
-                       action.state != .DELETED {
-                        append(&state.done_circle_actions, i)
-                        rect := get_circle_action_rect(state, tile_map, action)
-                        // Trigger only once for each press
-                        if rl.IsKeyPressed(.DELETE) {
-                            if rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]}) {
-                                deletes := revert_action(action)
-                                deletes.revert_prev = false
-                                redo_action(state, tile_map, &deletes)
-                                append(&state.undo_history, deletes)
-                                finish_last_undo_history_action(state, .DELETES)
-                                action.state = .DELETED
-                            }
-                        } else if state.last_left_button_press_pos != nil {
-                            if rl.CheckCollisionPointRec(
-                                state.last_left_button_press_pos.?,
-                                {rect[0], rect[1], rect[2], rect[3]},
-                            ) {
-                                selected_action_circle = action
-                            }
-                        }
-                    }
-                }
-
                 if rl.IsMouseButtonDown(.LEFT) {
-                    if selected_action_circle != nil {
-                        reverted := revert_action(selected_action_circle, context.temp_allocator)
-                        redo_action(state, tile_map, &reverted)
-                        append(&state.temp_actions, reverted)
-
-                        dupe := duplicate_action(selected_action_circle, false, context.temp_allocator)
-                        move_action(state, tile_map, &dupe, mouse_pos)
-                        redo_action(state, tile_map, &dupe)
-                        append(&state.temp_actions, dupe)
-                    } else {
-                        append(&state.temp_actions, make_action(.CIRCLE, context.temp_allocator))
-                        temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+                    append(&state.temp_actions, make_action(.CIRCLE, context.temp_allocator))
+                    temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+                    tooltip = circle_tool(
+                        state,
+                        tile_map,
+                        state.last_left_button_press_pos.?,
+                        mouse_pos,
+                        .ADD_WALLS in state.selected_options,
+                        state.selected_wall_color,
+                        .DITHERING in state.selected_options,
+                        temp_action,
+                    )
+                } else if rl.IsMouseButtonReleased(.LEFT) {
+                    if screen_coord_to_tile_map(mouse_pos, state, tile_map) != screen_coord_to_tile_map(state.last_left_button_press_pos.?, state, tile_map) {
+                        append(&state.undo_history, make_action(.CIRCLE))
+                        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                         tooltip = circle_tool(
                             state,
                             tile_map,
@@ -727,43 +751,10 @@ update :: proc() {
                             .ADD_WALLS in state.selected_options,
                             state.selected_wall_color,
                             .DITHERING in state.selected_options,
-                            temp_action,
+                            action,
                         )
-                    }
-                } else if rl.IsMouseButtonReleased(.LEFT) {
-                    if selected_action_circle != nil {
-                        //TODO(amatej): This leaves behind circle centers
-                        dupe := duplicate_action(selected_action_circle, false, context.allocator)
-                        reverted := revert_action(selected_action_circle)
-                        reverted.revert_prev = false
-                        selected_action_circle.state = .DELETED
-                        reverted.state = .DELETES
-                        redo_action(state, tile_map, &reverted)
-                        append(&state.undo_history, reverted)
-                        finish_last_undo_history_action(state)
-                        move_action(state, tile_map, &dupe, mouse_pos)
-                        redo_action(state, tile_map, &dupe)
-                        dupe.revert_prev = true
-                        append(&state.undo_history, dupe)
                         state.needs_sync = true
                         finish_last_undo_history_action(state)
-                    } else {
-                        if screen_coord_to_tile_map(mouse_pos, state, tile_map) != screen_coord_to_tile_map(state.last_left_button_press_pos.?, state, tile_map) {
-                            append(&state.undo_history, make_action(.CIRCLE))
-                            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                            tooltip = circle_tool(
-                                state,
-                                tile_map,
-                                state.last_left_button_press_pos.?,
-                                mouse_pos,
-                                .ADD_WALLS in state.selected_options,
-                                state.selected_wall_color,
-                                .DITHERING in state.selected_options,
-                                action,
-                            )
-                            state.needs_sync = true
-                            finish_last_undo_history_action(state)
-                        }
                     }
                 } else {
                     highligh_current_tile_intersection = true
@@ -1663,20 +1654,6 @@ update :: proc() {
     }
 
     ui_draw_tree(state.root)
-
-    // draw gathered circle movables
-    if state.active_tool == .CIRCLE {
-        for action_index in state.done_circle_actions {
-            action := &state.undo_history[action_index]
-            rect := get_circle_action_rect(state, tile_map, action)
-            pos := tile_map_to_screen_coord_full(action.start, state, tile_map)
-            bg_color: [4]u8 = {0, 0, 0, 95}
-            if (rl.CheckCollisionPointRec(mouse_pos, {rect[0], rect[1], rect[2], rect[3]})) {
-                bg_color = {255, 0, 0, 95}
-            }
-            rl.DrawRectangleV({rect[0], rect[1]}, {rect[2], rect[3]}, bg_color.xyzw)
-        }
-    }
 
     if state.active_tool == .EDIT_BG {
         if state.bg_snap[0] == nil {
