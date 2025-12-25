@@ -486,8 +486,9 @@ update :: proc() {
                     action.state != .DELETES &&
                     action.state != .DELETED {
                         id := fmt.aprint("circle action", i, allocator = context.temp_allocator)
-                        circle_action_widget := ui_make_widget(state, state.root, {.HOVERABLE, .CLICKABLE, .DRAWBACKGROUND, .DRAGABLE, .USETILEMAPPOS}, id, [4]f32{0, 0, 60, 60})
+                        circle_action_widget := ui_make_widget(state, state.root, {.HOVERABLE, .CLICKABLE, .DRAWBACKGROUND, .DRAGABLE, .USETILEMAPPOS, .DRAWICON}, id, [4]f32{0, 0, 60, 60})
                         circle_action_widget.background_color = {255, 255, 255, 95}
+                        circle_action_widget.icon = .ICON_TARGET_MOVE
                         if circle_action_widget.map_pos == nil {
                             circle_action_widget.map_pos = action.start
                         }
