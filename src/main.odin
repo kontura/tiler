@@ -473,59 +473,9 @@ update :: proc() {
             }
         }
 
-        // Add circle modifications
-        if state.active_tool == .CIRCLE {
-            // Since we will be modifying undo_history in the loop
-            // get the len before we start adding.
-            current_undo_hist_en := len(state.undo_history)
-            for i in 0 ..< current_undo_hist_en {
-                action := &state.undo_history[i]
-                if action.type == .CIRCLE &&
-                    action.state != .REVERTED &&
-                    action.state != .REVERTS &&
-                    action.state != .DELETES &&
-                    action.state != .DELETED {
-                        id := fmt.aprint("circle action", i, allocator = context.temp_allocator)
-                        circle_action_widget := ui_make_widget(state, state.root, {.HOVERABLE, .CLICKABLE, .DRAWBACKGROUND, .DRAGABLE, .USETILEMAPPOS, .DRAWICON}, id, [4]f32{0, 0, 60, 60})
-                        circle_action_widget.background_color = {255, 255, 255, 95}
-                        circle_action_widget.icon = .ICON_TARGET_MOVE
-                        if circle_action_widget.map_pos == nil {
-                            circle_action_widget.map_pos = action.start
-                        }
-                        interaction := ui_widget_interaction(circle_action_widget, mouse_pos)
-                        if interaction.hovering && rl.IsKeyPressed(.DELETE) {
-                            deletes := revert_action(action)
-                            deletes.revert_prev = false
-                            redo_action(state, tile_map, &deletes)
-                            append(&state.undo_history, deletes)
-                            finish_last_undo_history_action(state, .DELETES)
-                            action.state = .DELETED
-                        } else if interaction.dragging {
-                            reverted := revert_action(action, context.temp_allocator)
-                            redo_action(state, tile_map, &reverted)
-                            append(&state.temp_actions, reverted)
-                            dupe := duplicate_action(action, false, context.temp_allocator)
-                            move_action(state, tile_map, &dupe, mouse_pos)
-                            redo_action(state, tile_map, &dupe)
-                            append(&state.temp_actions, dupe)
-                        } else if interaction.released {
-                            dupe := duplicate_action(action, false, context.allocator)
-                            reverted := revert_action(action)
-                            reverted.revert_prev = false
-                            action.state = .DELETED
-                            redo_action(state, tile_map, &reverted)
-                            append(&state.undo_history, reverted)
-                            finish_last_undo_history_action(state, .DELETES)
-                            move_action(state, tile_map, &dupe, mouse_pos)
-                            redo_action(state, tile_map, &dupe)
-                            dupe.revert_prev = true
-                            append(&state.undo_history, dupe)
-                            state.needs_sync = true
-                            finish_last_undo_history_action(state)
-                        }
-                    }
-                }
-            }
+        allow_editing_tool_type_actions(state, tile_map, .CONE, .CONE, mouse_pos)
+        allow_editing_tool_type_actions(state, tile_map, .CIRCLE, .CIRCLE, mouse_pos)
+        allow_editing_tool_type_actions(state, tile_map, .RECTANGLE, .RECTANGLE, mouse_pos)
 
         if state.active_tool == .COLOR_PICKER {
             //TODO(amatej): remove this hack

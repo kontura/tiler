@@ -882,5 +882,24 @@ move_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action, end_
             start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? half : -half
             action.start = start_mouse_tile
         }
+    case .CONE:
+        {
+            mouse_tile: TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
+
+            half := tile_map.tile_side_in_feet / 2
+            mouse_tile.rel_tile.x = mouse_tile.rel_tile.x >= 0 ? half : -half
+            mouse_tile.rel_tile.y = mouse_tile.rel_tile.y >= 0 ? half : -half
+
+            delta := action.start.abs_tile - mouse_tile.abs_tile
+            action.start = mouse_tile
+            action.end.abs_tile -= delta
+        }
+    case .RECTANGLE:
+        {
+            mouse_tile: TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
+            delta := action.start.abs_tile - mouse_tile.abs_tile
+            action.start = mouse_tile
+            action.end.abs_tile -= delta
+        }
     }
 }
