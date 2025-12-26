@@ -661,11 +661,11 @@ update :: proc() {
                 if rl.IsMouseButtonDown(.LEFT) {
                     append(&state.temp_actions, make_action(.CONE, context.temp_allocator))
                     temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                    tooltip = cone_tool(state, tile_map, mouse_pos, temp_action)
+                    tooltip = cone_tool(state, tile_map, state.last_left_button_press_pos.?,  mouse_pos, temp_action)
                 } else if rl.IsMouseButtonReleased(.LEFT) {
                     append(&state.undo_history, make_action(.CONE))
                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                    tooltip = cone_tool(state, tile_map, mouse_pos, action)
+                    tooltip = cone_tool(state, tile_map, state.last_left_button_press_pos.?,  mouse_pos, action)
                     finish_last_undo_history_action(state)
                     state.needs_sync = true
                 } else {

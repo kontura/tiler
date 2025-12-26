@@ -765,20 +765,20 @@ DDA :: proc(state: ^GameState, tile_map: ^TileMap, p0: [2]u32, p1: [2]u32, temp_
     return walked
 }
 
-cone_tool :: proc(state: ^GameState, tile_map: ^TileMap, current_pos: [2]f32, action: ^Action) -> cstring {
+cone_tool :: proc(state: ^GameState, tile_map: ^TileMap, start_pos, end_pos: [2]f32, action: ^Action) -> cstring {
     // First snap starting point to grid
-    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(state.last_left_button_press_pos.?, state, tile_map)
+    start_mouse_tile: TileMapPosition = screen_coord_to_tile_map(start_pos, state, tile_map)
     half := tile_map.tile_side_in_feet / 2
     start_mouse_tile.rel_tile.x = start_mouse_tile.rel_tile.x >= 0 ? half : -half
     start_mouse_tile.rel_tile.y = start_mouse_tile.rel_tile.y >= 0 ? half : -half
     start_snapped_screen := tile_map_to_screen_coord_full(start_mouse_tile, state, tile_map)
 
-    unit_vec := rl.Vector2Normalize(current_pos - start_snapped_screen)
-    max_dist := dist(start_snapped_screen, current_pos) * tile_map.pixels_to_feet
+    unit_vec := rl.Vector2Normalize(end_pos - start_snapped_screen)
+    max_dist := dist(start_snapped_screen, end_pos) * tile_map.pixels_to_feet
     rounded_dist_in_feet := math.round_f32(max_dist / 5) * 5
-    current_pos := start_snapped_screen + unit_vec * (rounded_dist_in_feet * tile_map.feet_to_pixels)
+    end_pos := start_snapped_screen + unit_vec * (rounded_dist_in_feet * tile_map.feet_to_pixels)
 
-    end_pos_tile: TileMapPosition = screen_coord_to_tile_map(current_pos, state, tile_map)
+    end_pos_tile: TileMapPosition = screen_coord_to_tile_map(end_pos, state, tile_map)
 
     max_dist_in_feet := tile_pos_distance(tile_map, start_mouse_tile, end_pos_tile)
 
