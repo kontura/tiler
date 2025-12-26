@@ -57,6 +57,7 @@ UIWidget :: struct {
     rect:                  rl.Rectangle,
     dragged:               bool,
     map_pos:               Maybe(TileMapPosition),
+    center:                [2]f32,
 
     // persistent data6
     hot_t:                 f32,
@@ -97,7 +98,8 @@ ui_widget_interaction :: proc(widget: ^UIWidget, mouse_pos: [2]f32) -> UIInterac
                 current = peek.next
             } else {
                 // visiting peek
-                if (rl.CheckCollisionPointRec(mouse_pos, ui_widget_get_rect(peek))) {
+                rect, center := ui_widget_get_rect(peek)
+                if (rl.CheckCollisionPointRec(mouse_pos, rect)) {
                     if (peek == widget) {
                         widget_selected = true
                     } else {
@@ -263,19 +265,19 @@ ui_radio_button :: proc(
     return ui_widget_interaction(radio, rl.GetMousePosition())
 }
 
-ui_widget_get_rect :: proc(widget: ^UIWidget) -> rl.Rectangle {
-    rect: rl.Rectangle
+ui_widget_get_rect :: proc(widget: ^UIWidget) -> (rect: rl.Rectangle, center: [2]f32) {
     if .USETILEMAPPOS in widget.flags {
-        center := tile_map_to_screen_coord_full(widget.map_pos.?, state, tile_map)
+        center = tile_map_to_screen_coord_full(widget.map_pos.?, state, tile_map)
         start := center - (f32(widget.state.tile_map.tile_side_in_pixels)/2)
         end := center + (f32(widget.state.tile_map.tile_side_in_pixels)/2)
 
         rect = {start.x, start.y, end.x - start.x, end.y - start.y}
     } else {
         rect = widget.rect
+        center = {rect.x + rect.width/2, rect.y + rect.height/2}
     }
 
-    return rect
+    return
 }
 
 ui_draw_tree :: proc(root: ^UIWidget) {
@@ -286,7 +288,7 @@ ui_draw_tree :: proc(root: ^UIWidget) {
         current := pop(&stack)
         interaction := ui_widget_interaction(current, rl.GetMousePosition())
 
-        rect: rl.Rectangle = ui_widget_get_rect(current)
+        rect, center := ui_widget_get_rect(current)
 
         if .DRAWBACKGROUND in current.flags {
             if !current.active && interaction.hovering {
@@ -321,7 +323,8 @@ ui_draw_tree :: proc(root: ^UIWidget) {
         }
 
         if .DRAWICON in current.flags {
-            rl.GuiDrawIcon(current.icon, i32(rect.x) + 7, i32(rect.y) + 7, 1, rl.WHITE)
+            // Icons are by default 16x16
+            rl.GuiDrawIcon(current.icon, i32(center.x) - 8, i32(center.y) - 8, 1, rl.WHITE)
         }
 
         if .DRAWCOLORPICKER in current.flags {
