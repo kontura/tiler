@@ -513,10 +513,9 @@ update :: proc() {
                             reverted := revert_action(action)
                             reverted.revert_prev = false
                             action.state = .DELETED
-                            reverted.state = .DELETES
                             redo_action(state, tile_map, &reverted)
                             append(&state.undo_history, reverted)
-                            finish_last_undo_history_action(state)
+                            finish_last_undo_history_action(state, .DELETES)
                             move_action(state, tile_map, &dupe, mouse_pos)
                             redo_action(state, tile_map, &dupe)
                             dupe.revert_prev = true
