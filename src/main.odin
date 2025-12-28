@@ -453,7 +453,7 @@ update :: proc() {
         state.root.rect = {0, 0, f32(state.screen_width), f32(state.screen_height)}
 
         if state.draw_initiative {
-            initiative_widget := ui_make_widget(state, state.root, {.DRAWBACKGROUNDGRADIENT}, "initiative")
+            initiative_widget := ui_make_widget(state, state.root, {.DRAWBACKGROUNDGRADIENT, .HOVERABLE}, "initiative")
             initiative_widget.rect = {0, 0, 120, f32(state.screen_height)}
             if ui_widget_interaction(initiative_widget, mouse_pos).hovering && state.active_tool == .EDIT_TOKEN {
                 if rl.IsMouseButtonDown(.LEFT) {
