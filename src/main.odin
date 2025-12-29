@@ -8,6 +8,7 @@ import "core:mem"
 import "core:slice"
 import "core:strings"
 import "core:time"
+import "base:runtime"
 
 import rl "vendor:raylib"
 
@@ -112,6 +113,11 @@ GameState :: struct {
     // UI
     root:                       ^UIWidget,
     widget_cache:               map[string]UIWidget,
+
+    // This random generator is used to generate the same random info
+    // each frame
+    frame_deterministic_rng:    runtime.Random_Generator,
+    frame_deterministic_state:  runtime.Default_Random_State,
 }
 
 Widget :: enum {
@@ -312,7 +318,6 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.draw_initiative = true
     state.active_tool = Tool.MOVE_TOKEN
     state.selected_color.a = 255
-    rand.reset(u64(time.time_to_unix(time.now())))
     state.selected_color.r = u8(rand.int_max(255))
     state.selected_color.g = u8(rand.int_max(255))
     state.selected_color.b = u8(rand.int_max(255))
@@ -356,6 +361,9 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.grid_shader = rl.LoadShader(nil, strings.to_cstring(&builder))
     state.mask_loc = rl.GetShaderLocation(state.grid_shader, "mask")
     state.tiles_loc = rl.GetShaderLocation(state.grid_shader, "tiles")
+
+    state.frame_deterministic_state = rand.create(u64(time.time_to_unix(time.now())))
+    state.frame_deterministic_rng = rand.default_random_generator(&state.frame_deterministic_state)
 }
 
 tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {

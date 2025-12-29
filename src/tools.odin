@@ -304,9 +304,9 @@ draw_tile_circle :: proc(
                 u32(color.g) +
                 u32(color.b) +
                 u32(color.a),
-            ),
+            ), state.frame_deterministic_rng,
         )
-        rand_i32 := -rand.int31_max(5) - 5
+        rand_i32 := -rand.int31_max(5, state.frame_deterministic_rng) - 5
         // Since we compute chance of darker color using different neighbouring tiles
         // we cannot loop row by row (the ending rows would never have growths of darker
         // color), instead iterate in a spiral from the outside in.
@@ -392,7 +392,7 @@ offset_tile_color_by_chance_circle :: proc(
 
 offset_tile_color_by_chance :: proc(tile_map: ^TileMap, x, y: u32, color_offset: i32, action: ^Action) {
     prob := compute_chance_of_darker(tile_map, x, y)
-    if rand.float32() < prob {
+    if rand.float32(state.frame_deterministic_rng) < prob {
         old_tile := get_tile(tile_map, {x, y})
         new_color := old_tile.color.xyzw
         new_color.x = add_u8_clamped(new_color.x, color_offset)
@@ -504,9 +504,9 @@ rectangle_tool :: proc(
                 u32(selected_color.g) +
                 u32(selected_color.b) +
                 u32(selected_color.a),
-            ),
+            ), state.frame_deterministic_rng,
         )
-        rand_i32 := -rand.int31_max(5) - 5
+        rand_i32 := -rand.int31_max(5, state.frame_deterministic_rng) - 5
         // Since we compute chance of darker color using different neighbouring tiles
         // we cannot loop row by row (the ending rows would never have growths of darker
         // color), instead iterate in a spiral from the outside in.

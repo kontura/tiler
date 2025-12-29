@@ -42,7 +42,7 @@ draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Re
     {
         rl.ClearBackground({0, 0, 0, 0})
 
-        rand.reset(u64(1))
+        rand.reset(u64(1), state.frame_deterministic_rng)
 
         screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
         tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
@@ -76,7 +76,7 @@ draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Re
                         rl.DrawCircleGradient(
                             i32(min_x),
                             i32(min_y),
-                            rand.float32() * 8 * f32(tile_map.tile_side_in_pixels),
+                            rand.float32(state.frame_deterministic_rng) * 8 * f32(tile_map.tile_side_in_pixels),
                             {255, 0, 0, 255},
                             {0, 0, 0, 0},
                         )
