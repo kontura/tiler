@@ -21,6 +21,9 @@ TRANSPARENT_COLOR: [4]u8 : {0, 0, 0, 0}
 SELECTED_COLOR: [4]u8 : {0, 255, 0, 255}
 SELECTED_TRANSPARENT_COLOR: [4]u8 : {0, 255, 0, 180}
 
+HOVER_COLOR: [4]u8 : {200, 0, 0, 255}
+HOVER_TRANSPARENT_COLOR: [4]u8 : {200, 0, 0, 180}
+
 INITIATIVE_COUNT: i32 : 50
 PLAYERS := [?]string{"Wesley", "AR100", "Daren", "Max", "Mardun", "Rodion"}
 
@@ -186,7 +189,7 @@ find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, pos: rl.Vect
         closest_dist *= 2
     }
     for _, &token in state.tokens {
-        if token.alive {
+        if token.alive && token.id != 0 {
             center, _ := get_token_circle(tile_map, state, token)
             dist := dist(pos, center)
             if dist < closest_dist {
@@ -1336,6 +1339,18 @@ update :: proc() {
                     token_base_from.xyzw,
                     TRANSPARENT_COLOR.xyzw,
                 )
+                if state.active_tool == .MOVE_TOKEN || state.active_tool == .EDIT_TOKEN {
+                    hover_token := find_token_at_screen(tile_map, state, mouse_pos)
+                    if hover_token != nil && hover_token == &token {
+                        rl.DrawCircleGradient(
+                            i32(token_pos.x),
+                            i32(token_pos.y),
+                            token_radius + 0.1 * f32(tile_map.tile_side_in_pixels),
+                            HOVER_COLOR.xyzw,
+                            HOVER_TRANSPARENT_COLOR.xyzw,
+                        )
+                    }
+                }
                 for selected_id in state.selected_tokens {
                     if selected_id == token.id {
                         rl.DrawCircleGradient(
