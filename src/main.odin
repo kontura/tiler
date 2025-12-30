@@ -916,8 +916,8 @@ update :: proc() {
                 if len(state.selected_tokens) > 0 {
                     token = &state.tokens[state.selected_tokens[0]]
                 }
-                if token != nil && !rl.IsKeyPressed(.TAB) {
-                    key := rl.GetKeyPressed()
+                key := rl.GetKeyPressed()
+                if token != nil && key != .KEY_NULL && key != .TAB {
                     // Trigger only once for each press
                     if rl.IsKeyPressed(key) {
                         if key == .DELETE {
@@ -993,7 +993,10 @@ update :: proc() {
                 } else if rl.IsMouseButtonPressed(.LEFT) {
                     token := find_token_at_screen(tile_map, state, mouse_pos)
                     if token != nil {
+                        clear(&state.selected_tokens)
                         append(&state.selected_tokens, token.id)
+                    } else if token == nil && len(state.selected_tokens) > 0 {
+                        clear(&state.selected_tokens)
                     } else if rl.IsKeyDown(.LEFT_SHIFT) {
                         pos_offset: u32 = 0
                         for name in PLAYERS {
@@ -1027,6 +1030,7 @@ update :: proc() {
                         set_dirty_for_all_lights(state)
                     }
                 } else {
+                    // Show temp token
                     c := state.selected_color
                     c.a = 90
                     token, ok := &state.tokens[0]
