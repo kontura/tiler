@@ -181,7 +181,10 @@ screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^
 
 find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, pos: rl.Vector2) -> ^Token {
     closest_token: ^Token = nil
-    closest_dist := f32(tile_map.tile_side_in_pixels * 2)
+    closest_dist := f32(tile_map.tile_side_in_pixels)
+    if state.mobile {
+        closest_dist *= 2
+    }
     for _, &token in state.tokens {
         if token.alive {
             center, _ := get_token_circle(tile_map, state, token)
