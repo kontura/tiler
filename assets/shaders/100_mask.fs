@@ -11,6 +11,9 @@ varying vec4 fragColor;
 uniform sampler2D texture0;
 uniform sampler2D mask;
 uniform sampler2D tiles;
+uniform vec4 wall_color;
+uniform int tile_pix_size;
+uniform vec2 camera_offset;
 
 void main()
 {

@@ -59,8 +59,12 @@ GameState :: struct {
     grid_tex:                   rl.RenderTexture,
     tiles_tex:                  rl.RenderTexture,
     grid_shader:                rl.Shader,
+    //TODO(amatej): Improve shader management, these locations are not nice
     mask_loc:                   i32,
+    wall_color_loc:             i32,
     tiles_loc:                  i32,
+    tile_pix_size_loc:          i32,
+    camera_offsret_loc:         i32,
 
     draw_initiative:            bool,
     active_tool:                Tool,
@@ -378,7 +382,10 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
 
     state.grid_shader = rl.LoadShader(nil, strings.to_cstring(&builder))
     state.mask_loc = rl.GetShaderLocation(state.grid_shader, "mask")
+    state.wall_color_loc = rl.GetShaderLocation(state.grid_shader, "wall_color")
     state.tiles_loc = rl.GetShaderLocation(state.grid_shader, "tiles")
+    state.tile_pix_size_loc = rl.GetShaderLocation(state.grid_shader, "tile_pix_size")
+    state.camera_offsret_loc = rl.GetShaderLocation(state.grid_shader, "camera_offset")
 
     state.frame_deterministic_state = rand.create(u64(time.time_to_unix(time.now())))
     state.frame_deterministic_rng = rand.default_random_generator(&state.frame_deterministic_state)
@@ -1324,7 +1331,22 @@ update :: proc() {
             draw_grid_mask_to_tex(state, tile_map, &state.grid_mask)
             rl.BeginShaderMode(state.grid_shader)
             {
+                //TODO(amatej): pass resolution?
                 rl.SetShaderValueTexture(state.grid_shader, state.mask_loc, state.grid_mask.texture)
+                //normalized_wall_color := rl.ColorNormalize(state.selected_wall_color.xyzw)
+                //TODO(amatej): For now do only black walls
+                normalized_wall_color := rl.ColorNormalize({0, 0, 0, 255})
+                rl.SetShaderValue(state.grid_shader, state.wall_color_loc, &normalized_wall_color, .VEC4)
+                rl.SetShaderValue(state.grid_shader, state.tile_pix_size_loc, &tile_map.tile_side_in_pixels, .INT)
+                camera_offset: [2]f32
+                camera_offset.x = f32(state.camera_pos.abs_tile.x) * f32(tile_map.tile_side_in_pixels)
+                camera_offset.y = f32(state.camera_pos.abs_tile.y) * f32(tile_map.tile_side_in_pixels)
+                camera_offset.x += state.camera_pos.rel_tile.x * tile_map.feet_to_pixels
+                camera_offset.y += state.camera_pos.rel_tile.y * tile_map.feet_to_pixels
+                camera_offset.x /= f32(state.screen_width)
+                camera_offset.x *= f32(-1)
+                camera_offset.y /= f32(state.screen_height)
+                rl.SetShaderValue(state.grid_shader, state.camera_offsret_loc, &camera_offset, .VEC2)
                 rl.SetShaderValueTexture(state.grid_shader, state.tiles_loc, state.tiles_tex.texture)
                 rl.DrawTextureRec(
                     state.grid_tex.texture,
