@@ -138,6 +138,15 @@ draw_quad_ordered :: proc(v1, v2, v3, v4: [2]f32, color: [4]u8) {
     rl.DrawTriangle(v3, v4, v1, color.xyzw)
 }
 
+draw_triangle :: proc(v1, v2, v3: [2]f32, color: [4]u8) {
+    area := (v2.x - v1.x) * (v3.y - v1.y) - (v3.x - v1.x) * (v2.y - v1.y)
+    if area > 0 {
+        rl.DrawTriangle(v3, v2, v1, color.xyzw)
+    } else {
+        rl.DrawTriangle(v3, v1, v2, color.xyzw)
+    }
+}
+
 draw_quad :: proc(v1, v2, v3, v4: [2]f32, color: [4]u8) {
     area := (v2.x - v1.x) * (v3.y - v1.y) - (v3.x - v1.x) * (v2.y - v1.y)
     if area > 0 {

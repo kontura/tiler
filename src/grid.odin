@@ -37,12 +37,16 @@ draw_grid_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderT
     rl.EndTextureMode()
 }
 
+get_scaled_rand_pair :: proc(state: ^GameState, tile_map: ^TileMap) -> [2]f32 {
+    return [2]f32{f32(tile_map.tile_side_in_pixels) * (rand.float32(state.frame_deterministic_rng) - 0.5) * 3 * rand.float32(state.frame_deterministic_rng),
+                  f32(tile_map.tile_side_in_pixels) * (rand.float32(state.frame_deterministic_rng) - 0.5) * 3 * rand.float32(state.frame_deterministic_rng)}
+}
+
 draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
     rl.BeginTextureMode(tex^)
     {
         rl.ClearBackground({0, 0, 0, 0})
-
-        rand.reset(u64(1), state.frame_deterministic_rng)
+        signs := [2]f32{1, -1}
 
         screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
         tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
@@ -73,12 +77,24 @@ draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Re
 
 
                 if Direction.TOP in current_tile_value.walls || Direction.LEFT in current_tile_value.walls {
-                        rl.DrawCircleGradient(
+                        rand.reset(u64(current_tile.x + current_tile.y), state.frame_deterministic_rng)
+                        if rand.float32(state.frame_deterministic_rng) < 1.1 {
+                            dist_x := (rand.float32_range(0.4, 1.8, state.frame_deterministic_rng) * rand.choice(signs[:], state.frame_deterministic_rng)) * f32(tile_map.tile_side_in_pixels)
+                            dist_y := (rand.float32_range(0.4, 1.8, state.frame_deterministic_rng) * rand.choice(signs[:], state.frame_deterministic_rng)) * f32(tile_map.tile_side_in_pixels)
+                            p := [2]f32{min_x, min_y} + [2]f32{dist_x, dist_y}
+                            draw_triangle(
+                                p + get_scaled_rand_pair(state, tile_map),
+                                p + get_scaled_rand_pair(state, tile_map),
+                                p + get_scaled_rand_pair(state, tile_map),
+                                {255, 255, 255, 255})
+
+                        }
+
+                        rl.DrawCircle(
                             i32(min_x),
                             i32(min_y),
-                            rand.float32(state.frame_deterministic_rng) * 8 * f32(tile_map.tile_side_in_pixels),
-                            {255, 0, 0, 255},
-                            {0, 0, 0, 0},
+                            rand.float32_range(.2, .3, state.frame_deterministic_rng) * 3 * f32(tile_map.tile_side_in_pixels),
+                            {255, 255, 255, 255},
                         )
                 }
             }
