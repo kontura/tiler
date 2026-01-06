@@ -304,7 +304,8 @@ draw_tile_circle :: proc(
                 u32(color.g) +
                 u32(color.b) +
                 u32(color.a),
-            ), state.frame_deterministic_rng,
+            ),
+            state.frame_deterministic_rng,
         )
         rand_i32 := -rand.int31_max(5, state.frame_deterministic_rng) - 5
         // Since we compute chance of darker color using different neighbouring tiles
@@ -504,7 +505,8 @@ rectangle_tool :: proc(
                 u32(selected_color.g) +
                 u32(selected_color.b) +
                 u32(selected_color.a),
-            ), state.frame_deterministic_rng,
+            ),
+            state.frame_deterministic_rng,
         )
         rand_i32 := -rand.int31_max(5, state.frame_deterministic_rng) - 5
         // Since we compute chance of darker color using different neighbouring tiles

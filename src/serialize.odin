@@ -160,11 +160,7 @@ serialize_slice_info :: proc(s: ^Serializer, data: ^$T/[]$E, loc := #caller_loca
 }
 
 // Serialize dynamic array, but leaves fields empty.
-serialize_dynamic_array_info :: proc(
-    s: ^Serializer,
-    data: ^$T/[dynamic]$E,
-    loc := #caller_location,
-) -> bool {
+serialize_dynamic_array_info :: proc(s: ^Serializer, data: ^$T/[dynamic]$E, loc := #caller_location) -> bool {
     serializer_debug_scope(s, "dynamic array info")
     num_items := len(data)
     serialize_number(s, &num_items, loc) or_return
@@ -175,11 +171,7 @@ serialize_dynamic_array_info :: proc(
 }
 
 // Serialize dynamic array, fields are treated as opaque bytes.
-serialize_opaque_dynamic_array :: proc(
-    s: ^Serializer,
-    data: ^$T/[dynamic]$E,
-    loc := #caller_location,
-) -> bool {
+serialize_opaque_dynamic_array :: proc(s: ^Serializer, data: ^$T/[dynamic]$E, loc := #caller_location) -> bool {
     serializer_debug_scope(s, "opaque dynamic array")
     serialize_dynamic_array_info(s, data, loc) or_return
     return _serialize_bytes(s, slice.to_bytes(data[:]), loc)
@@ -203,7 +195,8 @@ serialize_number :: proc(
     s: ^Serializer,
     data: ^$T,
     loc := #caller_location,
-) -> bool where intrinsics.type_is_float(T) || intrinsics.type_is_integer(T) {
+) -> bool where intrinsics.type_is_float(T) ||
+    intrinsics.type_is_integer(T) {
     serializer_debug_scope(s, fmt.tprint(typeid_of(T), "=", data^))
 
     // Always
@@ -221,8 +214,8 @@ serialize_number :: proc(
         }
 
     } else {
-
-        // odinfmt: disable
+        
+            // odinfmt: disable
         switch typeid_of(T) {
         case int: return serialize_opaque_as(s, data, i64le, loc)
         case i16: return serialize_opaque_as(s, data, i16le, loc)
@@ -356,7 +349,11 @@ serialize_tile :: proc(s: ^Serializer, tile: ^Tile, loc := #caller_location) -> 
     return true
 }
 
-serialize_tile_map_position :: proc(s: ^Serializer, tile_map_position: ^TileMapPosition, loc := #caller_location) -> bool {
+serialize_tile_map_position :: proc(
+    s: ^Serializer,
+    tile_map_position: ^TileMapPosition,
+    loc := #caller_location,
+) -> bool {
     serialize(s, &tile_map_position.abs_tile, loc) or_return
     serialize(s, &tile_map_position.rel_tile, loc) or_return
     return true

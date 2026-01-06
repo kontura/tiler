@@ -9,16 +9,16 @@ import rl "vendor:raylib"
 TOKEN_DEFAULT_LIGHT_RADIUS :: 10
 
 Token :: struct {
-    id:         u64,
-    position:   TileMapPosition,
-    color:      [4]u8,
-    name:       string,
-    moved:      u32,
-    size:       f32,
-    initiative: i32,
-    texture:    ^rl.Texture2D,
-    alive:      bool,
-    light:      Maybe(LightInfo),
+    id:              u64,
+    position:        TileMapPosition,
+    color:           [4]u8,
+    name:            string,
+    moved:           u32,
+    size:            f32,
+    initiative:      i32,
+    texture:         ^rl.Texture2D,
+    alive:           bool,
+    light:           Maybe(LightInfo),
     target_position: TileMapPosition,
 }
 
@@ -32,10 +32,10 @@ get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) ->
     return center, radius
 }
 
-tokens_animate_pos:: proc(tile_map: ^TileMap, state: ^GameState) {
+tokens_animate_pos :: proc(tile_map: ^TileMap, state: ^GameState) {
     for id, &token in state.tokens {
         if token.position != token.target_position {
-            current_dist : = tile_pos_distance(tile_map, token.position, token.target_position)
+            current_dist := tile_pos_distance(tile_map, token.position, token.target_position)
             new_dist := exponential_smoothing(0, current_dist)
             tile_vec := tile_pos_difference(token.target_position, token.position)
             tile_vec_normal := tile_vec_div(tile_vec, current_dist)

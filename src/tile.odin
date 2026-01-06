@@ -94,11 +94,11 @@ tile_pos_add_tile_vec :: proc(p: TileMapPosition, v: TileMapVec) -> TileMapPosit
     p_abs_tile_float: [2]f32 = {f32(p.abs_tile.x), f32(p.abs_tile.y)}
     p_abs_tile_float += v.abs_tile
 
-    p_abs_tile_float_floored : [2]f32 = {math.floor(p_abs_tile_float.x), math.floor(p_abs_tile_float.y)}
+    p_abs_tile_float_floored: [2]f32 = {math.floor(p_abs_tile_float.x), math.floor(p_abs_tile_float.y)}
 
     p.abs_tile = {u32(p_abs_tile_float_floored.x), u32(p_abs_tile_float_floored.y)}
 
-    rel_overflow : [2]f32 = p_abs_tile_float - p_abs_tile_float_floored
+    rel_overflow: [2]f32 = p_abs_tile_float - p_abs_tile_float_floored
 
     p.rel_tile += v.rel_tile
     p.rel_tile += rel_overflow * tile_map.tile_side_in_feet

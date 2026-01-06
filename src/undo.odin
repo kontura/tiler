@@ -661,7 +661,13 @@ get_circle_action_rect :: proc(state: ^GameState, tile_map: ^TileMap, action: ^A
     return {pos.x - size / 2, pos.y - size / 2, size, size}
 }
 
-allow_editing_tool_type_actions :: proc(state: ^GameState, tile_map: ^TileMap, tool_type: Tool, action_type: ActionType, mouse_pos: [2]f32) {
+allow_editing_tool_type_actions :: proc(
+    state: ^GameState,
+    tile_map: ^TileMap,
+    tool_type: Tool,
+    action_type: ActionType,
+    mouse_pos: [2]f32,
+) {
     if state.active_tool == tool_type {
         // Since we will be modifying undo_history in the loop
         // get the len before we start adding.
@@ -669,12 +675,18 @@ allow_editing_tool_type_actions :: proc(state: ^GameState, tile_map: ^TileMap, t
         for i in 0 ..< current_undo_hist_en {
             action := &state.undo_history[i]
             if action.type == action_type &&
-                action.state != .REVERTED &&
-                action.state != .REVERTS &&
-                action.state != .DELETES &&
-                action.state != .DELETED {
+               action.state != .REVERTED &&
+               action.state != .REVERTS &&
+               action.state != .DELETES &&
+               action.state != .DELETED {
                 id := fmt.aprint(tool_type, "action", i, allocator = context.temp_allocator)
-                action_widget := ui_make_widget(state, state.root, {.HOVERABLE, .CLICKABLE, .DRAWBACKGROUND, .DRAGABLE, .USETILEMAPPOS, .DRAWICON}, id, [4]f32{0, 0, 60, 60})
+                action_widget := ui_make_widget(
+                    state,
+                    state.root,
+                    {.HOVERABLE, .CLICKABLE, .DRAWBACKGROUND, .DRAGABLE, .USETILEMAPPOS, .DRAWICON},
+                    id,
+                    [4]f32{0, 0, 60, 60},
+                )
                 action_widget.background_color = {255, 255, 255, 95}
                 action_widget.icon = .ICON_TARGET_MOVE
                 if action_widget.map_pos == nil {

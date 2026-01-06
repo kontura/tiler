@@ -1,5 +1,6 @@
 package tiler
 
+import "base:runtime"
 import "core:fmt"
 import "core:hash/xxhash"
 import "core:math"
@@ -8,7 +9,6 @@ import "core:mem"
 import "core:slice"
 import "core:strings"
 import "core:time"
-import "base:runtime"
 
 import rl "vendor:raylib"
 
@@ -52,7 +52,6 @@ GameState :: struct {
     selected_alpha:             f32,
     selected_tokens:            [dynamic]u64,
     last_selected_token_id:     u64,
-
     draw_grid:                  bool,
     draw_grid_mask:             bool,
     grid_mask:                  rl.RenderTexture,
@@ -65,7 +64,6 @@ GameState :: struct {
     tiles_loc:                  i32,
     tile_pix_size_loc:          i32,
     camera_offsret_loc:         i32,
-
     draw_initiative:            bool,
     active_tool:                Tool,
     selected_options:           ToolOptionsSet,
@@ -644,11 +642,11 @@ update :: proc() {
                 if rl.IsMouseButtonDown(.LEFT) {
                     append(&state.temp_actions, make_action(.CONE, context.temp_allocator))
                     temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
-                    tooltip = cone_tool(state, tile_map, state.last_left_button_press_pos.?,  mouse_pos, temp_action)
+                    tooltip = cone_tool(state, tile_map, state.last_left_button_press_pos.?, mouse_pos, temp_action)
                 } else if rl.IsMouseButtonReleased(.LEFT) {
                     append(&state.undo_history, make_action(.CONE))
                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                    tooltip = cone_tool(state, tile_map, state.last_left_button_press_pos.?,  mouse_pos, action)
+                    tooltip = cone_tool(state, tile_map, state.last_left_button_press_pos.?, mouse_pos, action)
                     finish_last_undo_history_action(state)
                     state.needs_sync = true
                 } else {
@@ -723,7 +721,8 @@ update :: proc() {
                         temp_action,
                     )
                 } else if rl.IsMouseButtonReleased(.LEFT) {
-                    if screen_coord_to_tile_map(mouse_pos, state, tile_map) != screen_coord_to_tile_map(state.last_left_button_press_pos.?, state, tile_map) {
+                    if screen_coord_to_tile_map(mouse_pos, state, tile_map) !=
+                       screen_coord_to_tile_map(state.last_left_button_press_pos.?, state, tile_map) {
                         append(&state.undo_history, make_action(.CIRCLE))
                         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                         tooltip = circle_tool(
@@ -792,7 +791,7 @@ update :: proc() {
                                     i32(start_mouse_tile.abs_tile.y) - i32(mouse_tile_pos.abs_tile.y),
                                 }
                                 if mouse_tile_pos.abs_tile != token.position.abs_tile &&
-                                    start_mouse_tile.abs_tile != mouse_tile_pos.abs_tile {
+                                   start_mouse_tile.abs_tile != mouse_tile_pos.abs_tile {
                                     append(&state.undo_history, make_action(.EDIT_TOKEN_POSITION))
                                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
                                     move_token_tool(state, token, tile_map, token_pos_delta, action, true)

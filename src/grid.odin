@@ -1,9 +1,9 @@
 package tiler
 
-import rl "vendor:raylib"
 import "core:fmt"
 import "core:math"
 import "core:math/rand"
+import rl "vendor:raylib"
 
 draw_grid_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
     screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
@@ -38,8 +38,16 @@ draw_grid_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderT
 }
 
 get_scaled_rand_pair :: proc(state: ^GameState, tile_map: ^TileMap) -> [2]f32 {
-    return [2]f32{f32(tile_map.tile_side_in_pixels) * (rand.float32(state.frame_deterministic_rng) - 0.5) * 3 * rand.float32(state.frame_deterministic_rng),
-                  f32(tile_map.tile_side_in_pixels) * (rand.float32(state.frame_deterministic_rng) - 0.5) * 3 * rand.float32(state.frame_deterministic_rng)}
+    return [2]f32 {
+        f32(tile_map.tile_side_in_pixels) *
+        (rand.float32(state.frame_deterministic_rng) - 0.5) *
+        3 *
+        rand.float32(state.frame_deterministic_rng),
+        f32(tile_map.tile_side_in_pixels) *
+        (rand.float32(state.frame_deterministic_rng) - 0.5) *
+        3 *
+        rand.float32(state.frame_deterministic_rng),
+    }
 }
 
 draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
@@ -77,25 +85,33 @@ draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Re
 
 
                 if Direction.TOP in current_tile_value.walls || Direction.LEFT in current_tile_value.walls {
-                        rand.reset(u64(current_tile.x + current_tile.y), state.frame_deterministic_rng)
-                        if rand.float32(state.frame_deterministic_rng) < 1.1 {
-                            dist_x := (rand.float32_range(0.4, 1.8, state.frame_deterministic_rng) * rand.choice(signs[:], state.frame_deterministic_rng)) * f32(tile_map.tile_side_in_pixels)
-                            dist_y := (rand.float32_range(0.4, 1.8, state.frame_deterministic_rng) * rand.choice(signs[:], state.frame_deterministic_rng)) * f32(tile_map.tile_side_in_pixels)
-                            p := [2]f32{min_x, min_y} + [2]f32{dist_x, dist_y}
-                            draw_triangle(
-                                p + get_scaled_rand_pair(state, tile_map),
-                                p + get_scaled_rand_pair(state, tile_map),
-                                p + get_scaled_rand_pair(state, tile_map),
-                                {255, 255, 255, 255})
-
-                        }
-
-                        rl.DrawCircle(
-                            i32(min_x),
-                            i32(min_y),
-                            rand.float32_range(.2, .3, state.frame_deterministic_rng) * 3 * f32(tile_map.tile_side_in_pixels),
+                    rand.reset(u64(current_tile.x + current_tile.y), state.frame_deterministic_rng)
+                    if rand.float32(state.frame_deterministic_rng) < 1.1 {
+                        dist_x :=
+                            (rand.float32_range(0.4, 1.8, state.frame_deterministic_rng) *
+                                rand.choice(signs[:], state.frame_deterministic_rng)) *
+                            f32(tile_map.tile_side_in_pixels)
+                        dist_y :=
+                            (rand.float32_range(0.4, 1.8, state.frame_deterministic_rng) *
+                                rand.choice(signs[:], state.frame_deterministic_rng)) *
+                            f32(tile_map.tile_side_in_pixels)
+                        p := [2]f32{min_x, min_y} + [2]f32{dist_x, dist_y}
+                        draw_triangle(
+                            p + get_scaled_rand_pair(state, tile_map),
+                            p + get_scaled_rand_pair(state, tile_map),
+                            p + get_scaled_rand_pair(state, tile_map),
                             {255, 255, 255, 255},
                         )
+                    }
+
+                    rl.DrawCircle(
+                        i32(min_x),
+                        i32(min_y),
+                        rand.float32_range(.2, .3, state.frame_deterministic_rng) *
+                        3 *
+                        f32(tile_map.tile_side_in_pixels),
+                        {255, 255, 255, 255},
+                    )
                 }
             }
         }
