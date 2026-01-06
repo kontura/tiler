@@ -369,7 +369,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.bg_pos.abs_tile = 100
 
     // light
-    state.light = {rl.LoadRenderTexture(width, height), 20, true}
+    state.light = {rl.LoadRenderTexture(width, height), 2000000, true, 1, 0.2}
     state.light_mask = rl.LoadRenderTexture(width, height)
     state.grid_mask = rl.LoadRenderTexture(width, height)
     state.grid_tex = rl.LoadRenderTexture(width, height)
@@ -1029,6 +1029,8 @@ update :: proc() {
                                     rl.LoadRenderTexture(state.screen_width, state.screen_height),
                                     TOKEN_DEFAULT_LIGHT_RADIUS,
                                     true,
+                                    TOKEN_SHADOW_LEN,
+                                    1,
                                 },
                             )
                             pos_offset += 2

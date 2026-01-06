@@ -517,6 +517,8 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                                         rl.LoadRenderTexture(state.screen_width, state.screen_height),
                                         TOKEN_DEFAULT_LIGHT_RADIUS,
                                         true,
+                                        TOKEN_SHADOW_LEN,
+                                        1,
                                     },
                                 )
                             }

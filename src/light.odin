@@ -9,12 +9,14 @@ RLGL_SRC_ALPHA :: 0x0302
 RLGL_MIN :: 0x8007
 RLGL_MAX :: 0x8008
 
-TOKEN_SHADOW_SIZE :: .2
+TOKEN_SHADOW_LEN :: 50
 
 LightInfo :: struct {
     light_mask: rl.RenderTexture,
     radius:     f32,
     dirty:      bool,
+    shadow_len: f32,
+    intensity:  f32,
 }
 
 get_N_points_on_circle :: #force_inline proc($N: int, center: [2]f32, radius: f32) -> (res: [N][2]f32) {
@@ -41,11 +43,12 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
         rlgl.SetBlendMode(i32(rl.BlendMode.CUSTOM))
 
         light_screen_pos := tile_map_to_screen_coord_full(pos, state, tile_map)
+        intensity_color : rl.Color = rl.ColorFromNormalized([4]f32{1, 1, 1, 1 - light.intensity})
         rl.DrawCircleGradient(
             i32(light_screen_pos.x),
             i32(light_screen_pos.y),
             light.radius * f32(tile_map.tile_side_in_pixels),
-            {255, 255, 255, 0},
+            intensity_color,
             rl.WHITE,
         )
 
@@ -87,8 +90,8 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
                     if current_tile_value.wall_colors[Direction.TOP].w != 0 {
                         w1: [2]f32 = {min_x, min_y}
                         w2: [2]f32 = {min_x + f32(tile_map.tile_side_in_pixels), min_y}
-                        ray1 := rl.Vector2Normalize(w1 - light_screen_pos) * 50 * f32(tile_map.tile_side_in_pixels)
-                        ray2 := rl.Vector2Normalize(w2 - light_screen_pos) * 50 * f32(tile_map.tile_side_in_pixels)
+                        ray1 := rl.Vector2Normalize(w1 - light_screen_pos) * light.shadow_len * f32(tile_map.tile_side_in_pixels)
+                        ray2 := rl.Vector2Normalize(w2 - light_screen_pos) * light.shadow_len * f32(tile_map.tile_side_in_pixels)
                         draw_quad(w1, w2, w1 + ray1, w2 + ray2, rl.WHITE.xyzw)
                     }
                 }
@@ -96,8 +99,8 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
                     if Direction.LEFT in current_tile_value.walls {
                         w1: [2]f32 = {min_x, min_y}
                         w2: [2]f32 = {min_x, min_y + f32(tile_map.tile_side_in_pixels)}
-                        ray1 := rl.Vector2Normalize(w1 - light_screen_pos) * 50 * f32(tile_map.tile_side_in_pixels)
-                        ray2 := rl.Vector2Normalize(w2 - light_screen_pos) * 50 * f32(tile_map.tile_side_in_pixels)
+                        ray1 := rl.Vector2Normalize(w1 - light_screen_pos) * light.shadow_len * f32(tile_map.tile_side_in_pixels)
+                        ray2 := rl.Vector2Normalize(w2 - light_screen_pos) * light.shadow_len * f32(tile_map.tile_side_in_pixels)
                         draw_quad(w1, w1 + ray1, w2, w2 + ray2, rl.WHITE.xyzw)
                     }
                 }
@@ -116,7 +119,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
                     if p_from_source >= center_from_source {
                         ray :=
                             rl.Vector2Normalize(p - light_screen_pos) *
-                            TOKEN_SHADOW_SIZE *
+                            light.shadow_len/4 *
                             f32(tile_map.tile_side_in_pixels)
                         v: [2][2]f32 = {p, p + ray}
                         prev = v
@@ -129,7 +132,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
                     if p_from_source >= center_from_source {
                         ray :=
                             rl.Vector2Normalize(p - light_screen_pos) *
-                            TOKEN_SHADOW_SIZE *
+                            light.shadow_len/4 *
                             f32(tile_map.tile_side_in_pixels)
                         draw_quad_ordered(prev[0], p, p + ray, prev[1], rl.WHITE.xyzw)
                         v: [2][2]f32 = {p, p + ray}
