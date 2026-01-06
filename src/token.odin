@@ -41,10 +41,7 @@ tokens_animate_pos:: proc(tile_map: ^TileMap, state: ^GameState) {
             tile_vec_normal := tile_vec_div(tile_vec, current_dist)
             tile_vec_multed := tile_vec_mul(tile_vec_normal, current_dist - new_dist)
             token.position = recanonicalize_position(tile_map, tile_pos_add_tile_vec(token.position, tile_vec_multed))
-            l, ok := &token.light.?
-            if ok {
-                l.dirty = true
-            }
+            set_dirty_for_all_lights(state)
         }
     }
 }
