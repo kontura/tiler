@@ -100,11 +100,13 @@ float compute_stripe(vec2 p, float seed) {
         c * p.x - s * p.y,
         s * p.x + c * p.y
     );
+    rotated.x += (hash(dot(p, vec2(12.3, 45.6))) - 0.5) * 0.01;
     float spacing = 0.15;     // distance between lines
+    spacing *= mix(0.8, 1.3, hash(seed + 13.0));
     float thickness = 0.12;  // line width
 
     float line = abs(fract(rotated.x / spacing) - 0.5);
-    return step(line, thickness);
+    return smoothstep(line - .1, line + .1, thickness);
 }
 
 
