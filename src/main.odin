@@ -356,6 +356,7 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
         id   = 0,
         name = strings.clone(" "),
         size = 1,
+        draw_size = 1,
     }
     state.path = path
     room_hash_state: xxhash.XXH3_state
@@ -1220,7 +1221,7 @@ update :: proc() {
 
     screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
-    tokens_animate_pos(tile_map, state)
+    tokens_animate(tile_map, state)
     //TODO(amatej): extract into render method
 
     draw_light_mask(state, tile_map, &state.light, state.light_pos)

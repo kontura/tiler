@@ -20,19 +20,20 @@ Token :: struct {
     alive:           bool,
     light:           Maybe(LightInfo),
     target_position: TileMapPosition,
+    draw_size:       f32,
 }
 
 get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (center: [2]f32, radius: f32) {
     center = tile_map_to_screen_coord_full(token.position, state, tile_map)
-    if math.mod_f32(token.size, 2) <= 0.5 {
-        center -= {f32(tile_map.tile_side_in_pixels) / 2, f32(tile_map.tile_side_in_pixels) / 2}
-    }
-    radius = f32(tile_map.tile_side_in_pixels) / 2 * token.size
+
+    size_center_shift := math.abs(math.mod_f32(token.draw_size, 2) - 1)
+    center -= {f32(tile_map.tile_side_in_pixels) / 2, f32(tile_map.tile_side_in_pixels) / 2} * size_center_shift
+    radius = f32(tile_map.tile_side_in_pixels) / 2 * token.draw_size
 
     return center, radius
 }
 
-tokens_animate_pos :: proc(tile_map: ^TileMap, state: ^GameState) {
+tokens_animate :: proc(tile_map: ^TileMap, state: ^GameState) {
     for id, &token in state.tokens {
         if token.position != token.target_position {
             current_dist := tile_pos_distance(tile_map, token.position, token.target_position)
@@ -43,17 +44,19 @@ tokens_animate_pos :: proc(tile_map: ^TileMap, state: ^GameState) {
             token.position = recanonicalize_position(tile_map, tile_pos_add_tile_vec(token.position, tile_vec_multed))
             set_dirty_for_all_lights(state)
         }
+        if math.abs(token.size - token.draw_size) > EPS {
+            new_size := exponential_smoothing(token.size, token.draw_size)
+            token.draw_size = new_size
+            set_dirty_for_all_lights(state)
+        }
     }
 }
 
 get_token_texture_pos_size :: proc(tile_map: ^TileMap, state: ^GameState, token: Token) -> (pos: [2]f32, scale: f32) {
-    pos = tile_map_to_screen_coord_full(token.position, state, tile_map)
-    if math.mod_f32(token.size, 2) <= 0.5 {
-        pos -= f32(tile_map.tile_side_in_pixels) / 2.0
-    }
-    pos -= token.size / f32(2.0) * f32(tile_map.tile_side_in_pixels)
-    // We assume token textures are squares
-    scale = f32(tile_map.tile_side_in_pixels) * token.size / f32(token.texture.width)
+    center, radius := get_token_circle(tile_map, state, token)
+    // textures start in the corner
+    pos = center - f32(tile_map.tile_side_in_pixels) * token.draw_size / 2
+    scale = radius * 2 / f32(token.texture.width)
 
     return pos, scale
 }
@@ -68,9 +71,9 @@ get_token_name_temp :: proc(token: ^Token) -> cstring {
 
 make_token :: proc(id: u64, pos: TileMapPosition, color: [4]u8, name: string = "", initiative: i32 = -1) -> Token {
     if initiative == -1 {
-        return Token{id, pos, color, strings.clone(name), 0, 1, rand.int31_max(22) + 1, nil, true, nil, pos}
+        return Token{id, pos, color, strings.clone(name), 0, 1, rand.int31_max(22) + 1, nil, true, nil, pos, 1}
     } else {
-        return Token{id, pos, color, strings.clone(name), 0, 1, initiative, nil, true, nil, pos}
+        return Token{id, pos, color, strings.clone(name), 0, 1, initiative, nil, true, nil, pos, 1}
     }
 }
 
