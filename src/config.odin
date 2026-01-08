@@ -371,6 +371,10 @@ config: []Config = {
                         }
                     case .TOKENS:
                         {
+                            state.debug = .PERF
+                        }
+                    case .PERF:
+                        {
                             state.debug = .OFF
                         }
 
