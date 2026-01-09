@@ -444,6 +444,7 @@ tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {
     }
     tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
     tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
+    tile_map.dirty = true
 }
 
 init :: proc(path: string = "root", mobile := false) {
@@ -498,13 +499,12 @@ update :: proc() {
                     l.light_token_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
                 }
             }
-            set_dirty_wall_for_all_lights(state)
             set_dirty_token_for_all_lights(state)
+            tile_map.dirty = true
         }
 
         state.temp_actions = make([dynamic]Action, context.temp_allocator)
         key_consumed := false
-
 
         particles_update(state, tile_map, rl.GetFrameTime())
 
@@ -515,14 +515,14 @@ update :: proc() {
             } else if rl.IsMouseButtonDown(.RIGHT) {
                 if rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) != 0 {
                     state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
-                    set_dirty_wall_for_all_lights(state)
                     set_dirty_token_for_all_lights(state)
+                    tile_map.dirty = true
                 }
             }
             if rl.GetMouseWheelMoveV().y * 1.5 != 0 {
                 tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMoveV().y * 1.5)
-                set_dirty_wall_for_all_lights(state)
                 set_dirty_token_for_all_lights(state)
+                tile_map.dirty = true
             }
         }
         touch_count := rl.GetTouchPointCount()
@@ -1152,8 +1152,8 @@ update :: proc() {
                     if state.previous_touch_pos != 0 {
                         d := state.previous_touch_pos - mouse_pos
                         state.camera_pos.rel_tile += d / 5
+                        tile_map.dirty = true
                         set_dirty_token_for_all_lights(state)
-                        set_dirty_wall_for_all_lights(state)
                     }
 
                     state.previous_touch_pos = mouse_pos
@@ -1169,8 +1169,8 @@ update :: proc() {
                             zoom_amount := i32((state.previous_touch_dist - dist) * 0.1)
                             tile_map.tile_side_in_pixels -= zoom_amount
                             tile_map.tile_side_in_pixels = math.max(20, tile_map.tile_side_in_pixels)
+                            tile_map.dirty = true
                             set_dirty_token_for_all_lights(state)
-                            set_dirty_wall_for_all_lights(state)
                         }
 
                         state.previous_touch_dist = dist
@@ -1754,6 +1754,8 @@ update :: proc() {
         }
 
         ui_update_widget_cache(state, state.root)
+
+        tile_map.dirty = false
 
         // Before ending the loop revert all temp actions
         for _, index in state.temp_actions {

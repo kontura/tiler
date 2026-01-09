@@ -34,7 +34,7 @@ get_N_points_on_circle :: #force_inline proc($N: int, center: [2]f32, radius: f3
 
 draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo, pos: TileMapPosition) {
     light_screen_pos := tile_map_to_screen_coord_full(pos, state, tile_map)
-    if light.dirty_wall {
+    if light.dirty_wall || tile_map.dirty {
         rl.BeginTextureMode(light.light_wall_mask)
         {
             rl.ClearBackground(rl.WHITE)
@@ -236,16 +236,6 @@ set_dirty_token_for_all_lights :: proc(state: ^GameState) {
         l, ok := &token.light.?
         if ok {
             l.dirty_token = true
-        }
-    }
-}
-
-set_dirty_wall_for_all_lights :: proc(state: ^GameState) {
-    state.light.dirty_wall = true
-    for _, &token in state.tokens {
-        l, ok := &token.light.?
-        if ok {
-            l.dirty_wall = true
         }
     }
 }

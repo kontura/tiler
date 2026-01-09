@@ -6,11 +6,17 @@ import "core:math/rand"
 import rl "vendor:raylib"
 
 draw_tiles_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
+    if !tile_map.dirty {
+        return
+    }
+
     rl.BeginTextureMode(state.tiles_tex)
     {
         rl.ClearBackground({0, 0, 0, 0})
         screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
+        //TODO(amatej): This is bad usually most of the tiles are empty, we don't have to iterate
+        //              over all of this.
         // draw tile map
         tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
         for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
@@ -71,6 +77,9 @@ draw_tiles_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Render
 }
 
 draw_grid_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
+    if !tile_map.dirty {
+        return
+    }
     screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
     tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
     rl.BeginTextureMode(tex^)
@@ -116,6 +125,9 @@ get_scaled_rand_pair :: proc(state: ^GameState, tile_map: ^TileMap) -> [2]f32 {
 }
 
 draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
+    if !tile_map.dirty {
+        return
+    }
     rl.BeginTextureMode(tex^)
     {
         rl.ClearBackground({0, 0, 0, 0})

@@ -411,7 +411,6 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     action,
                 )
             }
-            set_dirty_wall_for_all_lights(state)
             set_dirty_token_for_all_lights(state)
         }
     case .CIRCLE:
@@ -433,7 +432,6 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     action,
                 )
             }
-            set_dirty_wall_for_all_lights(state)
             set_dirty_token_for_all_lights(state)
         }
     case .CONE:
@@ -457,7 +455,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             } else {
                 wall_tool(tile_map, action.start, action.end, action.color, action)
             }
-            set_dirty_wall_for_all_lights(state)
+            tile_map.dirty = true
             set_dirty_token_for_all_lights(state)
         }
     case .BRUSH:

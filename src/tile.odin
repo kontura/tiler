@@ -65,6 +65,7 @@ TileMap :: struct {
     feet_to_pixels:      f32,
     pixels_to_feet:      f32,
     tile_chunks:         map[[2]u32]TileChunk,
+    dirty:               bool,
 }
 
 tile_xor :: proc(t1: ^Tile, t2: ^Tile) -> Tile {
@@ -236,6 +237,7 @@ set_tile :: proc(tile_map: ^TileMap, abs_tile: [2]u32, val: Tile) {
 
     if (tile_chunk != nil) {
         tile_chunk.tiles[chunk_pos.rel_tile.y * tile_map.chunk_dim + chunk_pos.rel_tile.x] = val
+        tile_map.dirty = true
     }
 }
 
