@@ -42,12 +42,14 @@ tokens_animate :: proc(tile_map: ^TileMap, state: ^GameState) {
             tile_vec_normal := tile_vec_div(tile_vec, current_dist)
             tile_vec_multed := tile_vec_mul(tile_vec_normal, current_dist - new_dist)
             token.position = recanonicalize_position(tile_map, tile_pos_add_tile_vec(token.position, tile_vec_multed))
-            set_dirty_for_all_lights(state)
+            set_dirty_token_for_all_lights(state)
+            set_dirty_wall_for_token(&token)
         }
         if math.abs(token.size - token.draw_size) > EPS {
             new_size := exponential_smoothing(token.size, token.draw_size)
             token.draw_size = new_size
-            set_dirty_for_all_lights(state)
+            set_dirty_token_for_all_lights(state)
+            set_dirty_wall_for_token(&token)
         }
     }
 }

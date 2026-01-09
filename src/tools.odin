@@ -120,7 +120,7 @@ wall_tool :: proc(tile_map: ^TileMap, start, end: TileMapPosition, color: [4]u8,
         }
     }
 
-    set_dirty_for_all_lights(state)
+    set_dirty_wall_for_all_lights(state)
     builder := strings.builder_make(context.temp_allocator)
     strings.write_string(&builder, fmt.aprintf("%.1f", drawn * 5, allocator = context.temp_allocator))
     return strings.to_cstring(&builder) or_else BUILDER_FAILED
@@ -488,7 +488,7 @@ rectangle_tool :: proc(
             set_tile(tile_map, {x, y}, new_tile)
         }
     }
-    set_dirty_for_all_lights(state)
+    set_dirty_wall_for_all_lights(state)
 
     if dithering {
         // Waveform collapse - add patina around edges
@@ -711,7 +711,8 @@ move_token_tool :: proc(
         //    )
         //}
     }
-    set_dirty_for_all_lights(state)
+    set_dirty_token_for_all_lights(state)
+    set_dirty_wall_for_token(token)
     add_tile_pos_delta(&token.position, token_pos_delta)
     token.target_position = token.position
 }

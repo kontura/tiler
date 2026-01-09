@@ -411,6 +411,8 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     action,
                 )
             }
+            set_dirty_wall_for_all_lights(state)
+            set_dirty_token_for_all_lights(state)
         }
     case .CIRCLE:
         {
@@ -431,6 +433,8 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                     action,
                 )
             }
+            set_dirty_wall_for_all_lights(state)
+            set_dirty_token_for_all_lights(state)
         }
     case .CONE:
         {
@@ -453,6 +457,8 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             } else {
                 wall_tool(tile_map, action.start, action.end, action.color, action)
             }
+            set_dirty_wall_for_all_lights(state)
+            set_dirty_token_for_all_lights(state)
         }
     case .BRUSH:
         {
@@ -498,6 +504,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                             action.token_initiative_end.y,
                         )
                     }
+                    set_dirty_token_for_all_lights(state)
                 } else {
                     if action.token_id == u64(len(state.tokens)) {
                         token_spawn(
@@ -515,7 +522,9 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                                 new_token.light = LightInfo(
                                     {
                                         rl.LoadRenderTexture(state.screen_width, state.screen_height),
+                                        rl.LoadRenderTexture(state.screen_width, state.screen_height),
                                         TOKEN_DEFAULT_LIGHT_RADIUS,
+                                        true,
                                         true,
                                         TOKEN_SHADOW_LEN,
                                         1,
@@ -523,6 +532,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                                 )
                             }
                         }
+                        set_dirty_token_for_all_lights(state)
                     } else {
                         fmt.println(
                             "[WARNING]: REDO attempted to create token with id: ",
@@ -537,6 +547,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 token, ok := &state.tokens[action.token_id]
                 if ok {
                     token_kill(state, tile_map, token, nil)
+                    set_dirty_token_for_all_lights(state)
                 }
             }
         }

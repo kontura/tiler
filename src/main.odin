@@ -390,7 +390,15 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.bg_pos.abs_tile = 100
 
     // light
-    state.light = {rl.LoadRenderTexture(width, height), 2000000, true, 1, 0.2}
+    state.light = {
+        rl.LoadRenderTexture(width, height),
+        rl.LoadRenderTexture(width, height),
+        2000000,
+        true,
+        true,
+        1,
+        0.2,
+    }
     state.light_mask = rl.LoadRenderTexture(width, height)
     state.grid_mask = rl.LoadRenderTexture(width, height)
     state.grid_tex = rl.LoadRenderTexture(width, height)
@@ -467,7 +475,8 @@ update :: proc() {
         if state.screen_height != rl.GetScreenHeight() || state.screen_width != rl.GetScreenWidth() {
             state.screen_height = rl.GetScreenHeight()
             state.screen_width = rl.GetScreenWidth()
-            state.light.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+            state.light.light_wall_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+            state.light.light_token_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             state.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             state.grid_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             state.grid_tex = rl.LoadRenderTexture(state.screen_width, state.screen_height)
@@ -475,10 +484,12 @@ update :: proc() {
             for _, &token in state.tokens {
                 l, ok := &token.light.?
                 if ok {
-                    l.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+                    l.light_wall_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
+                    l.light_token_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
                 }
             }
-            set_dirty_for_all_lights(state)
+            set_dirty_wall_for_all_lights(state)
+            set_dirty_token_for_all_lights(state)
         }
 
         state.temp_actions = make([dynamic]Action, context.temp_allocator)
@@ -494,12 +505,14 @@ update :: proc() {
             } else if rl.IsMouseButtonDown(.RIGHT) {
                 if rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) != 0 {
                     state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
-                    set_dirty_for_all_lights(state)
+                    set_dirty_wall_for_all_lights(state)
+                    set_dirty_token_for_all_lights(state)
                 }
             }
             if rl.GetMouseWheelMoveV().y * 1.5 != 0 {
                 tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMoveV().y * 1.5)
-                set_dirty_for_all_lights(state)
+                set_dirty_wall_for_all_lights(state)
+                set_dirty_token_for_all_lights(state)
             }
         }
         touch_count := rl.GetTouchPointCount()
@@ -653,15 +666,18 @@ update :: proc() {
                 {
                     if rl.IsKeyDown(.EQUAL) {
                         state.light.radius += 1
-                        state.light.dirty = true
+                        state.light.dirty_wall = true
+                        state.light.dirty_token = true
                     }
                     if rl.IsKeyDown(.MINUS) {
                         state.light.radius -= 1
-                        state.light.dirty = true
+                        state.light.dirty_wall = true
+                        state.light.dirty_token = true
                     }
                     if rl.IsMouseButtonDown(.LEFT) {
                         state.light_pos = screen_coord_to_tile_map(mouse_pos, state, tile_map)
-                        state.light.dirty = true
+                        state.light.dirty_wall = true
+                        state.light.dirty_token = true
                     }
                     icon = .ICON_CURSOR_SCALE_LEFT
                 }
@@ -995,7 +1011,7 @@ update :: proc() {
                                 clear_selected_tokens(state)
                                 state.needs_sync = true
                                 finish_last_undo_history_action(state)
-                                set_dirty_for_all_lights(state)
+                                set_dirty_token_for_all_lights(state)
                             } else {
                                 if rl.IsKeyDown(.BACKSPACE) {
                                     key = .BACKSPACE
@@ -1079,7 +1095,9 @@ update :: proc() {
                                 new_token.light = LightInfo(
                                     {
                                         rl.LoadRenderTexture(state.screen_width, state.screen_height),
+                                        rl.LoadRenderTexture(state.screen_width, state.screen_height),
                                         TOKEN_DEFAULT_LIGHT_RADIUS,
+                                        true,
                                         true,
                                         TOKEN_SHADOW_LEN,
                                         1,
@@ -1087,7 +1105,7 @@ update :: proc() {
                                 )
                                 pos_offset += 2
                                 finish_last_undo_history_action(state)
-                                set_dirty_for_all_lights(state)
+                                set_dirty_token_for_all_lights(state)
                             }
                             state.needs_sync = true
                         } else {
@@ -1097,7 +1115,7 @@ update :: proc() {
                             token_spawn(state, &action, token_pos, state.selected_color)
                             append(&state.undo_history, action)
                             finish_last_undo_history_action(state)
-                            set_dirty_for_all_lights(state)
+                            set_dirty_token_for_all_lights(state)
                         }
                     } else {
                         // Show temp token
@@ -1115,7 +1133,7 @@ update :: proc() {
                         temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
                         temp_action.token_id = 0
                         temp_action.token_life = true
-                        set_dirty_for_all_lights(state)
+                        set_dirty_token_for_all_lights(state)
                     }
                     icon = .ICON_PLAYER
                 }
@@ -1124,7 +1142,8 @@ update :: proc() {
                     if state.previous_touch_pos != 0 {
                         d := state.previous_touch_pos - mouse_pos
                         state.camera_pos.rel_tile += d / 5
-                        set_dirty_for_all_lights(state)
+                        set_dirty_token_for_all_lights(state)
+                        set_dirty_wall_for_all_lights(state)
                     }
 
                     state.previous_touch_pos = mouse_pos
@@ -1140,7 +1159,8 @@ update :: proc() {
                             zoom_amount := i32((state.previous_touch_dist - dist) * 0.1)
                             tile_map.tile_side_in_pixels -= zoom_amount
                             tile_map.tile_side_in_pixels = math.max(20, tile_map.tile_side_in_pixels)
-                            set_dirty_for_all_lights(state)
+                            set_dirty_token_for_all_lights(state)
+                            set_dirty_wall_for_all_lights(state)
                         }
 
                         state.previous_touch_dist = dist
