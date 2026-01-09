@@ -91,7 +91,7 @@ GameState :: struct {
     selected_options:           ToolOptionsSet,
     previous_tool:              Maybe(Tool),
     last_left_button_press_pos: Maybe([2]f32),
-    move_start_position:        Maybe([2]f32),
+    move_start_position:        Maybe(TileMapPosition),
     temp_actions:               [dynamic]Action,
     needs_sync:                 bool,
     needs_images:               [dynamic]string,
@@ -471,7 +471,6 @@ init :: proc(path: string = "root", mobile := false) {
 }
 
 update :: proc() {
-
     mouse_pos: [2]f32 = rl.GetMousePosition()
     mouse_tile_pos: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
     tooltip: Maybe(cstring) = nil
@@ -832,11 +831,8 @@ update :: proc() {
                         if rl.IsMouseButtonPressed(.LEFT) || rl.IsKeyPressed(.ENTER) {
                             for token_id in state.selected_tokens {
                                 token := &state.tokens[token_id]
-                                start_pos, ok := state.move_start_position.?
-                                start_mouse_tile: TileMapPosition
-                                if ok {
-                                    start_mouse_tile = screen_coord_to_tile_map(start_pos, state, tile_map)
-                                } else {
+                                start_mouse_tile, ok := state.move_start_position.?
+                                if !ok {
                                     start_mouse_tile = token.position
                                 }
                                 token_pos_delta: [2]i32 = {
@@ -890,11 +886,8 @@ update :: proc() {
                             // Temp move
                             for token_id in state.selected_tokens {
                                 token := &state.tokens[token_id]
-                                start_pos, ok := state.move_start_position.?
-                                start_mouse_tile: TileMapPosition
-                                if ok {
-                                    start_mouse_tile = screen_coord_to_tile_map(start_pos, state, tile_map)
-                                } else {
+                                start_mouse_tile, ok := state.move_start_position.?
+                                if !ok {
                                     start_mouse_tile = token.position
                                 }
                                 append(&state.temp_actions, make_action(.EDIT_TOKEN_POSITION, context.temp_allocator))
@@ -916,7 +909,7 @@ update :: proc() {
                     } else {
                         if rl.IsMouseButtonPressed(.LEFT) {
                             token := find_token_at_screen(tile_map, state, mouse_pos)
-                            state.move_start_position = mouse_pos
+                            state.move_start_position = mouse_tile_pos
                             if token != nil {
                                 append(&state.selected_tokens, token.id)
                             }
