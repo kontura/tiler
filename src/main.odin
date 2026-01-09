@@ -345,6 +345,16 @@ add_background :: proc(data: [^]u8, data_len, width: i32, height: i32) {
     state.needs_sync = true
 }
 
+highlight_current_tile :: proc(state: ^GameState, tile_map: ^TileMap, mouse_tile_pos: TileMapPosition) {
+    append(&state.temp_actions, make_action(.BRUSH, context.temp_allocator))
+    temp_action: ^Action = &state.temp_actions[len(state.temp_actions) - 1]
+    old_tile := get_tile(tile_map, mouse_tile_pos.abs_tile)
+    new_tile := old_tile
+    new_tile.color = state.selected_color
+    temp_action.tile_history[mouse_tile_pos.abs_tile] = tile_xor(&old_tile, &new_tile)
+    set_tile(tile_map, mouse_tile_pos.abs_tile, new_tile)
+}
+
 game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32, path: string) {
     state.camera_pos.abs_tile.x = 100
     state.camera_pos.abs_tile.y = 100
@@ -464,8 +474,6 @@ update :: proc() {
     mouse_pos: [2]f32 = rl.GetMousePosition()
     mouse_tile_pos: TileMapPosition = screen_coord_to_tile_map(mouse_pos, state, tile_map)
     tooltip: Maybe(cstring) = nil
-    //TODO(amatej): convert to temp action
-    highligh_current_tile := false
     highligh_current_tile_intersection := false
     //TODO(amatej): somehow use the icons configured from config.odin,
     //              but it is complicated by colorpicker
@@ -700,7 +708,7 @@ update :: proc() {
                         finish_last_undo_history_action(state)
                     }
                     icon = .ICON_PENCIL
-                    highligh_current_tile = true
+                    highlight_current_tile(state, tile_map, mouse_tile_pos)
                 }
             case .CONE:
                 {
@@ -774,7 +782,7 @@ update :: proc() {
                             finish_last_undo_history_action(state)
                         }
                     }
-                    highligh_current_tile = true
+                    highlight_current_tile(state, tile_map, mouse_tile_pos)
                 }
             case .CIRCLE:
                 {
@@ -1314,9 +1322,6 @@ update :: proc() {
 
         rl.ClearBackground(EMPTY_COLOR.xyzw)
 
-
-        rl.BeginTextureMode(state.tiles_tex)
-        rl.ClearBackground({0, 0, 0, 0})
         // draw bg
         pos: rl.Vector2 = tile_map_to_screen_coord(state.bg_pos, state, tile_map)
         pos += state.bg_pos.rel_tile * tile_map.feet_to_pixels
@@ -1325,70 +1330,7 @@ update :: proc() {
             rl.DrawTextureEx(tex, pos, 0, state.bg_scale * tile_map.feet_to_pixels, rl.WHITE)
         }
 
-        screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
-
-        // draw tile map
-        tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
-        for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
-            row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
-            row_offset += 1 {
-            cen_y: f32 =
-                screen_center.y -
-                tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
-                f32(row_offset * tile_map.tile_side_in_pixels)
-            min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
-
-            for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-                column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
-                column_offset += 1 {
-                current_tile: [2]u32
-                current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset)
-                current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
-
-                current_tile_value: Tile = get_tile(tile_map, current_tile)
-
-                if highligh_current_tile {
-                    if (current_tile.y == mouse_tile_pos.abs_tile.y) && (current_tile.x == mouse_tile_pos.abs_tile.x) {
-                        current_tile_value = tile_make(color_over(state.selected_color, current_tile_value.color))
-                    }
-                }
-
-                // Calculate tile position on screen
-                cen_x: f32 =
-                    screen_center.x -
-                    tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-                    f32(column_offset * tile_map.tile_side_in_pixels)
-                min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-                if current_tile_value.color.w != 0 {
-                    rl.DrawRectangleV(
-                        {min_x, min_y},
-                        {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
-                        current_tile_value.color.xyzw,
-                    )
-                }
-
-                if Direction.TOP in current_tile_value.walls {
-                    if current_tile_value.wall_colors[Direction.TOP].w != 0 {
-                        //TODO(amatej): use DrawLineEx if we want to do diagonals
-                        rl.DrawRectangleV(
-                            {min_x, min_y},
-                            {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels) * .1},
-                            current_tile_value.wall_colors[Direction.TOP].xyzw,
-                        )
-                    }
-                }
-                if current_tile_value.wall_colors[Direction.LEFT].w != 0 {
-                    if Direction.LEFT in current_tile_value.walls {
-                        rl.DrawRectangleV(
-                            {min_x, min_y},
-                            {f32(tile_map.tile_side_in_pixels) * .1, f32(tile_map.tile_side_in_pixels)},
-                            current_tile_value.wall_colors[Direction.LEFT].xyzw,
-                        )
-                    }
-                }
-            }
-        }
-        rl.EndTextureMode()
+        draw_tiles_to_tex(state, tile_map, &state.tiles_tex)
         rl.DrawTextureRec(
             state.tiles_tex.texture,
             {0, 0, f32(state.screen_width), f32(-state.screen_height)},
