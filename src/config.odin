@@ -337,13 +337,16 @@ config: []Config = {
     {{{.S, .PRESSED}}, {edit_token_tool_config}},
     {{{.B, .PRESSED}}, {edit_bg_tool_config}},
     {{{.M, .PRESSED}}, {move_token_tool_config}},
-    {{{.V, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_FILE_SAVE, "Quick save", nil, nil, proc(state: ^GameState) {
+    {{{.F5, .RELEASED}}, {{.ICON_FILE_SAVE, "Quick save", nil, nil, proc(state: ^GameState) {
                     builder := strings.builder_make(context.temp_allocator)
                     strings.write_string(&builder, "/persist/autosave-")
                     s, _ := time.time_to_rfc3339(time.now(), 0, false, context.temp_allocator)
                     strings.write_string(&builder, s)
-                    store_save(state, strings.to_string(builder))
-                    show_message(state, "Saved!", 60)
+                    if store_save(state, strings.to_string(builder)) {
+                        show_message(state, "Saved!", 60)
+                    } else {
+                        show_message(state, "Saving failed!", 60)
+                    }
                 }, {}}}},
     {
         {{.D, .PRESSED}},
