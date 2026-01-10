@@ -202,7 +202,12 @@ main_update :: proc "c" () -> bool {
         for &img_id in game.state.needs_images {
             // Use the first peer
             for peer_id in game.state.peers {
-                binary := game.build_binary_message(game.state.id, .IMAGE_REQUEST, peer_id, raw_data(img_id)[:len(img_id)])
+                binary := game.build_binary_message(
+                    game.state.id,
+                    .IMAGE_REQUEST,
+                    peer_id,
+                    raw_data(img_id)[:len(img_id)],
+                )
                 send_binary_to_peer(peer_id, &binary[0], u32(len(binary)))
                 delete(img_id)
                 break
