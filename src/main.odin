@@ -333,8 +333,8 @@ serialize_image :: proc(state: ^GameState, img_id: string, allocator: mem.Alloca
 }
 
 save_image :: proc(state: ^GameState, img_id: string, img_data: []u8) {
-    state.images[img_id] = rl.LoadImageFromMemory(".png", raw_data(img_data), i32(len(img_data)))
-    state.textures[img_id] = rl.LoadTextureFromImage(state.images[img_id])
+    state.images[strings.clone(img_id)] = rl.LoadImageFromMemory(".png", raw_data(img_data), i32(len(img_data)))
+    state.textures[strings.clone(img_id)] = rl.LoadTextureFromImage(state.images[img_id])
 }
 
 set_background :: proc(state: ^GameState, image_id: string) {
