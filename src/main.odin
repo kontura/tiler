@@ -272,7 +272,14 @@ tile_map: ^TileMap
 load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
     data, ok := read_entire_file(path, context.temp_allocator)
     if ok {
-        actions := load_serialized_actions(data, context.allocator)
+        s: Serializer
+        serializer_init_reader(&s, data)
+        actions := make([dynamic]Action, allocator = context.allocator)
+        serialize(&s, &s.version)
+        serialize(&s, &actions)
+        image_data: [dynamic]u8
+        serialize(&s, &image_data)
+        save_image(state, "bg", image_data[:])
 
         if len(actions) > 0 {
             // undo and delete current actions
@@ -301,7 +308,15 @@ load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
 }
 
 store_save :: proc(state: ^GameState, path := "./tiler_save") -> bool {
-    return write_entire_file(path, serialize_actions(state.undo_history[:], context.temp_allocator))
+    save_data := serialize_actions(state.undo_history[:], context.temp_allocator)
+    s: Serializer
+    serializer_init_writer(&s, allocator = context.temp_allocator)
+    actions := state.undo_history[:]
+    serialize(&s, &s.version)
+    serialize(&s, &actions)
+    image_data := serialize_image(state, "bg", context.temp_allocator)
+    serialize(&s, &image_data)
+    return write_entire_file(path, s.data[:])
 }
 
 serialize_image :: proc(state: ^GameState, img_id: string, allocator: mem.Allocator) -> [dynamic]u8 {
