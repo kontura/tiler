@@ -353,7 +353,7 @@ add_background :: proc(data: [^]u8, data_len, width: i32, height: i32) {
     append(&state.undo_history, make_action(.LOAD_BACKGROUND))
     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
     action.new_name = strings.clone("bg")
-    state.images[strings.clone(action.new_name)] = rl.LoadImageFromMemory(".jpeg", raw_data(d), data_len)
+    state.images[strings.clone(action.new_name)] = rl.LoadImageFromMemory(".png", raw_data(d), data_len)
     state.textures[strings.clone(action.new_name)] = rl.LoadTextureFromImage(state.images[action.new_name])
     set_background(state, action.new_name)
     finish_last_undo_history_action(state)
