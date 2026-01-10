@@ -1019,7 +1019,7 @@ update :: proc() {
                         token = &state.tokens[state.selected_tokens[0]]
                     }
                     key := rl.GetKeyPressed()
-                    if token != nil && key != .KEY_NULL && key != .TAB {
+                    if token != nil && key != .KEY_NULL && key != .TAB && !rl.IsKeyDown(.LEFT_CONTROL) {
                         // Trigger only once for each press
                         if rl.IsKeyPressed(key) {
                             if key == .DELETE {
