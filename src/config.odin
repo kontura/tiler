@@ -417,7 +417,7 @@ config: []Config = {
                     }
                 }, {}}}},
     {{{.LEFT_CONTROL, .PRESSED}}, {{.ICON_COLOR_PICKER, "Active colorpicker", nil, nil, proc(state: ^GameState) {
-                    if state.previous_tool == nil {
+                    if state.previous_tool == nil && len(state.selected_tokens) == 0 {
                         state.previous_tool = state.active_tool
                         state.active_tool = .COLOR_PICKER
                     }}, {}}}},
