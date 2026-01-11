@@ -142,7 +142,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         // This is the last chunk
         if len(payload) != game.CHUNK_SIZE {
             process_binary_msg(u32(len(peer_state.chunks)), raw_data(peer_state.chunks))
-            delete(peer_state.chunks)
+            clear(&peer_state.chunks)
         }
     } else if type == .HELLO {
         if !init_sync_requested {
