@@ -94,7 +94,8 @@ GameState :: struct {
     move_start_position:        Maybe(TileMapPosition),
     temp_actions:               [dynamic]Action,
     needs_sync:                 bool,
-    needs_images:               [dynamic]string,
+    // We need image name "string" from peer with id "u64"
+    needs_images:               map[u64]string,
     mobile:                     bool,
     previous_touch_dist:        f32,
     previous_touch_pos:         [2]f32,
@@ -338,13 +339,13 @@ save_image :: proc(state: ^GameState, img_id: string, img_data: []u8) {
     state.textures[strings.clone(img_id)] = rl.LoadTextureFromImage(state.images[img_id])
 }
 
-set_background :: proc(state: ^GameState, image_id: string) {
+set_background :: proc(state: ^GameState, image_id: string, author_id: u64) {
     delete(state.bg_id)
     state.bg_id = strings.clone(image_id)
     _, ok := state.images[image_id]
     if !ok {
         if len(image_id) > 0 {
-            append(&state.needs_images, strings.clone(image_id))
+            state.needs_images[author_id] = strings.clone(image_id)
         }
     }
 }
@@ -356,9 +357,29 @@ add_background :: proc(data: [^]u8, data_len, width: i32, height: i32) {
     action.new_name = strings.clone("bg")
     state.images[strings.clone(action.new_name)] = rl.LoadImageFromMemory(".png", raw_data(d), data_len)
     state.textures[strings.clone(action.new_name)] = rl.LoadTextureFromImage(state.images[action.new_name])
-    set_background(state, action.new_name)
+    set_background(state, action.new_name, state.id)
     finish_last_undo_history_action(state)
     state.needs_sync = true
+}
+
+set_selected_token_texture :: proc(data: [^]u8, data_len, width: i32, height: i32) {
+    if len(state.selected_tokens) == 1 {
+        token := &state.tokens[state.selected_tokens[0]]
+        if len(token.name) > 0 {
+            append(&state.undo_history, make_action(.EDIT_TOKEN_TEXTURE))
+            action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+            // Move lowecase_name ownership to action
+            action.new_name = strings.to_lower(token.name)
+            action.token_id = token.id
+            finish_last_undo_history_action(state)
+
+            d: []u8 = data[:data_len]
+            save_image(state, action.new_name, d)
+            set_texture_based_on_name(state, token)
+        } else {
+            show_message(state, "To set token image it needs a name.", 60)
+        }
+    }
 }
 
 highlight_current_tile :: proc(state: ^GameState, tile_map: ^TileMap, mouse_tile_pos: TileMapPosition) {
@@ -1824,7 +1845,7 @@ shutdown :: proc() {
     delete(state.bg_id)
     delete(state.timeout_string)
 
-    for &item in state.needs_images {
+    for _, &item in state.needs_images {
         delete(item)
     }
     delete(state.needs_images)

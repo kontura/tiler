@@ -121,11 +121,17 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         return
     } else if type == .IMAGE_REQUEST {
         requested_img_id := string(payload)
-        fmt.println("Requested id: ", requested_img_id)
         img, ok := game.state.images[requested_img_id]
         if ok {
+            fmt.println("Sending back requested id: ", requested_img_id)
             image_data := game.serialize_image(game.state, requested_img_id, context.temp_allocator)
-            binary := game.build_binary_message(game.state.id, .IMAGE_ANSWER, sender_id, image_data[:])
+
+            s: game.Serializer
+            game.serializer_init_writer(&s, allocator = context.temp_allocator)
+            game.serialize(&s, &requested_img_id)
+            game.serialize(&s, &image_data)
+
+            binary := game.build_binary_message(game.state.id, .IMAGE_ANSWER, sender_id, s.data[:])
             for &msg in game.chunk_binary_message(game.state.id, sender_id, binary, context.temp_allocator) {
                 send_binary_to_peer(sender_id, &msg[0], u32(len(msg)))
             }
@@ -134,7 +140,25 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
             //TODO(amatej): handle if I don't have the image
         }
     } else if type == .IMAGE_ANSWER {
-        game.save_image(game.state, "bg", payload)
+        s: game.Serializer
+        game.serializer_init_reader(&s, payload)
+        img_id: string
+        game.serialize(&s, &img_id)
+        image_data := make([dynamic]u8, allocator = context.temp_allocator)
+        game.serialize(&s, &image_data)
+        game.save_image(game.state, img_id, image_data[:])
+
+        // If we have a token with matching name, set its texture
+        for _, &token in game.state.tokens {
+            n := strings.to_lower(token.name, context.temp_allocator)
+            fmt.println("Comparing: ", n, " - ", img_id)
+            if strings.has_prefix(n, img_id) {
+                game.set_texture_based_on_name(game.state, &token)
+            }
+        }
+
+        delete(img_id)
+        delete(image_data)
     } else if type == .CHUNK {
         for byte in payload {
             append(&peer_state.chunks, byte)
@@ -158,7 +182,16 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
 @(export)
 paste_image :: proc "c" (data: [^]u8, data_len: i32, width: i32, height: i32) {
     context = web_context
-    game.add_background(data, data_len, width, height)
+    #partial switch game.state.active_tool {
+    case .EDIT_TOKEN:
+        {
+            game.set_selected_token_texture(data, data_len, width, height)
+        }
+    case:
+        {
+            game.add_background(data, data_len, width, height)
+        }
+    }
 }
 
 @(export)
@@ -199,19 +232,20 @@ main_update :: proc "c" () -> bool {
     game.update()
 
     if !game.state.offline && game.state.socket_ready {
-        for &img_id in game.state.needs_images {
-            // Use the first peer
-            for peer_id in game.state.peers {
-                binary := game.build_binary_message(
-                    game.state.id,
-                    .IMAGE_REQUEST,
-                    peer_id,
-                    raw_data(img_id)[:len(img_id)],
-                )
-                send_binary_to_peer(peer_id, &binary[0], u32(len(binary)))
-                delete(img_id)
-                break
+        for author_id, &img_id in game.state.needs_images {
+            target_peer := author_id
+            if !(author_id in game.state.peers) {
+                // Randomly get first peer
+                for peer_id, _ in game.state.peers {
+                    target_peer = peer_id
+                }
             }
+            n := strings.to_lower(img_id, context.temp_allocator)
+
+            binary := game.build_binary_message(game.state.id, .IMAGE_REQUEST, target_peer, raw_data(n)[:len(n)])
+            send_binary_to_peer(target_peer, &binary[0], u32(len(binary)))
+            fmt.println("requesting: ", n , " from: ", target_peer)
+            delete(img_id)
         }
         clear(&game.state.needs_images)
 

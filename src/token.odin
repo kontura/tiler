@@ -176,7 +176,6 @@ set_texture_based_on_name :: proc(state: ^GameState, token: ^Token) {
             token.texture = &value
         }
     }
-
 }
 
 clear_selected_tokens :: proc(state: ^GameState) {

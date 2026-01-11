@@ -21,6 +21,7 @@ ActionType :: enum {
     EDIT_TOKEN_SIZE,
     EDIT_TOKEN_LIFE,
     EDIT_TOKEN_POSITION,
+    EDIT_TOKEN_TEXTURE,
     WALL,
     LIGHT_SOURCE,
     CONE,
@@ -194,6 +195,14 @@ to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -
             strings.write_string(&builder, " ), ")
             strings.write_string(&builder, action.old_name)
             strings.write_string(&builder, " -> ")
+            strings.write_string(&builder, action.new_name)
+        }
+    case .EDIT_TOKEN_TEXTURE:
+        {
+            strings.write_string(&builder, " ( ")
+            strings.write_u64(&builder, action.token_id)
+            strings.write_string(&builder, " ), ")
+            strings.write_string(&builder, "new texture name: ")
             strings.write_string(&builder, action.new_name)
         }
     case .SET_BACKGROUND_SCALE:
@@ -567,6 +576,18 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 }
             }
         }
+    case .EDIT_TOKEN_TEXTURE:
+        {
+            token, ok_tok := &state.tokens[action.token_id]
+            texture, ok_tex := &state.textures[action.new_name]
+            if !ok_tex {
+                state.needs_images[action.author_id] = strings.clone(token.name)
+            }
+
+            if ok_tok {
+                token.texture = texture
+            }
+        }
     case .LIGHT_SOURCE:
         {
             fmt.println("TODO(amatej): missing implementation")
@@ -577,7 +598,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         }
     case .LOAD_BACKGROUND:
         {
-            set_background(state, action.new_name)
+            set_background(state, action.new_name, action.author_id)
         }
     }
 }
