@@ -441,6 +441,10 @@ config: []Config = {
                     for &action, index in state.undo_history {
                         fmt.println(index, ". ", action)
                     }
+                    fmt.println("Known textures:")
+                    for name, _ in state.textures {
+                        fmt.println(name)
+                    }
                 }, {}}}},
     {
         {{.J, .PRESSED}},
