@@ -280,6 +280,7 @@ load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
         image_data: [dynamic]u8
         serialize(&s, &image_data)
         save_image(state, "bg", image_data[:])
+        delete(image_data)
 
         if len(actions) > 0 {
             // undo and delete current actions
@@ -1839,6 +1840,12 @@ shutdown :: proc() {
 
     tilemap_clear(tile_map)
     delete(tile_map.tile_chunks)
+
+    // Delete peer states
+    for peer, &peer_state in state.peers {
+        delete_peer_state(&peer_state)
+    }
+    delete(state.peers)
 
     free(state)
     free(tile_map)

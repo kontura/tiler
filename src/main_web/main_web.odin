@@ -250,13 +250,6 @@ main_update :: proc "c" () -> bool {
 main_end :: proc "c" () {
     context = web_context
     game.shutdown()
-    for peer, &peer_state in game.state.peers {
-        for _, index in peer_state.last_known_actions {
-            game.delete_action(&peer_state.last_known_actions[index])
-        }
-        delete(peer_state.last_known_actions)
-    }
-    delete(game.state.peers)
 
     when ODIN_DEBUG {
         if len(track.allocation_map) > 0 {

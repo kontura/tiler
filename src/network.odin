@@ -28,6 +28,14 @@ PeerState :: struct {
     chunks:             [dynamic]u8,
 }
 
+delete_peer_state :: proc(peer_state: ^PeerState) {
+    for _, index in peer_state.last_known_actions {
+        delete_action(&peer_state.last_known_actions[index])
+    }
+    delete(peer_state.last_known_actions)
+    delete(peer_state.chunks)
+}
+
 CHUNK_SIZE :: 32000
 
 chunk_binary_message :: proc(id: u64, target: u64, msg: []u8, allocator: mem.Allocator) -> [dynamic][]u8 {
