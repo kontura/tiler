@@ -278,10 +278,14 @@ load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
         actions := make([dynamic]Action, allocator = context.allocator)
         serialize(&s, &s.version)
         serialize(&s, &actions)
-        image_data: [dynamic]u8
-        serialize(&s, &image_data)
-        save_image(state, "bg", image_data[:])
-        delete(image_data)
+        images: map[string][dynamic]u8
+        serialize(&s, &images)
+        for img_id, img_data in images {
+            save_image(state, img_id, img_data[:])
+            delete(img_data)
+            delete(img_id)
+        }
+        delete(images)
 
         if len(actions) > 0 {
             // undo and delete current actions
@@ -316,8 +320,13 @@ store_save :: proc(state: ^GameState, path := "./tiler_save") -> bool {
     actions := state.undo_history[:]
     serialize(&s, &s.version)
     serialize(&s, &actions)
-    image_data := serialize_image(state, "bg", context.temp_allocator)
-    serialize(&s, &image_data)
+    images := make(map[string][dynamic]u8, allocator = context.temp_allocator)
+    for img_id, _ in state.images {
+        image_data := serialize_image(state, img_id, context.temp_allocator)
+        images[img_id] = image_data
+    }
+    serialize(&s, &images)
+
     return write_entire_file(path, s.data[:])
 }
 
