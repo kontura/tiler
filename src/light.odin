@@ -148,7 +148,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
             for _, &token in state.tokens {
                 // Draw shadows only for real tokens, skip temp 0 token
                 if token.alive && token.position != pos {
-                    token_pos, token_circle_radius := get_token_circle(tile_map, state, token)
+                    token_pos, token_circle_radius := get_token_circle(tile_map, state, &token)
                     center_from_source: f32 = dist(token_pos, light_screen_pos)
                     circle_points := get_N_points_on_circle(20, token_pos.xy, token_circle_radius)
                     prev: [2][2]f32

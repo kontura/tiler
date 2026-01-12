@@ -224,7 +224,7 @@ find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, pos: rl.Vect
     }
     for _, &token in state.tokens {
         if token.alive && token.id != 0 {
-            center, _ := get_token_circle(tile_map, state, token)
+            center, _ := get_token_circle(tile_map, state, &token)
             dist := dist(pos, center)
             if dist < closest_dist {
                 closest_token = &token
@@ -384,7 +384,6 @@ set_selected_token_texture :: proc(data: [^]u8, data_len, width: i32, height: i3
 
             d: []u8 = data[:data_len]
             save_image(state, action.new_name, d)
-            set_texture_based_on_name(state, token)
         } else {
             show_message(state, "To set token image it needs a name.", 60)
         }
@@ -1117,7 +1116,6 @@ update :: proc() {
                                         token.name = strings.to_string(builder)
 
                                         key_consumed = true
-                                        set_texture_based_on_name(state, token)
                                     }
 
                                 }
@@ -1424,7 +1422,7 @@ update :: proc() {
         // draw tokens on map
         for _, &token in state.tokens {
             if token.alive {
-                token_pos, token_radius := get_token_circle(tile_map, state, token)
+                token_pos, token_radius := get_token_circle(tile_map, state, &token)
                 // Make tokens pop from background
                 // Draw shadows only for real tokens, skip temp 0 token
                 if token.id != 0 {
@@ -1460,9 +1458,9 @@ update :: proc() {
                         }
                     }
                 }
-                if (token.texture != nil) {
-                    tex_pos, scale := get_token_texture_pos_size(tile_map, state, token)
-                    rl.DrawTextureEx(token.texture^, tex_pos, 0, scale, rl.WHITE)
+                tex_pos, tex_scale, texture := get_token_texture_tile_map_pos(tile_map, state, &token)
+                if (texture != nil) {
+                    rl.DrawTextureEx(texture^, tex_pos, 0, tex_scale, rl.WHITE)
                 } else {
                     rl.DrawCircleV(token_pos, token_radius, token.color.xyzw)
                 }
@@ -1546,7 +1544,7 @@ update :: proc() {
                     row_offset += 3
                     rl.DrawText(u64_to_cstring(u64(i)), 10, row_offset, 10, rl.GRAY)
                     for token_id in tokens {
-                        token := state.tokens[token_id]
+                        token := &state.tokens[token_id]
                         token_size := f32(token.size) * 4 + 10
                         half_of_this_row := i32(token_size + 3)
 
@@ -1562,16 +1560,17 @@ update :: proc() {
                                 )
                             }
                         }
-                        if (token.texture != nil) {
+                        texture := get_token_texture(state, token)
+                        if texture != nil {
                             pos: rl.Vector2 = {23, f32(row_offset)}
                             // We assume token textures are squares
-                            scale := f32(22 + token.size * 8) / f32(token.texture.width)
-                            rl.DrawTextureEx(token.texture^, pos, 0, scale, rl.WHITE)
+                            scale := f32(22 + token.size * 8) / f32(texture.width)
+                            rl.DrawTextureEx(texture^, pos, 0, scale, rl.WHITE)
                         } else {
                             rl.DrawCircleV(circle_pos, f32(token_size), token.color.xyzw)
                         }
                         rl.DrawText(
-                            get_token_name_temp(&token),
+                            get_token_name_temp(token),
                             i32(30 + token_size + 15),
                             row_offset + i32(token_size) - 4,
                             18,

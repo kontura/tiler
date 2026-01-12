@@ -148,15 +148,6 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         game.serialize(&s, &image_data)
         game.save_image(game.state, img_id, image_data[:])
 
-        // If we have a token with matching name, set its texture
-        for _, &token in game.state.tokens {
-            n := strings.to_lower(token.name, context.temp_allocator)
-            fmt.println("Comparing: ", n, " - ", img_id)
-            if strings.has_prefix(n, img_id) {
-                game.set_texture_based_on_name(game.state, &token)
-            }
-        }
-
         delete(img_id)
         delete(image_data)
     } else if type == .CHUNK {

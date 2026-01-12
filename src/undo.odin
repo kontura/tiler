@@ -572,7 +572,6 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
                 if action.old_name != action.new_name {
                     delete(token.name)
                     token.name = strings.clone(action.new_name)
-                    set_texture_based_on_name(state, token)
                 }
             }
         }
@@ -585,7 +584,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
             }
 
             if ok_tok {
-                token.texture = texture
+                token.texture_id = strings.clone(action.new_name)
             }
         }
     case .LIGHT_SOURCE:
