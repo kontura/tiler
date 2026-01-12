@@ -66,6 +66,7 @@ when ODIN_DEBUG {
 //TODO(amatej): make GameState and TileMap not global
 GameState :: struct {
     tile_map:                   ^TileMap,
+    last_tile_side_in_pixels:   i32,
     screen_width:               i32,
     screen_height:              i32,
     camera_pos:                 TileMapPosition,
@@ -501,6 +502,7 @@ init :: proc(path: string = "root", mobile := false) {
 
     tile_map = new(TileMap)
     tile_map_init(tile_map, mobile)
+    state.last_tile_side_in_pixels = tile_map.tile_side_in_pixels
     state.tile_map = tile_map
 
     // Load all tokens from assets dir
@@ -564,12 +566,42 @@ update :: proc() {
                 }
             }
             if rl.GetMouseWheelMoveV().y * 1.5 != 0 {
-                tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMoveV().y * 1.5)
-                set_dirty_token_for_all_lights(state)
-                tile_map.dirty = true
+                if len(state.selected_tokens) == 1 && state.active_tool == .EDIT_TOKEN {
+                    clear_selected_tokens(state)
+                } else {
+                    if math.abs(f32(tile_map.tile_side_in_pixels) - f32(state.last_tile_side_in_pixels)) < EPS {
+                        tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMoveV().y * 1.5)
+                        state.last_tile_side_in_pixels = tile_map.tile_side_in_pixels
+                        set_dirty_token_for_all_lights(state)
+                        tile_map.dirty = true
+                    }
+                }
             }
         }
         touch_count := rl.GetTouchPointCount()
+
+        if len(state.selected_tokens) == 1 && state.active_tool == .EDIT_TOKEN {
+            token := &state.tokens[state.selected_tokens[0]]
+
+            current_dist := tile_pos_distance(tile_map, token.position, state.camera_pos)
+            new_dist := exponential_smoothing(0, current_dist)
+            tile_vec := tile_pos_difference(token.position, state.camera_pos)
+            tile_vec_normal := tile_vec_div(tile_vec, current_dist)
+            tile_vec_multed := tile_vec_mul(tile_vec_normal, current_dist - new_dist)
+            state.camera_pos = recanonicalize_position(
+                tile_map,
+                tile_pos_add_tile_vec(state.camera_pos, tile_vec_multed),
+            )
+
+            tile_map.tile_side_in_pixels = i32(exponential_smoothing(200, f32(tile_map.tile_side_in_pixels)))
+
+            tile_map.dirty = true
+        } else if math.abs(f32(tile_map.tile_side_in_pixels) - f32(state.last_tile_side_in_pixels)) > EPS {
+            tile_map.tile_side_in_pixels = i32(
+                exponential_smoothing(f32(state.last_tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)),
+            )
+            tile_map.dirty = true
+        }
 
 
         // Build UI widgets
