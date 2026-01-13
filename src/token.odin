@@ -69,7 +69,15 @@ get_token_texture :: proc(state: ^GameState, token: ^Token) -> ^rl.Texture2D {
     return nil
 }
 
-get_token_texture_tile_map_pos :: proc(tile_map: ^TileMap, state: ^GameState, token: ^Token) -> ([2]f32, f32, ^rl.Texture2D) {
+get_token_texture_tile_map_pos :: proc(
+    tile_map: ^TileMap,
+    state: ^GameState,
+    token: ^Token,
+) -> (
+    [2]f32,
+    f32,
+    ^rl.Texture2D,
+) {
     texture := get_token_texture(state, token)
     if texture != nil {
         center, radius := get_token_circle(tile_map, state, token)

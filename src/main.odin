@@ -595,11 +595,13 @@ update :: proc() {
 
             tile_map.tile_side_in_pixels = i32(exponential_smoothing(200, f32(tile_map.tile_side_in_pixels)))
 
+            set_dirty_token_for_all_lights(state)
             tile_map.dirty = true
         } else if math.abs(f32(tile_map.tile_side_in_pixels) - f32(state.last_tile_side_in_pixels)) > EPS {
             tile_map.tile_side_in_pixels = i32(
                 exponential_smoothing(f32(state.last_tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)),
             )
+            set_dirty_token_for_all_lights(state)
             tile_map.dirty = true
         }
 
@@ -677,7 +679,7 @@ update :: proc() {
                 if is_active_ok {
                     id := fmt.aprint("tool menu button", i, allocator = context.temp_allocator)
                     rect := get_tool_tool_menu_rect(state, &config_tool_menu, i)
-                    inter := ui_radio_button(state, tool_menu_widget, id, is_active_proc(state), tool.icon, rect)
+                    _, inter := ui_radio_button(state, tool_menu_widget, id, is_active_proc(state), tool.icon, rect)
                     if inter.clicked {
                         tool.action(state)
                     }
@@ -693,7 +695,15 @@ update :: proc() {
                     if is_active_ok {
                         id := fmt.aprint("tool config menu button", i, ii, allocator = context.temp_allocator)
                         rect := get_tool_tool_menu_rect(state, &config_tool_menu, i, ii)
-                        if ui_radio_button(state, tool_menu_widget, id, is_active_proc(state), config.icon, rect).clicked {
+                        _, inter_inter := ui_radio_button(
+                            state,
+                            tool_menu_widget,
+                            id,
+                            is_active_proc(state),
+                            config.icon,
+                            rect,
+                        )
+                        if inter_inter.clicked {
                             config.action(state)
                         }
                     }
@@ -743,6 +753,113 @@ update :: proc() {
                 selected_wall_color_widget.background_color = state.selected_wall_color
                 rect := get_tool_tool_menu_rect(state, &config_tool_menu, 9)
                 selected_wall_color_widget.rect = {rect[0], rect[1], rect[2], rect[3]}
+            }
+
+            // We are zoomed in on a token
+            if len(state.selected_tokens) == 1 && state.active_tool == .EDIT_TOKEN {
+                button_pos: [2]f32 = {f32(state.screen_width) - 400, 100}
+                button_size: [2]f32 = {140, 50}
+                token := &state.tokens[state.selected_tokens[0]]
+
+                li_widget, light_toggle := ui_button(
+                    state,
+                    state.root,
+                    "light",
+                    .ICON_EXPLOSION,
+                    {button_pos.x, button_pos.y, button_size.x, button_size.y},
+                )
+                li_widget.background_color = token.light != nil ? {255, 255, 255, 95} : {0, 0, 0, 255}
+                if light_toggle.clicked {
+                    //TODO(amatej): this has to be an action
+                    if token.light != nil {
+                        l := token.light.?
+                        rl.UnloadRenderTexture(l.light_wall_mask)
+                        rl.UnloadRenderTexture(l.light_token_mask)
+                        token.light = nil
+                    } else {
+                        token.light = LightInfo {
+                            rl.LoadRenderTexture(state.screen_width, state.screen_height),
+                            rl.LoadRenderTexture(state.screen_width, state.screen_height),
+                            TOKEN_DEFAULT_LIGHT_RADIUS,
+                            true,
+                            true,
+                            TOKEN_SHADOW_LEN,
+                            1,
+                        }
+                        set_dirty_token_for_all_lights(state)
+                        set_dirty_wall_for_token(token)
+                    }
+                }
+                button_pos.y += 70
+
+                // Kill button
+                {
+                    _, kill_widget := ui_button(
+                        state,
+                        state.root,
+                        "kill!!",
+                        .ICON_DEMON,
+                        {button_pos.x, button_pos.y, button_size.x, button_size.y},
+                    )
+                    if kill_widget.clicked {
+                        // TODO(amatej): extract this into a tool or actions?
+                        l, ok := token.light.?
+                        if ok {
+                            rl.UnloadRenderTexture(l.light_wall_mask)
+                            rl.UnloadRenderTexture(l.light_token_mask)
+                            token.light = nil
+                        }
+                        append(&state.undo_history, make_action(.EDIT_TOKEN_LIFE))
+                        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                        token_kill(state, tile_map, token, action)
+                        clear_selected_tokens(state)
+                        state.needs_sync = true
+                        finish_last_undo_history_action(state)
+                        set_dirty_token_for_all_lights(state)
+                        set_dirty_wall_for_token(token)
+                    }
+                }
+                button_pos.y += 70
+
+                // Size buttons
+                {
+                    _, size_plus_widget := ui_button(
+                        state,
+                        state.root,
+                        "size++",
+                        .ICON_NONE,
+                        {button_pos.x, button_pos.y, (button_size.x / 2) - 10, button_size.y},
+                    )
+                    if size_plus_widget.clicked {
+                        edit_token_size(state, token, 1)
+                    }
+                    _, size_minus_widget := ui_button(
+                        state,
+                        state.root,
+                        "size--",
+                        .ICON_NONE,
+                        {
+                            button_pos.x + (button_size.x / 2) + 10,
+                            button_pos.y,
+                            (button_size.x / 2) - 10,
+                            button_size.y,
+                        },
+                    )
+                    if size_minus_widget.clicked {
+                        edit_token_size(state, token, -1)
+                    }
+                }
+                button_pos.y += 70
+
+                img_id := len(token.texture_id) > 0 ? token.texture_id : token.name
+                img_id_text := fmt.aprintf("texture_id: %s", img_id, allocator = context.temp_allocator)
+                texture_id := ui_make_widget(
+                    state,
+                    state.root,
+                    {.DRAWTEXT, .DRAWBACKGROUND},
+                    img_id_text,
+                )
+                texture_id.rect = {button_pos.x, button_pos.y, button_size.x, button_size.y}
             }
         }
 
@@ -1103,29 +1220,12 @@ update :: proc() {
                                     #partial switch key {
                                     case .MINUS:
                                         {
-                                            if token.size > 1 {
-                                                token.size -= 1
-                                                append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
-                                                action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                                action.token_id = token.id
-                                                action.token_size = -1
-                                                finish_last_undo_history_action(state)
-                                                state.needs_sync = true
-                                            }
+                                            edit_token_size(state, token, -1)
                                         }
                                     case .EQUAL:
                                         {
-                                            if token.size < 10 &&
-                                               (rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT)) {
-                                                token.size += 1
-                                                append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
-                                                action: ^Action = &state.undo_history[len(state.undo_history) - 1]
-                                                action.token_id = token.id
-                                                action.token_size = 1
-                                                finish_last_undo_history_action(state)
-                                                //TODO(amatej): I could set needs_sync only after deselecting
-                                                // the EDIT token (and if there is some new actions?)
-                                                state.needs_sync = true
+                                            if rl.IsKeyDown(.RIGHT_SHIFT) || rl.IsKeyDown(.LEFT_SHIFT) {
+                                                edit_token_size(state, token, 1)
                                             }
                                         }
                                     case .RIGHT_SHIFT, .LEFT_SHIFT:
@@ -1135,7 +1235,7 @@ update :: proc() {
                                         if key == .BACKSPACE {
                                             strings.pop_rune(&builder)
                                         } else {
-                                            strings.write_byte(&builder, byte)
+                                            strings.write_rune(&builder, rl.GetCharPressed())
                                         }
                                         append(&state.undo_history, make_action(.EDIT_TOKEN_NAME))
                                         action: ^Action = &state.undo_history[len(state.undo_history) - 1]
@@ -1196,7 +1296,7 @@ update :: proc() {
                             finish_last_undo_history_action(state)
                             set_dirty_token_for_all_lights(state)
                         }
-                    } else {
+                    } else if len(state.selected_tokens) == 0 {
                         // Show temp token
                         c := state.selected_color
                         c.a = 90

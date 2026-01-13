@@ -11,6 +11,7 @@ SPEED :: 5
 
 UIWidgetFlag :: enum {
     CLICKABLE,
+    DROPONCLICK,
     HOVERABLE,
     DRAGABLE,
     DRAWTEXT,
@@ -121,6 +122,11 @@ ui_widget_interaction :: proc(widget: ^UIWidget, mouse_pos: [2]f32) -> UIInterac
         if .CLICKABLE in widget.flags {
             if rl.IsMouseButtonPressed(.LEFT) {
                 interaction.clicked = true
+                if .DROPONCLICK in widget.flags {
+                    widget.rect.x += 5
+                    widget.rect.y += 5
+                }
+
             }
         }
 
@@ -250,7 +256,7 @@ ui_radio_button :: proc(
     icon: rl.GuiIconName,
     rect: [4]f32,
     allocator := context.temp_allocator,
-) -> UIInteraction {
+) -> (^UIWidget, UIInteraction) {
     radio := ui_make_widget(
         state,
         parent,
@@ -262,7 +268,28 @@ ui_radio_button :: proc(
     radio.active = active
     radio.rect = {rect[0], rect[1], rect[2], rect[3]}
 
-    return ui_widget_interaction(radio, rl.GetMousePosition())
+    return radio, ui_widget_interaction(radio, rl.GetMousePosition())
+}
+
+ui_button :: proc(
+    state: ^GameState,
+    parent: ^UIWidget,
+    string: string,
+    icon: rl.GuiIconName,
+    rect: [4]f32,
+    allocator := context.temp_allocator,
+) -> (^UIWidget, UIInteraction) {
+    btn := ui_make_widget(
+        state,
+        parent,
+        {.CLICKABLE, .HOVERABLE, .DRAWBACKGROUND, .HOTANIMATION, .DRAWTEXT, .DRAWICON, .DRAWDROPSHADOW, .DROPONCLICK},
+        string,
+    )
+    btn.background_color = {0, 0, 0, 255}
+    btn.rect = {rect[0], rect[1], rect[2], rect[3]}
+    btn.icon = icon
+
+    return btn, ui_widget_interaction(btn, rl.GetMousePosition())
 }
 
 ui_widget_get_rect :: proc(widget: ^UIWidget) -> (rect: rl.Rectangle, center: [2]f32) {
@@ -289,6 +316,13 @@ ui_draw_tree :: proc(root: ^UIWidget) {
         interaction := ui_widget_interaction(current, rl.GetMousePosition())
 
         rect, center := ui_widget_get_rect(current)
+
+        if .DRAWDROPSHADOW in current.flags {
+            shadow_rect := rect
+            shadow_rect.x += 5
+            shadow_rect.y += 5
+            rl.DrawRectangleRec(shadow_rect, {0, 0, 0, 55})
+        }
 
         if .DRAWBACKGROUND in current.flags {
             if !current.active && interaction.hovering {

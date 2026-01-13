@@ -903,3 +903,15 @@ move_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action, end_
         }
     }
 }
+
+edit_token_size :: proc(state: ^GameState, token: ^Token, delta: f32) {
+    if token.size + delta >= 1 && token.size + delta < 10 {
+        token.size += delta
+        append(&state.undo_history, make_action(.EDIT_TOKEN_SIZE))
+        action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+        action.token_id = token.id
+        action.token_size = f64(delta)
+        finish_last_undo_history_action(state)
+        state.needs_sync = true
+    }
+}
