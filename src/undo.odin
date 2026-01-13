@@ -22,6 +22,7 @@ ActionType :: enum {
     EDIT_TOKEN_LIFE,
     EDIT_TOKEN_POSITION,
     EDIT_TOKEN_TEXTURE,
+    EDIT_TOKEN_LIGHT,
     WALL,
     LIGHT_SOURCE,
     CONE,
@@ -204,6 +205,14 @@ to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -
             strings.write_string(&builder, " ), ")
             strings.write_string(&builder, "new texture name: ")
             strings.write_string(&builder, action.new_name)
+        }
+    case .EDIT_TOKEN_LIGHT:
+        {
+            strings.write_string(&builder, " ( ")
+            strings.write_u64(&builder, action.token_id)
+            strings.write_string(&builder, " ), ")
+            strings.write_string(&builder, "radius: ")
+            strings.write_f64(&builder, action.radius, 'f')
         }
     case .SET_BACKGROUND_SCALE:
         {
@@ -585,6 +594,31 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
 
             if ok_tok {
                 token.texture_id = strings.clone(action.new_name)
+            }
+        }
+    case .EDIT_TOKEN_LIGHT:
+        {
+            token, ok_tok := &state.tokens[action.token_id]
+            if ok_tok {
+                l, ok_l := token.light.?
+                if ok_l {
+                    rl.UnloadRenderTexture(l.light_wall_mask)
+                    rl.UnloadRenderTexture(l.light_token_mask)
+                    token.light = nil
+                }
+                if action.token_life {
+                    token.light = LightInfo(
+                        {
+                            rl.LoadRenderTexture(state.screen_width, state.screen_height),
+                            rl.LoadRenderTexture(state.screen_width, state.screen_height),
+                            f32(action.radius),
+                            true,
+                            true,
+                            TOKEN_SHADOW_LEN,
+                            1,
+                        },
+                    )
+                }
             }
         }
     case .LIGHT_SOURCE:

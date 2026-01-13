@@ -770,12 +770,16 @@ update :: proc() {
                 )
                 li_widget.background_color = token.light != nil ? {255, 255, 255, 95} : {0, 0, 0, 255}
                 if light_toggle.clicked {
-                    //TODO(amatej): this has to be an action
+                    append(&state.undo_history, make_action(.EDIT_TOKEN_LIGHT))
+                    action: ^Action = &state.undo_history[len(state.undo_history) - 1]
+                    action.radius = TOKEN_DEFAULT_LIGHT_RADIUS
+                    action.token_id = token.id
                     if token.light != nil {
                         l := token.light.?
                         rl.UnloadRenderTexture(l.light_wall_mask)
                         rl.UnloadRenderTexture(l.light_token_mask)
                         token.light = nil
+                        action.token_life = false
                     } else {
                         token.light = LightInfo {
                             rl.LoadRenderTexture(state.screen_width, state.screen_height),
@@ -788,7 +792,10 @@ update :: proc() {
                         }
                         set_dirty_token_for_all_lights(state)
                         set_dirty_wall_for_token(token)
+                        action.token_life = true
                     }
+                    state.needs_sync = true
+                    finish_last_undo_history_action(state)
                 }
                 button_pos.y += 70
 
