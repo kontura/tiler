@@ -860,31 +860,21 @@ update :: proc() {
 
                 img_id := len(token.texture_id) > 0 ? token.texture_id : token.name
                 img_id_text := fmt.aprintf("texture_id: %s", img_id, allocator = context.temp_allocator)
-                texture_id := ui_make_widget(
-                    state,
-                    state.root,
-                    {.DRAWTEXT, .DRAWBACKGROUND},
-                    img_id_text,
-                )
-                texture_id.rect = {button_pos.x, button_pos.y, button_size.x, button_size.y/2}
+                texture_id := ui_make_widget(state, state.root, {.DRAWTEXT, .DRAWBACKGROUND}, img_id_text)
+                texture_id.rect = {button_pos.x, button_pos.y, button_size.x, button_size.y / 2}
                 texture_id.background_color = {0, 0, 0, 255}
 
                 button_pos.y += 70 / 2
 
                 secs := time.time_to_unix(time.now())
-                name_text :string
+                name_text: string
                 if secs % 2 == 0 {
                     name_text = fmt.aprintf("name: %s|", token.name, allocator = context.temp_allocator)
                 } else {
                     name_text = fmt.aprintf("name: %s", token.name, allocator = context.temp_allocator)
                 }
-                name_widget := ui_make_widget(
-                    state,
-                    state.root,
-                    {.DRAWTEXT, .DRAWBACKGROUND},
-                    name_text,
-                )
-                name_widget.rect = {button_pos.x, button_pos.y, button_size.x, button_size.y/2}
+                name_widget := ui_make_widget(state, state.root, {.DRAWTEXT, .DRAWBACKGROUND}, name_text)
+                name_widget.rect = {button_pos.x, button_pos.y, button_size.x, button_size.y / 2}
                 name_widget.background_color = {0, 0, 0, 255}
             }
         }
