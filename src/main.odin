@@ -866,7 +866,26 @@ update :: proc() {
                     {.DRAWTEXT, .DRAWBACKGROUND},
                     img_id_text,
                 )
-                texture_id.rect = {button_pos.x, button_pos.y, button_size.x, button_size.y}
+                texture_id.rect = {button_pos.x, button_pos.y, button_size.x, button_size.y/2}
+                texture_id.background_color = {0, 0, 0, 255}
+
+                button_pos.y += 70 / 2
+
+                secs := time.time_to_unix(time.now())
+                name_text :string
+                if secs % 2 == 0 {
+                    name_text = fmt.aprintf("name: %s|", token.name, allocator = context.temp_allocator)
+                } else {
+                    name_text = fmt.aprintf("name: %s", token.name, allocator = context.temp_allocator)
+                }
+                name_widget := ui_make_widget(
+                    state,
+                    state.root,
+                    {.DRAWTEXT, .DRAWBACKGROUND},
+                    name_text,
+                )
+                name_widget.rect = {button_pos.x, button_pos.y, button_size.x, button_size.y/2}
+                name_widget.background_color = {0, 0, 0, 255}
             }
         }
 
