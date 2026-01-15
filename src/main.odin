@@ -835,7 +835,12 @@ update :: proc() {
                         state.root,
                         "size++",
                         .ICON_NONE,
-                        {button_pos.x, button_pos.y, (button_size.x / 2) - 10, button_size.y},
+                        {
+                            button_pos.x + (button_size.x / 2) + 10,
+                            button_pos.y,
+                            (button_size.x / 2) - 10,
+                            button_size.y,
+                        },
                     )
                     if size_plus_widget.clicked {
                         edit_token_size(state, token, 1)
@@ -845,12 +850,7 @@ update :: proc() {
                         state.root,
                         "size--",
                         .ICON_NONE,
-                        {
-                            button_pos.x + (button_size.x / 2) + 10,
-                            button_pos.y,
-                            (button_size.x / 2) - 10,
-                            button_size.y,
-                        },
+                        {button_pos.x, button_pos.y, (button_size.x / 2) - 10, button_size.y},
                     )
                     if size_minus_widget.clicked {
                         edit_token_size(state, token, -1)
