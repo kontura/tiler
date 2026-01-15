@@ -768,7 +768,13 @@ update :: proc() {
                     .ICON_EXPLOSION,
                     {button_pos.x, button_pos.y, button_size.x, button_size.y},
                 )
-                li_widget.background_color = token.light != nil ? {255, 255, 255, 95} : {0, 0, 0, 255}
+                if token.light != nil {
+                    li_widget.background_color = {255, 255, 255, 95}
+                    li_widget.active = true
+                } else {
+                    li_widget.background_color = {0, 0, 0, 255}
+                    li_widget.active = false
+                }
                 if light_toggle.clicked {
                     append(&state.undo_history, make_action(.EDIT_TOKEN_LIGHT))
                     action: ^Action = &state.undo_history[len(state.undo_history) - 1]
