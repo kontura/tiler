@@ -15,6 +15,8 @@ import rl "vendor:raylib"
 INIT_SCREEN_WIDTH: i32 : 1280
 INIT_SCREEN_HEIGHT: i32 : 720
 
+MIN_ZOOM: i32 : 5
+
 BUILDER_FAILED :: "Builder failed"
 EMPTY_COLOR: [4]u8 : {77, 77, 77, 255}
 TRANSPARENT_COLOR: [4]u8 : {0, 0, 0, 0}
@@ -1489,7 +1491,10 @@ update :: proc() {
 
         state.camera_pos = recanonicalize_position(tile_map, state.camera_pos)
 
-        tile_map.tile_side_in_pixels = math.max(5, tile_map.tile_side_in_pixels)
+        if tile_map.tile_side_in_pixels < MIN_ZOOM {
+            tile_map.tile_side_in_pixels = MIN_ZOOM
+            state.last_tile_side_in_pixels = MIN_ZOOM
+        }
         tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
         tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
 
