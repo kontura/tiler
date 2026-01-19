@@ -406,13 +406,13 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
     redo_action(state, tile_map, &reverted)
 }
 
-redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
+redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action, use_tile_history := true) {
     switch action.type {
     case .RECTANGLE:
         {
             // Some actions can have tile_history (its needed for undo),
             // if present its faster than doing the tool
-            if len(action.tile_history) > 0 {
+            if len(action.tile_history) > 0 && use_tile_history {
                 for abs_tile, &tile in action.tile_history {
                     old_tile := get_tile(tile_map, abs_tile)
                     set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
@@ -433,7 +433,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         }
     case .CIRCLE:
         {
-            if len(action.tile_history) > 0 {
+            if len(action.tile_history) > 0 && use_tile_history {
                 for abs_tile, &tile in action.tile_history {
                     old_tile := get_tile(tile_map, abs_tile)
                     set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
@@ -454,7 +454,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         }
     case .CONE:
         {
-            if len(action.tile_history) > 0 {
+            if len(action.tile_history) > 0 && use_tile_history {
                 for abs_tile, &tile in action.tile_history {
                     old_tile := get_tile(tile_map, abs_tile)
                     set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
@@ -465,7 +465,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
         }
     case .WALL:
         {
-            if len(action.tile_history) > 0 {
+            if len(action.tile_history) > 0 && use_tile_history {
                 for abs_tile, &tile in action.tile_history {
                     old_tile := get_tile(tile_map, abs_tile)
                     set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
