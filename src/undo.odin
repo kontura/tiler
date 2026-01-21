@@ -738,6 +738,7 @@ allow_editing_tool_type_actions :: proc(
         for i in 0 ..< current_undo_hist_en {
             action := &state.undo_history[i]
             if action.type == action_type &&
+               action.mine &&
                action.state != .REVERTED &&
                action.state != .REVERTS &&
                action.state != .DELETES &&
