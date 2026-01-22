@@ -30,6 +30,32 @@ ActionType :: enum {
     SET_BACKGROUND_SCALE,
 }
 
+action_edits_tilemap :: proc(type: ActionType) -> bool {
+    switch type {
+    case .BRUSH, .RECTANGLE, .CIRCLE, .CONE, .WALL:
+        {
+            return true
+        }
+    case .EDIT_TOKEN_INITIATIVE,
+         .EDIT_TOKEN_NAME,
+         .EDIT_TOKEN_SIZE,
+         .EDIT_TOKEN_LIFE,
+         .EDIT_TOKEN_POSITION,
+         .EDIT_TOKEN_TEXTURE,
+         .EDIT_TOKEN_LIGHT,
+         .LIGHT_SOURCE,
+         .LOAD_BACKGROUND,
+         .SET_BACKGROUND_SCALE:
+        {
+            return false
+        }
+    case:
+        {
+            return false
+        }
+    }
+}
+
 ActionState :: enum {
     STARTED,
     DONE,
