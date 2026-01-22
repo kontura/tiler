@@ -2026,7 +2026,7 @@ shutdown :: proc() {
     }
     delete(state.undo_history)
 
-    tilemap_clear(tile_map)
+    tilemap_delete(tile_map)
     delete(tile_map.tile_chunks)
 
     // Delete peer states

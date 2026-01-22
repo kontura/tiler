@@ -122,7 +122,7 @@ options_menu: []MenuItem = {
 }
 
 main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
-            tilemap_clear(tile_map)
+            tilemap_delete(tile_map)
             tokens_reset(state)
             for i := 0; i < len(state.undo_history); i += 1 {
                 delete_action(&state.undo_history[i])
@@ -404,7 +404,7 @@ config: []Config = {
                 }, {}}}},
     {{{.A, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_REDO, "Redo all actions", nil, nil, proc(state: ^GameState) {
                     tokens_reset(state)
-                    tilemap_clear(tile_map)
+                    tilemap_delete(tile_map)
 
                     if state.debug == .ACTIONS {
                         state.undone = len(state.undo_history)

@@ -191,7 +191,7 @@ tile_make :: proc {
     tile_make_color,
 }
 
-tilemap_clear :: proc(tile_map: ^TileMap) {
+tilemap_delete :: proc(tile_map: ^TileMap) {
     for key, _ in tile_map.tile_chunks {
         delete(tile_map.tile_chunks[key].tiles)
     }

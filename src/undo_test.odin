@@ -26,7 +26,7 @@ teardown :: proc(state: ^GameState, tile_map: ^TileMap) {
     }
     delete(state.undo_history)
 
-    tilemap_clear(tile_map)
+    tilemap_delete(tile_map)
     delete(tile_map.tile_chunks)
 }
 
