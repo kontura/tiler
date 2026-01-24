@@ -121,8 +121,7 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         return
     } else if type == .IMAGE_REQUEST {
         requested_img_id := string(payload)
-        img, ok := game.state.images[requested_img_id]
-        if ok {
+        if requested_img_id in game.state.images {
             fmt.println("Sending back requested id: ", requested_img_id)
             image_data := game.serialize_image(game.state, requested_img_id, context.temp_allocator)
 
@@ -135,9 +134,12 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
             for &msg in game.chunk_binary_message(game.state.id, sender_id, binary, context.temp_allocator) {
                 send_binary_to_peer(sender_id, &msg[0], u32(len(msg)))
             }
-
         } else {
-            //TODO(amatej): handle if I don't have the image
+            s: game.Serializer
+            game.serializer_init_writer(&s, allocator = context.temp_allocator)
+            game.serialize(&s, &requested_img_id)
+
+            binary := game.build_binary_message(game.state.id, .IMAGE_ANSWER, sender_id, s.data[:])
         }
     } else if type == .IMAGE_ANSWER {
         s: game.Serializer
@@ -146,7 +148,16 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         game.serialize(&s, &img_id)
         image_data := make([dynamic]u8, allocator = context.temp_allocator)
         game.serialize(&s, &image_data)
-        game.save_image(game.state, img_id, image_data[:])
+
+        if len(image_data) > 0 {
+            game.save_image(game.state, img_id, image_data[:])
+        } else {
+            for &ind in game.state.needs_images {
+                if strings.compare(img_id, ind.img_name) == 0 {
+                    ind.waiting_for_answer = false
+                }
+            }
+        }
 
         delete(img_id)
         delete(image_data)
@@ -223,20 +234,30 @@ main_update :: proc "c" () -> bool {
     game.update()
 
     if !game.state.offline && game.state.socket_ready {
-        for author_id, &img_id in game.state.needs_images {
-            target_peer := author_id
-            if !(author_id in game.state.peers) {
-                // Randomly get first peer
-                for peer_id, _ in game.state.peers {
-                    target_peer = peer_id
+        index := 0
+        for index < len(game.state.needs_images) {
+            img_req := &game.state.needs_images[index]
+            fmt.println(img_req)
+            if !img_req.waiting_for_answer {
+                if len(img_req.peers_to_try) > 0 {
+                    target_peer := pop_front(&img_req.peers_to_try)
+                    n := strings.to_lower(img_req.img_name, context.temp_allocator)
+                    binary := game.build_binary_message(
+                        game.state.id,
+                        .IMAGE_REQUEST,
+                        target_peer,
+                        raw_data(n)[:len(n)],
+                    )
+                    send_binary_to_peer(target_peer, &binary[0], u32(len(binary)))
+                    img_req.waiting_for_answer = true
+                } else {
+                    game.delete_image_needed(img_req)
+                    ordered_remove(&game.state.needs_images, index)
+                    index -= 1
                 }
             }
-            n := strings.to_lower(img_id, context.temp_allocator)
+            index += 1
 
-            binary := game.build_binary_message(game.state.id, .IMAGE_REQUEST, target_peer, raw_data(n)[:len(n)])
-            send_binary_to_peer(target_peer, &binary[0], u32(len(binary)))
-            fmt.println("requesting: ", n , " from: ", target_peer)
-            delete(img_id)
         }
         clear(&game.state.needs_images)
 

@@ -3,6 +3,7 @@ package tiler
 import "core:encoding/endian"
 import "core:math"
 import "core:mem"
+import "core:strings"
 
 MESSAGE_TYPE :: enum u8 {
     ACTIONS       = 1,
@@ -26,6 +27,18 @@ PeerState :: struct {
     webrtc:             WEBRTC_STATE,
     last_known_actions: [dynamic]Action,
     chunks:             [dynamic]u8,
+}
+
+ImageNeeded :: struct {
+    img_name:           string,
+    // try to get the image from these peers in this order
+    peers_to_try:       [dynamic]u64,
+    waiting_for_answer: bool,
+}
+
+delete_image_needed :: proc(image_neede: ^ImageNeeded) {
+    delete(image_neede.img_name)
+    delete(image_neede.peers_to_try)
 }
 
 delete_peer_state :: proc(peer_state: ^PeerState) {
@@ -90,4 +103,20 @@ parse_binary_message :: proc(msg: []u8) -> (type: MESSAGE_TYPE, sender, target: 
     assert(ok)
     payload = msg[3 + sender_len + target_len:]
     return
+}
+
+add_request_image :: proc(state: ^GameState, image_id: string, author_id: u64) {
+    if len(image_id) > 0 {
+        ind: ImageNeeded
+        ind.img_name = strings.clone(image_id)
+        if author_id in state.peers {
+            append(&ind.peers_to_try, author_id)
+        }
+        for peer_id, _ in state.peers {
+            if peer_id != author_id {
+                append(&ind.peers_to_try, peer_id)
+            }
+        }
+        append(&state.needs_images, ind)
+    }
 }

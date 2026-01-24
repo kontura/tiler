@@ -632,7 +632,7 @@ redo_action :: proc(
             token, ok_tok := &state.tokens[action.token_id]
             texture, ok_tex := &state.textures[action.new_name]
             if !ok_tex {
-                state.needs_images[action.author_id] = strings.clone(token.name)
+                add_request_image(state, token.name, action.author_id)
             }
 
             if ok_tok {

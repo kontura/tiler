@@ -97,8 +97,7 @@ GameState :: struct {
     move_start_position:        Maybe(TileMapPosition),
     temp_actions:               [dynamic]Action,
     needs_sync:                 bool,
-    // We need image name "string" from peer with id "u64"
-    needs_images:               map[u64]string,
+    needs_images:               [dynamic]ImageNeeded,
     mobile:                     bool,
     previous_touch_dist:        f32,
     previous_touch_pos:         [2]f32,
@@ -356,9 +355,7 @@ set_background :: proc(state: ^GameState, image_id: string, author_id: u64) {
     state.bg_id = strings.clone(image_id)
     _, ok := state.images[image_id]
     if !ok {
-        if len(image_id) > 0 {
-            state.needs_images[author_id] = strings.clone(image_id)
-        }
+        add_request_image(state, image_id, author_id)
     }
 }
 
@@ -2012,8 +2009,8 @@ shutdown :: proc() {
     delete(state.bg_id)
     delete(state.timeout_string)
 
-    for _, &item in state.needs_images {
-        delete(item)
+    for &item in state.needs_images {
+        delete_image_needed(&item)
     }
     delete(state.needs_images)
 
