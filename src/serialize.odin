@@ -11,6 +11,7 @@ import "core:time"
 // WARNING: do not change the order of these!
 Serializer_Version :: enum u32le {
     initial = 0,
+    cancel_out = 1,
 
     // Don't remove this!
     LATEST_PLUS_ONE,
@@ -396,6 +397,9 @@ serialize_action :: proc(s: ^Serializer, action: ^Action, loc := #caller_locatio
     serialize(s, &action.walls_color, loc) or_return
     serialize(s, &action.dithering, loc) or_return
     serialize(s, &action.revert_prev, loc) or_return
+    if s.version > .initial {
+        serialize(s, &action.linked_action_authors_index, loc) or_return
+    }
 
     if action.type == .BRUSH || action.state == .REVERTS || action.state == .DELETES {
         serialize(s, &action.tile_history, loc) or_return

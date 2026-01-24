@@ -1,6 +1,7 @@
 package tiler
 
 import "core:math"
+import "core:mem"
 
 // TODO(amatej): add diagonal walls
 Direction :: enum {
@@ -196,6 +197,13 @@ tilemap_delete :: proc(tile_map: ^TileMap) {
         delete(tile_map.tile_chunks[key].tiles)
     }
     clear(&tile_map.tile_chunks)
+}
+
+tilemap_erase :: proc(tile_map: ^TileMap) {
+    for key, _ in tile_map.tile_chunks {
+        chunk := tile_map.tile_chunks[key]
+        mem.zero_slice(chunk.tiles[:])
+    }
 }
 
 tile_make_color :: proc(color: [4]u8) -> Tile {

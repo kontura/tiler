@@ -388,6 +388,9 @@ config: []Config = {
         },
     },
     {{{.Z, .RELEASED}, {.LEFT_CONTROL, .DOWN}}, {{.ICON_UNDO, "Undo last action", nil, nil, proc(state: ^GameState) {
+
+                    //TODO(amatej): This needs to be fixed/updated for canceled actions.
+                    //              Do I need tests to do it properly?
                     #reverse for &action in state.undo_history {
                         if action.mine && action.state != .REVERTED && action.state != .REVERTS {
                             reverted := revert_action(&action)

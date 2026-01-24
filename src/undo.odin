@@ -67,44 +67,47 @@ ActionState :: enum {
 
 Action :: struct {
     // SYNCED
-    type:                   ActionType,
-    start:                  TileMapPosition,
-    end:                    TileMapPosition,
-    color:                  [4]u8,
-    radius:                 f64,
-    token_id:               u64,
-    token_initiative_end:   [2]i32,
-    token_initiative_start: [2]i32,
-    token_life:             bool,
-    token_size:             f64,
+    type:                        ActionType,
+    start:                       TileMapPosition,
+    end:                         TileMapPosition,
+    color:                       [4]u8,
+    radius:                      f64,
+    token_id:                    u64,
+    token_initiative_end:        [2]i32,
+    token_initiative_start:      [2]i32,
+    token_life:                  bool,
+    token_size:                  f64,
 
     // This can work for only one token
     // But will we ever rename more tokens at once>
-    old_name:               string,
-    new_name:               string,
-    hash:                   [32]u8,
-    author_id:              u64,
-    authors_index:          u64,
-    walls:                  bool,
-    walls_color:            [4]u8,
-    dithering:              bool,
-    revert_prev:            bool,
+    old_name:                    string,
+    new_name:                    string,
+    hash:                        [32]u8,
+    author_id:                   u64,
+    authors_index:               u64,
+    walls:                       bool,
+    walls_color:                 [4]u8,
+    dithering:                   bool,
+    revert_prev:                 bool,
+    // For now negative sets .REVERTED, postive sets .DELETED
+    // action state
+    linked_action_authors_index: i64,
 
     // Actions that have already been reverted or are reverting
     // actions (reverts) cannot be reverted again.
-    state:                  ActionState,
+    state:                       ActionState,
 
     // NOT SYNCED
 
     // Whether this action was made by me, not other peers
-    mine:                   bool,
+    mine:                        bool,
 
     // Tile xor value
     // Synced only for .REVERTS and brush tool
     // TODO(amatej): .REVERTS technically might not need to sync it
     // we could get the infor from the action we are revering.
     // Not sure it is worth it.
-    tile_history:           map[[2]u32]Tile,
+    tile_history:                map[[2]u32]Tile,
 }
 
 to_string_action :: proc(action: ^Action, allocator := context.temp_allocator) -> string {
@@ -280,6 +283,7 @@ duplicate_action :: proc(a: ^Action, with_tile_history := true, allocator := con
     action.walls_color = a.walls_color
     action.dithering = a.dithering
     action.revert_prev = a.revert_prev
+    action.linked_action_authors_index = a.linked_action_authors_index
     action.old_name = strings.clone(a.old_name, allocator = allocator)
     action.new_name = strings.clone(a.new_name, allocator = allocator)
     action.tile_history = make(map[[2]u32]Tile, allocator = allocator)
@@ -432,7 +436,14 @@ undo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action) {
     redo_action(state, tile_map, &reverted)
 }
 
-redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action, use_tile_history := true) {
+redo_action :: proc(
+    state: ^GameState,
+    tile_map: ^TileMap,
+    action: ^Action,
+    use_tile_history := true,
+    action_update := true,
+) {
+    zero_action: Action
     switch action.type {
     case .RECTANGLE:
         {
@@ -452,7 +463,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action, use_
                     action.walls_color,
                     action.dithering,
                     tile_map,
-                    action,
+                    action_update ? action : &zero_action,
                 )
             }
             set_dirty_token_for_all_lights(state)
@@ -473,7 +484,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action, use_
                     action.walls,
                     action.walls_color,
                     action.dithering,
-                    action,
+                    action_update ? action : &zero_action,
                 )
             }
             set_dirty_token_for_all_lights(state)
@@ -486,7 +497,13 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action, use_
                     set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
                 }
             } else {
-                draw_cone_tiles(tile_map, action.start, action.end, action.color, action)
+                draw_cone_tiles(
+                    tile_map,
+                    action.start,
+                    action.end,
+                    action.color,
+                    action_update ? action : &zero_action,
+                )
             }
         }
     case .WALL:
@@ -497,7 +514,7 @@ redo_action :: proc(state: ^GameState, tile_map: ^TileMap, action: ^Action, use_
                     set_tile(tile_map, abs_tile, tile_xor(&old_tile, &tile))
                 }
             } else {
-                wall_tool(tile_map, action.start, action.end, action.color, action)
+                wall_tool(tile_map, action.start, action.end, action.color, action_update ? action : &zero_action)
             }
             tile_map.dirty = true
             set_dirty_token_for_all_lights(state)
@@ -701,6 +718,17 @@ inject_action :: proc(actions: ^[dynamic]Action, start_at: int, action: ^Action)
     return true
 }
 
+//TODO(amatej): maybe I should do this right on sync, but rather only once I need it? once redoing the action?
+set_state_for_action :: proc(state: ^GameState, action_state: ActionState, action_id: u64, author_id: u64) {
+    //TODO(amatej): undo_history is sorted, we could binary search
+    for &a in state.undo_history {
+        if a.author_id == author_id && a.authors_index == action_id {
+            a.state = action_state
+            return
+        }
+    }
+}
+
 // returns true if at least one already present action changed hash
 merge_and_redo_actions :: proc(
     state: ^GameState,
@@ -724,6 +752,23 @@ merge_and_redo_actions :: proc(
         delete_action(&actions[i])
     }
     for i := new_to_merge; i < len(actions); i += 1 {
+        if actions[i].linked_action_authors_index != 0 {
+            if actions[i].linked_action_authors_index > 0 {
+                set_state_for_action(
+                    state,
+                    .DELETED,
+                    u64(actions[i].linked_action_authors_index),
+                    actions[i].author_id,
+                )
+            } else {
+                set_state_for_action(
+                    state,
+                    .REVERTED,
+                    u64(actions[i].linked_action_authors_index * -1),
+                    actions[i].author_id,
+                )
+            }
+        }
         if !inject_action(&state.undo_history, old_to_merge, &actions[i]) {
             //TODO(amatej): check if actions are exactly the same with the duplicate
             fmt.println("DROPPING DUPLICATE ACTION: ", actions[i])
@@ -748,6 +793,44 @@ get_circle_action_rect :: proc(state: ^GameState, tile_map: ^TileMap, action: ^A
     pos := tile_map_to_screen_coord_full(action.start, state, tile_map)
     size: f32 = f32(tile_map.tile_side_in_pixels)
     return {pos.x - size / 2, pos.y - size / 2, size, size}
+}
+
+// This is expensive, we redraw the entire tile_map
+// It creates the canceling action which is automatically performed
+// TODO(amatej): Add some memoization? We could cache the cancel_out_action and if we need it again
+//               (such as when moving an object) we would just perpormed and returned it
+cancel_out_action :: proc(
+    state: ^GameState,
+    tile_map: ^TileMap,
+    action: ^Action,
+    allocator := context.allocator,
+) -> Action {
+    cancel_out_action: Action = make_action(.BRUSH, allocator)
+    for pos, _ in action.tile_history {
+        cancel_out_action.tile_history[pos] = get_tile(tile_map, pos)
+    }
+
+    tilemap_erase(tile_map)
+    for &a in state.undo_history {
+        // Don't redo the selected action
+        if a.authors_index == action.authors_index && a.author_id == action.author_id {
+            continue
+        }
+        if !action_edits_tilemap(a.type) {
+            continue
+        }
+        if a.state != .DELETES && a.state != .DELETED && a.state != .REVERTS && a.state != .REVERTED {
+            redo_action(state, tile_map, &a, false, false)
+        }
+    }
+    tile_map.dirty = true
+
+    for pos, _ in action.tile_history {
+        c := get_tile(tile_map, pos)
+        cancel_out_action.tile_history[pos] = tile_xor(&cancel_out_action.tile_history[pos], &c)
+    }
+    cancel_out_action.linked_action_authors_index = i64(action.authors_index)
+    return cancel_out_action
 }
 
 allow_editing_tool_type_actions :: proc(
@@ -784,27 +867,23 @@ allow_editing_tool_type_actions :: proc(
                 }
                 interaction := ui_widget_interaction(action_widget, mouse_pos)
                 if interaction.hovering && rl.IsKeyPressed(.DELETE) {
-                    deletes := revert_action(action)
-                    deletes.revert_prev = false
-                    redo_action(state, tile_map, &deletes)
-                    append(&state.undo_history, deletes)
-                    finish_last_undo_history_action(state, .DELETES)
                     action.state = .DELETED
+                    cancel_out_action := cancel_out_action(state, tile_map, action)
+                    append(&state.undo_history, cancel_out_action)
+                    state.needs_sync = true
+                    finish_last_undo_history_action(state, .DELETES)
                 } else if interaction.dragging {
-                    reverted := revert_action(action, context.temp_allocator)
-                    redo_action(state, tile_map, &reverted)
-                    append(&state.temp_actions, reverted)
+                    cancel_out_action := cancel_out_action(state, tile_map, action, context.temp_allocator)
+                    append(&state.temp_actions, cancel_out_action)
                     dupe := duplicate_action(action, false, context.temp_allocator)
                     move_action(state, tile_map, &dupe, mouse_pos)
                     redo_action(state, tile_map, &dupe)
                     append(&state.temp_actions, dupe)
                 } else if interaction.released {
-                    dupe := duplicate_action(action, false, context.allocator)
-                    reverted := revert_action(action)
-                    reverted.revert_prev = false
                     action.state = .DELETED
-                    redo_action(state, tile_map, &reverted)
-                    append(&state.undo_history, reverted)
+                    dupe := duplicate_action(action, false, context.allocator)
+                    cancel_out_action := cancel_out_action(state, tile_map, action)
+                    append(&state.undo_history, cancel_out_action)
                     finish_last_undo_history_action(state, .DELETES)
                     move_action(state, tile_map, &dupe, mouse_pos)
                     redo_action(state, tile_map, &dupe)
