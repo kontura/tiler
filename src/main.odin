@@ -400,7 +400,15 @@ highlight_current_tile :: proc(state: ^GameState, tile_map: ^TileMap, mouse_tile
     set_tile(tile_map, mouse_tile_pos.abs_tile, new_tile)
 }
 
-game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32, path: string) {
+game_state_init :: proc(
+    state: ^GameState,
+    mobile: bool,
+    width: i32,
+    height: i32,
+    path: string,
+    save_location: string,
+    init_raylib := true, // Used for tests without UI
+) {
     state.camera_pos.abs_tile.x = 100
     state.camera_pos.abs_tile.y = 100
     state.camera_pos.rel_tile.x = 0.0
@@ -446,32 +454,34 @@ game_state_init :: proc(state: ^GameState, mobile: bool, width: i32, height: i32
     state.bg_pos.rel_tile = 2.5
     state.bg_pos.abs_tile = 100
 
-    // light
-    state.light = {
-        rl.LoadRenderTexture(width, height),
-        rl.LoadRenderTexture(width, height),
-        2000000,
-        true,
-        true,
-        1,
-        0.2,
+    if init_raylib {
+        // light
+        state.light = {
+            rl.LoadRenderTexture(width, height),
+            rl.LoadRenderTexture(width, height),
+            2000000,
+            true,
+            true,
+            1,
+            0.2,
+        }
+        state.light_mask = rl.LoadRenderTexture(width, height)
+        state.grid_mask = rl.LoadRenderTexture(width, height)
+        state.grid_tex = rl.LoadRenderTexture(width, height)
+        state.tiles_tex = rl.LoadRenderTexture(width, height)
+
+        builder := strings.builder_make(context.temp_allocator)
+        strings.write_string(&builder, "assets/shaders/")
+        strings.write_string(&builder, GLSL_VERSION)
+        strings.write_string(&builder, "_mask.fs")
+
+        state.grid_shader = rl.LoadShader(nil, strings.to_cstring(&builder))
+        state.mask_loc = rl.GetShaderLocation(state.grid_shader, "mask")
+        state.wall_color_loc = rl.GetShaderLocation(state.grid_shader, "wall_color")
+        state.tiles_loc = rl.GetShaderLocation(state.grid_shader, "tiles")
+        state.tile_pix_size_loc = rl.GetShaderLocation(state.grid_shader, "tile_pix_size")
+        state.camera_offsret_loc = rl.GetShaderLocation(state.grid_shader, "camera_offset")
     }
-    state.light_mask = rl.LoadRenderTexture(width, height)
-    state.grid_mask = rl.LoadRenderTexture(width, height)
-    state.grid_tex = rl.LoadRenderTexture(width, height)
-    state.tiles_tex = rl.LoadRenderTexture(width, height)
-
-    builder := strings.builder_make(context.temp_allocator)
-    strings.write_string(&builder, "assets/shaders/")
-    strings.write_string(&builder, GLSL_VERSION)
-    strings.write_string(&builder, "_mask.fs")
-
-    state.grid_shader = rl.LoadShader(nil, strings.to_cstring(&builder))
-    state.mask_loc = rl.GetShaderLocation(state.grid_shader, "mask")
-    state.wall_color_loc = rl.GetShaderLocation(state.grid_shader, "wall_color")
-    state.tiles_loc = rl.GetShaderLocation(state.grid_shader, "tiles")
-    state.tile_pix_size_loc = rl.GetShaderLocation(state.grid_shader, "tile_pix_size")
-    state.camera_offsret_loc = rl.GetShaderLocation(state.grid_shader, "camera_offset")
 
     state.frame_deterministic_state = rand.create(u64(time.time_to_unix(time.now())))
     state.frame_deterministic_rng = rand.default_random_generator(&state.frame_deterministic_state)
