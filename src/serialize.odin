@@ -350,6 +350,35 @@ serialize_tile :: proc(s: ^Serializer, tile: ^Tile, loc := #caller_location) -> 
     return true
 }
 
+serialize_tile_chunk :: proc(s: ^Serializer, tile_chunk: ^TileChunk, loc := #caller_location) -> bool {
+    if s.is_writing {
+        compressed_chunk := compress_tile_chunk(tile_chunk, context.temp_allocator)
+        serialize(s, &compressed_chunk.counts, loc) or_return
+        serialize(s, &compressed_chunk.tiles, loc) or_return
+    } else {
+        compressed_chunk : CompressedTileChunk
+        serialize(s, &compressed_chunk.counts, loc) or_return
+        serialize(s, &compressed_chunk.tiles, loc) or_return
+        decompress_tile_chunk_into(&compressed_chunk, tile_chunk)
+        delete(compressed_chunk.counts)
+        delete(compressed_chunk.tiles)
+    }
+    return true
+}
+
+serialize_tile_map :: proc(s: ^Serializer, tile_map: ^TileMap, loc := #caller_location) -> bool {
+    serialize(s, &tile_map.chunk_shift, loc) or_return
+    serialize(s, &tile_map.chunk_mask, loc) or_return
+    serialize(s, &tile_map.chunk_dim, loc) or_return
+    serialize(s, &tile_map.tile_side_in_feet, loc) or_return
+    serialize(s, &tile_map.tile_side_in_pixels, loc) or_return
+    serialize(s, &tile_map.feet_to_pixels, loc) or_return
+    serialize(s, &tile_map.pixels_to_feet, loc) or_return
+    serialize(s, &tile_map.tile_chunks, loc) or_return
+    serialize(s, &tile_map.dirty, loc) or_return
+    return true
+}
+
 serialize_tile_map_position :: proc(
     s: ^Serializer,
     tile_map_position: ^TileMapPosition,
@@ -429,4 +458,6 @@ serialize :: proc {
     serialize_tile_map_position,
     serialize_token,
     serialize_time,
+    serialize_tile_map,
+    serialize_tile_chunk,
 }
