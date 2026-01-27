@@ -401,6 +401,7 @@ serialize_token :: proc(s: ^Serializer, token: ^Token, loc := #caller_location) 
     serialize(s, &token.name, loc) or_return
     serialize(s, &token.size, loc) or_return
     serialize(s, &token.initiative, loc) or_return
+    serialize(s, &token.alive, loc) or_return
     return true
 }
 
