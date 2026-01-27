@@ -115,7 +115,6 @@ GameState :: struct {
     // permanent state
     textures:                   map[string]rl.Texture2D,
     images:                     map[string]rl.Image,
-    done_circle_actions:        [dynamic]int,
 
     //TODO(amatej): check if the tool actually does any color change before recoding
     //              undoing non-color changes does nothing
