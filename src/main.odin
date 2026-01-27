@@ -1437,7 +1437,7 @@ update :: proc() {
                                 {
                                 }
                             case:
-                                strings.write_byte(&builder, byte)
+                                strings.write_rune(&builder, rl.GetCharPressed())
                                 delete(state.menu_items[0])
                                 state.menu_items[0] = strings.to_string(builder)
                                 key_consumed = true
