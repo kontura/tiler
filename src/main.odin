@@ -275,12 +275,13 @@ tile_map: ^TileMap
 load_save_override :: proc(state: ^GameState, tile_map: ^TileMap, path := "./tiler_save") -> bool {
     data, ok := read_entire_file(path, context.temp_allocator)
     if ok {
-        if strings.ends_with(path, ".tile_map") {
+        if strings.ends_with(path, ".expected") {
             tilemap_erase(tile_map)
             s: Serializer
             serializer_init_reader(&s, data)
             serialize(&s, &s.version)
             serialize(&s, tile_map)
+            serialize(&s, &state.tokens)
             tile_map.dirty = true
             return true
         } else {
@@ -326,11 +327,22 @@ load_save_override :: proc(state: ^GameState, tile_map: ^TileMap, path := "./til
 }
 
 store_save :: proc(state: ^GameState, path := "./tiler_save") -> bool {
-    save_data := serialize_actions(state.undo_history[:], context.temp_allocator)
+    path := path
+    if strings.ends_with(path, ".expected") {
+        s: Serializer
+        serializer_init_writer(&s, allocator = context.temp_allocator)
+        serialize(&s, &s.version)
+        serialize(&s, tile_map)
+        serialize(&s, &state.tokens)
+        write_entire_file(path, s.data[:])
+
+        path = strings.trim_suffix(path, ".expected")
+    }
+
     s: Serializer
     serializer_init_writer(&s, allocator = context.temp_allocator)
-    actions := state.undo_history[:]
     serialize(&s, &s.version)
+    actions := state.undo_history[:]
     serialize(&s, &actions)
     images := make(map[string][dynamic]u8, allocator = context.temp_allocator)
     for img_id, _ in state.images {

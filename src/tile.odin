@@ -2,6 +2,7 @@ package tiler
 
 import "core:math"
 import "core:mem"
+import "core:fmt"
 
 // TODO(amatej): add diagonal walls
 Direction :: enum {
@@ -67,6 +68,40 @@ TileMap :: struct {
     pixels_to_feet:      f32,
     tile_chunks:         map[[2]u32]TileChunk,
     dirty:               bool,
+}
+
+tile_maps_equal :: proc(t1: ^TileMap, t2: ^TileMap) -> (bool, string) {
+    if t1.chunk_shift != t2.chunk_shift {
+        return false, "chunk_shift"
+    }
+    if t1.chunk_mask != t2.chunk_mask {
+        return false, "chunk_mask"
+    }
+    if t1.chunk_dim != t2.chunk_dim {
+        return false, "chunk_dim"
+    }
+
+    if len(t1.tile_chunks) != len(t2.tile_chunks) {
+        return false, "tile_chunks len"
+    }
+    for key, _ in t1.tile_chunks {
+        if !(key in t2.tile_chunks) {
+            return false, "t2.tile_chunks key"
+        }
+        chunk1 := t1.tile_chunks[key]
+        chunk2 := t2.tile_chunks[key]
+        if len(chunk1.tiles) != len(chunk2.tiles) {
+            return false, "chunk len"
+        }
+        for _, index in chunk1.tiles {
+            if chunk1.tiles[index] != chunk2.tiles[index] {
+                diff := fmt.aprint("Diff: ", chunk1.tiles[index], " vs. ", chunk2.tiles[index], allocator = context.temp_allocator)
+                return false, diff
+            }
+        }
+    }
+
+    return true, ""
 }
 
 tile_xor :: proc(t1: ^Tile, t2: ^Tile) -> Tile {

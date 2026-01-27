@@ -13,6 +13,7 @@ export EMSDK_QUIET=1
 ODIN_BIN=odin
 
 $ODIN_BIN test src
+$ODIN_BIN test tests
 
 # Note RAYLIB_WASM_LIB=env.o -- env.o is an internal WASM object file. You can
 # see how RAYLIB_WASM_LIB is used inside <odin>/vendor/raylib/raylib.odin.
