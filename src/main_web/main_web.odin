@@ -223,7 +223,7 @@ main_start :: proc "c" (path_len: u32, path_data: [^]u8, mobile: bool) {
 
     //TODO(amatej): load saves
     mount_idbfs()
-    game.init(string(path_data[:path_len]), mobile)
+    game.init("/persist/", string(path_data[:path_len]), mobile)
 }
 
 //TODO(amatej): would it be possible to dump all actions on panic?

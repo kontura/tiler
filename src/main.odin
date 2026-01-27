@@ -123,6 +123,7 @@ GameState :: struct {
     tokens:                     map[u64]Token,
     initiative_to_tokens:       map[i32][dynamic]u64,
     path:                       string,
+    save_location:              string,
     room_id:                    u64,
     offline:                    bool,
     particles:                  [1024]Particle,
@@ -446,6 +447,7 @@ game_state_init :: proc(
         draw_size = 1,
     }
     state.path = path
+    state.save_location = save_location
     room_hash_state: xxhash.XXH3_state
     xxhash.XXH3_init_state(&room_hash_state)
     xxhash.XXH3_64_update(&room_hash_state, transmute([]u8)(state.path))
@@ -502,12 +504,12 @@ tile_map_init :: proc(tile_map: ^TileMap, mobile: bool) {
     tile_map.dirty = true
 }
 
-init :: proc(path: string = "root", mobile := false) {
+init :: proc(save_location: string = "./", path: string = "root", mobile := false) {
     rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "Tiler")
 
     state = new(GameState)
-    game_state_init(state, mobile, rl.GetScreenWidth(), rl.GetScreenHeight(), path)
+    game_state_init(state, mobile, rl.GetScreenWidth(), rl.GetScreenHeight(), path, save_location)
 
     tile_map = new(TileMap)
     tile_map_init(tile_map, mobile)
@@ -2074,7 +2076,7 @@ main :: proc() {
             mem.tracking_allocator_destroy(&track)
         }
     }
-    init()
+    init("./tests/")
     for should_run(state) {
         update()
     }

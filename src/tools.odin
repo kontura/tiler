@@ -625,7 +625,8 @@ move_initiative_token :: proc(state: ^GameState, token_id: u64, new_init, new_in
 
         if remove_all_tokens_by_id_from_initiative(state, token_id) != 1 {
             builder := strings.builder_make(context.temp_allocator)
-            strings.write_string(&builder, "/persist/DEBUG-duplicate-id-initiative-")
+            strings.write_string(&builder, state.save_location)
+            strings.write_string(&builder, "DEBUG-duplicate-id-initiative-")
             s, _ := time.time_to_rfc3339(time.now(), 0, false, context.temp_allocator)
             strings.write_string(&builder, s)
             store_save(state, strings.to_string(builder))

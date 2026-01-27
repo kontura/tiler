@@ -135,7 +135,7 @@ main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
                 delete(item)
             }
             clear(&state.menu_items)
-            state.menu_items = list_files_in_dir("/persist/", context.allocator)
+            state.menu_items = list_files_in_dir(state.save_location, context.allocator)
             state.selected_index = 0
         }}, {"Save Game", proc(state: ^GameState) {
             state.active_tool = .SAVE_GAME
@@ -143,7 +143,7 @@ main_menu: []MenuItem = {{"New Game", proc(state: ^GameState) {
                 delete(item)
             }
             clear(&state.menu_items)
-            state.menu_items = list_files_in_dir("/persist/", context.allocator)
+            state.menu_items = list_files_in_dir(state.save_location, context.allocator)
             inject_at(&state.menu_items, 0, strings.clone("<NEW SAVE>"))
             state.selected_index = 0
         }}, {"Options", proc(state: ^GameState) {
@@ -339,7 +339,8 @@ config: []Config = {
     {{{.M, .PRESSED}}, {move_token_tool_config}},
     {{{.F5, .RELEASED}}, {{.ICON_FILE_SAVE, "Quick save", nil, nil, proc(state: ^GameState) {
                     builder := strings.builder_make(context.temp_allocator)
-                    strings.write_string(&builder, "/persist/autosave-")
+                    strings.write_string(&builder, state.save_location)
+                    strings.write_string(&builder, "autosave-")
                     s, _ := time.time_to_rfc3339(time.now(), 0, false, context.temp_allocator)
                     strings.write_string(&builder, s)
                     if store_save(state, strings.to_string(builder)) {
@@ -582,7 +583,7 @@ config: []Config = {
                     case .LOAD_GAME:
                         {
                             save_name := fmt.aprint(
-                                "/persist/",
+                                state.save_location,
                                 state.menu_items[state.selected_index],
                                 sep = "",
                                 allocator = context.temp_allocator,
@@ -599,7 +600,7 @@ config: []Config = {
                                 state.menu_items[0] = strings.clone("")
                             } else {
                                 save_name := fmt.aprint(
-                                    "/persist/",
+                                    state.save_location,
                                     state.menu_items[state.selected_index],
                                     sep = "",
                                     allocator = context.temp_allocator,
@@ -613,7 +614,7 @@ config: []Config = {
                     case .NEW_SAVE_GAME:
                         {
                             save_name := fmt.aprint(
-                                "/persist/",
+                                state.save_location,
                                 state.menu_items[0],
                                 sep = "",
                                 allocator = context.temp_allocator,
