@@ -273,43 +273,53 @@ tile_map_to_screen_coord_full :: proc(pos: TileMapPosition, state: ^GameState, t
 state: ^GameState
 tile_map: ^TileMap
 
-load_save_override :: proc(state: ^GameState, path := "./tiler_save") -> bool {
+load_save_override :: proc(state: ^GameState, tile_map: ^TileMap, path := "./tiler_save") -> bool {
     data, ok := read_entire_file(path, context.temp_allocator)
     if ok {
-        s: Serializer
-        serializer_init_reader(&s, data)
-        actions := make([dynamic]Action, allocator = context.allocator)
-        serialize(&s, &s.version)
-        serialize(&s, &actions)
-        images: map[string][dynamic]u8
-        serialize(&s, &images)
-        for img_id, img_data in images {
-            save_image(state, img_id, img_data[:])
-            delete(img_data)
-            delete(img_id)
-        }
-        delete(images)
-
-        if len(actions) > 0 {
-            // undo and delete current actions
-            for i := len(state.undo_history) - 1; i >= 0; i -= 1 {
-                action := &state.undo_history[i]
-                undo_action(state, tile_map, action)
-            }
-            for i := 0; i < len(state.undo_history); i += 1 {
-                delete_action(&state.undo_history[i])
-            }
-            delete(state.undo_history)
-            tokens_reset(state)
-
-            // set and redo loaded actions
-            state.undo_history = actions
-            for i := 0; i < len(state.undo_history); i += 1 {
-                action := &state.undo_history[i]
-                redo_action(state, tile_map, action)
-            }
-
+        if strings.ends_with(path, ".tile_map") {
+            tilemap_erase(tile_map)
+            s: Serializer
+            serializer_init_reader(&s, data)
+            serialize(&s, &s.version)
+            serialize(&s, tile_map)
+            tile_map.dirty = true
             return true
+        } else {
+            s: Serializer
+            serializer_init_reader(&s, data)
+            actions := make([dynamic]Action, allocator = context.allocator)
+            serialize(&s, &s.version)
+            serialize(&s, &actions)
+            images: map[string][dynamic]u8
+            serialize(&s, &images)
+            for img_id, img_data in images {
+                save_image(state, img_id, img_data[:])
+                delete(img_data)
+                delete(img_id)
+            }
+            delete(images)
+
+            if len(actions) > 0 {
+                // undo and delete current actions
+                for i := len(state.undo_history) - 1; i >= 0; i -= 1 {
+                    action := &state.undo_history[i]
+                    undo_action(state, tile_map, action)
+                }
+                for i := 0; i < len(state.undo_history); i += 1 {
+                    delete_action(&state.undo_history[i])
+                }
+                delete(state.undo_history)
+                tokens_reset(state)
+
+                // set and redo loaded actions
+                state.undo_history = actions
+                for i := 0; i < len(state.undo_history); i += 1 {
+                    action := &state.undo_history[i]
+                    redo_action(state, tile_map, action)
+                }
+
+                return true
+            }
         }
     }
 

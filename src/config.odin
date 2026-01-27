@@ -588,7 +588,7 @@ config: []Config = {
                                 sep = "",
                                 allocator = context.temp_allocator,
                             )
-                            if load_save_override(state, save_name) {
+                            if load_save_override(state, tile_map, save_name) {
                                 state.active_tool = state.previous_tool.?
                             }
                         }
