@@ -75,7 +75,7 @@ merge_and_redo_actions_duplicate :: proc(t: ^testing.T) {
 
     testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{255, 0, 0, 155})
     testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{255, 0, 0, 155})
-    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 0})
+    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{0, 0, 0, 0})
 
     append(&state.undo_history, action)
     finish_last_undo_history_action(&state)
@@ -89,7 +89,7 @@ merge_and_redo_actions_duplicate :: proc(t: ^testing.T) {
     testing.expect_value(t, len(state.undo_history), 1)
     testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{255, 0, 0, 155})
     testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{255, 0, 0, 155})
-    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 0})
+    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{0, 0, 0, 0})
 
     teardown(&state, &tile_map)
 }
@@ -115,7 +115,7 @@ merge_and_redo_actions_duplicate_with_different_hash :: proc(t: ^testing.T) {
 
     testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{255, 0, 0, 155})
     testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{255, 0, 0, 155})
-    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 0})
+    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{0, 0, 0, 0})
 
     append(&state.undo_history, action)
     finish_last_undo_history_action(&state)
@@ -130,7 +130,7 @@ merge_and_redo_actions_duplicate_with_different_hash :: proc(t: ^testing.T) {
     testing.expect_value(t, len(state.undo_history), 1)
     testing.expect_value(t, get_tile(&tile_map, {0, 0}).color, [4]u8{255, 0, 0, 155})
     testing.expect_value(t, get_tile(&tile_map, {2, 2}).color, [4]u8{255, 0, 0, 155})
-    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{77, 77, 77, 0})
+    testing.expect_value(t, get_tile(&tile_map, {3, 3}).color, [4]u8{0, 0, 0, 0})
 
     teardown(&state, &tile_map)
 }
