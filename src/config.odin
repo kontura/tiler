@@ -396,6 +396,7 @@ config: []Config = {
                         if action.mine && action.state != .REVERTED && action.state != .REVERTS {
                             reverted := revert_action(&action)
                             redo_action(state, tile_map, &reverted)
+                            reverted.linked_action_authors_index = i64(action.authors_index) * -1
                             action.state = .REVERTED
                             append(&state.undo_history, reverted)
                             finish_last_undo_history_action(state, .REVERTS)
