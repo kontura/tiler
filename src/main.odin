@@ -1654,13 +1654,38 @@ update :: proc() {
                     rl.DrawCircleV(token_pos, token_radius, token.color.xyzw)
                 }
                 pos: rl.Vector2 = tile_map_to_screen_coord_full(token.position, state, tile_map)
-                rl.DrawText(
-                    get_token_name_temp(&token),
-                    i32(pos.x) - tile_map.tile_side_in_pixels / 2,
-                    i32(pos.y) + tile_map.tile_side_in_pixels / 2,
-                    tile_map.tile_side_in_pixels / 2,
-                    rl.WHITE,
-                )
+
+                if (len(token.name) != 0) {
+                    y_pos := i32(pos.y) + tile_map.tile_side_in_pixels / 2
+                    for _, &next_token in state.tokens {
+                        if math.abs(i32(token.position.abs_tile.x) - i32(next_token.position.abs_tile.x)) == 1 &&
+                           token.position.abs_tile.y == next_token.position.abs_tile.y {
+                            if token.position.abs_tile.x % 2 == 0 {
+                                if (len(next_token.name) != 0) {
+                                    y_pos = i32(pos.y) - tile_map.tile_side_in_pixels
+                                }
+                            }
+                            break
+                        }
+                    }
+
+                    rl.DrawText(
+                        get_token_name_temp(&token),
+                        i32(pos.x) - tile_map.tile_side_in_pixels / 2,
+                        y_pos,
+                        tile_map.tile_side_in_pixels / 2,
+                        rl.WHITE,
+                    )
+                } else {
+                    rl.DrawText(
+                        get_token_name_temp(&token),
+                        i32(pos.x) - tile_map.tile_side_in_pixels / 6,
+                        i32(pos.y) - tile_map.tile_side_in_pixels / 4,
+                        tile_map.tile_side_in_pixels / 2,
+                        rl.WHITE,
+                    )
+                }
+
                 if (token.moved != 0) {
                     for selected_id in state.selected_tokens {
                         if selected_id == token.id {
