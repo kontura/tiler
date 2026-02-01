@@ -93,6 +93,7 @@ tile_maps_equal :: proc(t1: ^TileMap, t2: ^TileMap) -> (bool, string) {
         if len(chunk1.tiles) != len(chunk2.tiles) {
             return false, "chunk len"
         }
+        //TODO(amatej): report all errors, ideally with positions
         for _, index in chunk1.tiles {
             if chunk1.tiles[index] != chunk2.tiles[index] {
                 diff := fmt.aprint("Diff: ", chunk1.tiles[index], " vs. ", chunk2.tiles[index], allocator = context.temp_allocator)
