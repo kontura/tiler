@@ -5,75 +5,66 @@ import "core:math"
 import "core:math/rand"
 import rl "vendor:raylib"
 
-draw_tiles_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
-    if !tile_map.dirty {
-        return
-    }
+draw_tiles :: proc(state: ^GameState, tile_map: ^TileMap) {
+    screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
 
-    rl.BeginTextureMode(state.tiles_tex)
-    {
-        rl.ClearBackground({0, 0, 0, 0})
-        screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
+    //TODO(amatej): This is bad usually most of the tiles are empty, we don't have to iterate
+    //              over all of this.
+    // draw tile map
+    tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
+    for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
+        row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
+        row_offset += 1 {
+        cen_y: f32 =
+            screen_center.y -
+            tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
+            f32(row_offset * tile_map.tile_side_in_pixels)
+        min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
 
-        //TODO(amatej): This is bad usually most of the tiles are empty, we don't have to iterate
-        //              over all of this.
-        // draw tile map
-        tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
-        for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
-            row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
-            row_offset += 1 {
-            cen_y: f32 =
-                screen_center.y -
-                tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
-                f32(row_offset * tile_map.tile_side_in_pixels)
-            min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
+        for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
+            column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
+            column_offset += 1 {
+            current_tile: [2]u32
+            current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset)
+            current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
 
-            for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-                column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
-                column_offset += 1 {
-                current_tile: [2]u32
-                current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset)
-                current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
+            current_tile_value: Tile = get_tile(tile_map, current_tile)
 
-                current_tile_value: Tile = get_tile(tile_map, current_tile)
+            // Calculate tile position on screen
+            cen_x: f32 =
+                screen_center.x -
+                tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
+                f32(column_offset * tile_map.tile_side_in_pixels)
+            min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
+            if current_tile_value.color.w != 0 {
+                rl.DrawRectangleV(
+                    {min_x, min_y},
+                    {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
+                    current_tile_value.color.xyzw,
+                )
+            }
 
-                // Calculate tile position on screen
-                cen_x: f32 =
-                    screen_center.x -
-                    tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-                    f32(column_offset * tile_map.tile_side_in_pixels)
-                min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-                if current_tile_value.color.w != 0 {
+            if Direction.TOP in current_tile_value.walls {
+                if current_tile_value.wall_colors[Direction.TOP].w != 0 {
+                    //TODO(amatej): use DrawLineEx if we want to do diagonals
                     rl.DrawRectangleV(
                         {min_x, min_y},
-                        {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
-                        current_tile_value.color.xyzw,
+                        {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels) * .1},
+                        current_tile_value.wall_colors[Direction.TOP].xyzw,
                     )
                 }
-
-                if Direction.TOP in current_tile_value.walls {
-                    if current_tile_value.wall_colors[Direction.TOP].w != 0 {
-                        //TODO(amatej): use DrawLineEx if we want to do diagonals
-                        rl.DrawRectangleV(
-                            {min_x, min_y},
-                            {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels) * .1},
-                            current_tile_value.wall_colors[Direction.TOP].xyzw,
-                        )
-                    }
-                }
-                if current_tile_value.wall_colors[Direction.LEFT].w != 0 {
-                    if Direction.LEFT in current_tile_value.walls {
-                        rl.DrawRectangleV(
-                            {min_x, min_y},
-                            {f32(tile_map.tile_side_in_pixels) * .1, f32(tile_map.tile_side_in_pixels)},
-                            current_tile_value.wall_colors[Direction.LEFT].xyzw,
-                        )
-                    }
+            }
+            if current_tile_value.wall_colors[Direction.LEFT].w != 0 {
+                if Direction.LEFT in current_tile_value.walls {
+                    rl.DrawRectangleV(
+                        {min_x, min_y},
+                        {f32(tile_map.tile_side_in_pixels) * .1, f32(tile_map.tile_side_in_pixels)},
+                        current_tile_value.wall_colors[Direction.LEFT].xyzw,
+                    )
                 }
             }
         }
     }
-    rl.EndTextureMode()
 }
 
 draw_grid_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
@@ -160,7 +151,6 @@ draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Re
                     f32(column_offset * tile_map.tile_side_in_pixels)
                 min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
 
-
                 if Direction.TOP in current_tile_value.walls || Direction.LEFT in current_tile_value.walls {
                     rand.reset(u64(current_tile.x + current_tile.y), state.frame_deterministic_rng)
                     if rand.float32(state.frame_deterministic_rng) < 1.1 {
@@ -177,7 +167,7 @@ draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Re
                             p + get_scaled_rand_pair(state, tile_map),
                             p + get_scaled_rand_pair(state, tile_map),
                             p + get_scaled_rand_pair(state, tile_map),
-                            {255, 255, 255, 255},
+                            {255, 0, 0, 200},
                         )
                     }
 
@@ -187,7 +177,23 @@ draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Re
                         rand.float32_range(.2, .3, state.frame_deterministic_rng) *
                         3 *
                         f32(tile_map.tile_side_in_pixels),
-                        {255, 255, 255, 255},
+                        {255, 0, 0, 200},
+                    )
+                }
+
+                // Extend tile masks by wall thickness to mask walls of
+                // bottom and right tiles. This is needed because we
+                // draw only TOP and LEFT tile walls so bottom and right
+                // edge tiles have walls in extra next tiles.
+                wall_thickness := f32(tile_map.tile_side_in_pixels) * .1
+                if current_tile_value.color.w != 0 {
+                    rl.DrawRectangleV(
+                        {min_x, min_y},
+                        {
+                            f32(tile_map.tile_side_in_pixels) + wall_thickness,
+                            f32(tile_map.tile_side_in_pixels) + wall_thickness,
+                        },
+                        {0, 255, 0, 200},
                     )
                 }
             }

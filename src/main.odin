@@ -81,7 +81,6 @@ GameState :: struct {
     draw_grid_mask:             bool,
     grid_mask:                  rl.RenderTexture,
     grid_tex:                   rl.RenderTexture,
-    tiles_tex:                  rl.RenderTexture,
     grid_shader:                rl.Shader,
     //TODO(amatej): Improve shader management, these locations are not nice
     mask_loc:                   i32,
@@ -491,7 +490,6 @@ game_state_init :: proc(
         state.light_mask = rl.LoadRenderTexture(width, height)
         state.grid_mask = rl.LoadRenderTexture(width, height)
         state.grid_tex = rl.LoadRenderTexture(width, height)
-        state.tiles_tex = rl.LoadRenderTexture(width, height)
 
         builder := strings.builder_make(context.temp_allocator)
         strings.write_string(&builder, "assets/shaders/")
@@ -569,7 +567,6 @@ update :: proc() {
             state.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             state.grid_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             state.grid_tex = rl.LoadRenderTexture(state.screen_width, state.screen_height)
-            state.tiles_tex = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             for _, &token in state.tokens {
                 l, ok := &token.light.?
                 if ok {
@@ -1556,13 +1553,7 @@ update :: proc() {
             rl.DrawTextureEx(tex, pos, 0, state.bg_scale * tile_map.feet_to_pixels, rl.WHITE)
         }
 
-        draw_tiles_to_tex(state, tile_map, &state.tiles_tex)
-        rl.DrawTextureRec(
-            state.tiles_tex.texture,
-            {0, 0, f32(state.screen_width), f32(-state.screen_height)},
-            {0, 0},
-            {255, 255, 255, 255},
-        )
+        draw_tiles(state, tile_map)
 
         if (state.draw_grid || state.draw_grid_mask) {
             draw_grid_to_tex(state, tile_map, &state.grid_tex)
@@ -1596,7 +1587,6 @@ update :: proc() {
                     camera_offset.x *= f32(-1)
                     camera_offset.y /= f32(state.screen_height)
                     rl.SetShaderValue(state.grid_shader, state.camera_offsret_loc, &camera_offset, .VEC2)
-                    rl.SetShaderValueTexture(state.grid_shader, state.tiles_loc, state.tiles_tex.texture)
                     rl.DrawTextureRec(
                         state.grid_tex.texture,
                         {0, 0, f32(state.screen_width), f32(-state.screen_height)},
