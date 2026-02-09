@@ -4,7 +4,6 @@ precision mediump float;
 
 // Input vertex attributes (from vertex shader)
 varying vec3 vertexPos;
-varying vec2 fragTexCoord;
 varying vec4 fragColor;
 
 // Input uniform values
@@ -13,6 +12,7 @@ uniform sampler2D mask;
 uniform vec4 wall_color;
 uniform int tile_pix_size;
 uniform vec2 camera_offset;
+uniform vec2 resolution;
 
 float hash(float n) {
     return fract(sin(n * 12.9898) * 43758.5453);
@@ -108,11 +108,11 @@ float compute_stripe(vec2 p, float seed) {
 }
 
 
-vec4 triangles() {
+vec4 triangles(vec2 uv) {
     ////-----------------------------------------
     //// B) map fragCoord -> "world" coords
     ////-----------------------------------------
-    vec2 p = ((fragTexCoord - camera_offset - 0.5) / (float(tile_pix_size)* 0.001) + 0.5);
+    vec2 p = ((uv - camera_offset - 0.5) / (float(tile_pix_size)* 0.001) + 0.5);
 
     //-----------------------------------------
     // C) scale wiggly amplitude so we don't get spikes
@@ -175,11 +175,11 @@ vec4 triangles() {
 
 void main()
 {
-    vec4 texelColor = texture2D(texture0, fragTexCoord);
-    vec4 maskColor = texture2D(mask, fragTexCoord);
+    vec2 uv = gl_FragCoord.xy / resolution;
+    vec4 maskColor = texture2D(mask, uv);
 
     if (maskColor.r > 0.0 && maskColor.g == 0.0) {
-        gl_FragColor = triangles() + texelColor;
+        gl_FragColor = triangles(uv);
     } else {
         discard;
     }

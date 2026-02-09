@@ -80,11 +80,11 @@ GameState :: struct {
     draw_grid:                  bool,
     draw_grid_mask:             bool,
     grid_mask:                  rl.RenderTexture,
-    grid_tex:                   rl.RenderTexture,
     grid_shader:                rl.Shader,
     //TODO(amatej): Improve shader management, these locations are not nice
     mask_loc:                   i32,
     wall_color_loc:             i32,
+    resolution_loc:             i32,
     tiles_loc:                  i32,
     tile_pix_size_loc:          i32,
     camera_offsret_loc:         i32,
@@ -489,7 +489,6 @@ game_state_init :: proc(
         }
         state.light_mask = rl.LoadRenderTexture(width, height)
         state.grid_mask = rl.LoadRenderTexture(width, height)
-        state.grid_tex = rl.LoadRenderTexture(width, height)
 
         builder := strings.builder_make(context.temp_allocator)
         strings.write_string(&builder, "assets/shaders/")
@@ -499,6 +498,7 @@ game_state_init :: proc(
         state.grid_shader = rl.LoadShader(nil, strings.to_cstring(&builder))
         state.mask_loc = rl.GetShaderLocation(state.grid_shader, "mask")
         state.wall_color_loc = rl.GetShaderLocation(state.grid_shader, "wall_color")
+        state.resolution_loc = rl.GetShaderLocation(state.grid_shader, "resolution")
         state.tiles_loc = rl.GetShaderLocation(state.grid_shader, "tiles")
         state.tile_pix_size_loc = rl.GetShaderLocation(state.grid_shader, "tile_pix_size")
         state.camera_offsret_loc = rl.GetShaderLocation(state.grid_shader, "camera_offset")
@@ -566,7 +566,6 @@ update :: proc() {
             state.light.light_token_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             state.light_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             state.grid_mask = rl.LoadRenderTexture(state.screen_width, state.screen_height)
-            state.grid_tex = rl.LoadRenderTexture(state.screen_width, state.screen_height)
             for _, &token in state.tokens {
                 l, ok := &token.light.?
                 if ok {
@@ -1556,15 +1555,9 @@ update :: proc() {
         draw_tiles(state, tile_map)
 
         if (state.draw_grid || state.draw_grid_mask) {
-            draw_grid_to_tex(state, tile_map, &state.grid_tex)
 
             if state.draw_grid {
-                rl.DrawTextureRec(
-                    state.grid_tex.texture,
-                    {0, 0, f32(state.screen_width), f32(-state.screen_height)},
-                    {0, 0},
-                    {255, 255, 255, 25},
-                )
+                draw_grid(state, tile_map)
             }
 
             if state.draw_grid_mask {
@@ -1577,6 +1570,8 @@ update :: proc() {
                     //TODO(amatej): For now do only black walls
                     normalized_wall_color := rl.ColorNormalize({0, 0, 0, 255})
                     rl.SetShaderValue(state.grid_shader, state.wall_color_loc, &normalized_wall_color, .VEC4)
+                    res := [2]f32{f32(state.screen_width), f32(state.screen_height)}
+                    rl.SetShaderValue(state.grid_shader, state.resolution_loc, &res, .VEC2)
                     rl.SetShaderValue(state.grid_shader, state.tile_pix_size_loc, &tile_map.tile_side_in_pixels, .INT)
                     camera_offset: [2]f32
                     camera_offset.x = f32(state.camera_pos.abs_tile.x) * f32(tile_map.tile_side_in_pixels)
@@ -1587,12 +1582,7 @@ update :: proc() {
                     camera_offset.x *= f32(-1)
                     camera_offset.y /= f32(state.screen_height)
                     rl.SetShaderValue(state.grid_shader, state.camera_offsret_loc, &camera_offset, .VEC2)
-                    rl.DrawTextureRec(
-                        state.grid_tex.texture,
-                        {0, 0, f32(state.screen_width), f32(-state.screen_height)},
-                        {0, 0},
-                        {255, 255, 255, 155},
-                    )
+                    rl.DrawRectangleV({0, 0}, {f32(state.screen_width), f32(state.screen_height)}, {255, 255, 255, 155})
                 }
                 rl.EndShaderMode()
             }
