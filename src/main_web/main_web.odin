@@ -152,13 +152,18 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
         image_data := make([dynamic]u8, allocator = context.temp_allocator)
         game.serialize(&s, &image_data)
 
-        if len(image_data) > 0 {
-            game.save_image(game.state, img_id, image_data[:])
-        } else {
-            for &ind in game.state.needs_images {
-                if strings.compare(img_id, ind.img_name) == 0 {
+        for &ind, index in game.state.needs_images {
+            if strings.compare(img_id, ind.img_name) == 0 {
+                if len(image_data) > 0 {
+                    fmt.println("Saving: ", img_id)
+                    game.save_image(game.state, img_id, image_data[:])
+                    game.delete_image_needed(&ind)
+                    ordered_remove(&game.state.needs_images, index)
+                } else {
+                    fmt.println("No longer waiting ind: ", ind)
                     ind.waiting_for_answer = false
                 }
+                break
             }
         }
 
@@ -240,7 +245,6 @@ main_update :: proc "c" () -> bool {
         index := 0
         for index < len(game.state.needs_images) {
             img_req := &game.state.needs_images[index]
-            fmt.println(img_req)
             if !img_req.waiting_for_answer {
                 if len(img_req.peers_to_try) > 0 {
                     target_peer := pop_front(&img_req.peers_to_try)
@@ -260,9 +264,7 @@ main_update :: proc "c" () -> bool {
                 }
             }
             index += 1
-
         }
-        clear(&game.state.needs_images)
 
         if game.state.needs_sync {
             for peer_id, &peer_state in game.state.peers {
