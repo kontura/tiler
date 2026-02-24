@@ -92,7 +92,10 @@ process_binary_msg :: proc "c" (data_len: u32, data: [^]u8) {
 
     peer_state := &game.state.peers[sender_id]
 
-    if type == .ACTIONS {
+    if type == .CLOSE {
+        delete_key(&game.state.peers, sender_id)
+        game.delete_peer_state(peer_state)
+    } else if type == .ACTIONS {
         bytes: []byte = payload[:len(payload)]
         // context.allocator allocated actions
         actions := game.load_serialized_actions(bytes, context.allocator)

@@ -6,6 +6,7 @@ import "core:mem"
 import "core:strings"
 
 MESSAGE_TYPE :: enum u8 {
+    CLOSE         = 0,
     ACTIONS       = 1,
     WEBRTC        = 2,
     IMAGE_REQUEST = 3,
