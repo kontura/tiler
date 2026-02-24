@@ -257,10 +257,16 @@ main_update :: proc "c" () -> bool {
                     )
                     send_binary_to_peer(target_peer, &binary[0], u32(len(binary)))
                     img_req.waiting_for_answer = true
+                    img_req.waiting_from = time.now()
                 } else {
                     game.delete_image_needed(img_req)
                     ordered_remove(&game.state.needs_images, index)
                     index -= 1
+                }
+            } else {
+                elapsed := time.since(img_req.waiting_from)
+                if time.duration_seconds(elapsed) >= game.IMAGE_NEEDED_TIMEOUT_SEC {
+                    img_req.waiting_for_answer = false
                 }
             }
             index += 1

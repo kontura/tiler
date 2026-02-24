@@ -4,6 +4,7 @@ import "core:encoding/endian"
 import "core:math"
 import "core:mem"
 import "core:strings"
+import "core:time"
 
 MESSAGE_TYPE :: enum u8 {
     CLOSE         = 0,
@@ -30,11 +31,14 @@ PeerState :: struct {
     chunks:             [dynamic]u8,
 }
 
+IMAGE_NEEDED_TIMEOUT_SEC :: 15
+
 ImageNeeded :: struct {
     img_name:           string,
     // try to get the image from these peers in this order
     peers_to_try:       [dynamic]u64,
     waiting_for_answer: bool,
+    waiting_from:       time.Time,
 }
 
 delete_image_needed :: proc(image_neede: ^ImageNeeded) {
