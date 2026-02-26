@@ -457,7 +457,6 @@ game_state_init :: proc(
     state.selected_alpha = 1
     state.needs_sync = true
     state.mobile = mobile
-    state.bg_scale = 1
     state.should_run = true
     // Token 0 is reserved, it is a temp token used for previews
     state.tokens[0] = Token {
@@ -534,6 +533,7 @@ init :: proc(save_location: string = "./", path: string = "root", mobile := fals
     tile_map_init(tile_map, mobile)
     state.last_tile_side_in_pixels = tile_map.tile_side_in_pixels
     state.tile_map = tile_map
+    state.bg_scale = 1 / f32(state.tile_map.tile_side_in_pixels)
 
     // Load all tokens from assets dir
     for file_name in list_files_in_dir("assets/textures") {
@@ -1549,7 +1549,7 @@ update :: proc() {
         pos += state.bg_pos.rel_tile * tile_map.feet_to_pixels
         tex, ok := state.textures[state.bg_id]
         if ok {
-            rl.DrawTextureEx(tex, pos, 0, state.bg_scale * tile_map.feet_to_pixels, rl.WHITE)
+            rl.DrawTextureEx(tex, pos, 0, state.bg_scale * f32(tile_map.tile_side_in_pixels), rl.WHITE)
         }
 
         draw_tiles(state, tile_map)
