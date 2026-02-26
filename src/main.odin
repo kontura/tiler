@@ -943,7 +943,7 @@ update :: proc() {
                         if (!(mouse_tile_pos.abs_tile in action.tile_history)) {
                             old_tile := get_tile(tile_map, mouse_tile_pos.abs_tile)
                             new_tile := old_tile
-                            new_tile.color = state.selected_color
+                            new_tile.color = color_over(state.selected_color.xyzw, old_tile.color.xyzw)
                             action.tile_history[mouse_tile_pos.abs_tile] = tile_xor(&old_tile, &new_tile)
                             set_tile(tile_map, mouse_tile_pos.abs_tile, new_tile)
                         }
