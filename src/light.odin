@@ -57,6 +57,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
             rlgl.SetBlendFactors(RLGL_SRC_ALPHA, RLGL_SRC_ALPHA, RLGL_MAX)
             rlgl.SetBlendMode(i32(rl.BlendMode.CUSTOM))
 
+            //TODO(amatej): don't iterate this separetly for each shadow
             // Draw wall shadows
             screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
             tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
