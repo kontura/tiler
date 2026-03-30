@@ -70,6 +70,14 @@ TileMap :: struct {
     dirty:               bool,
 }
 
+tile_map_pos_to_world_space :: proc(p: TileMapPosition, tile_map: ^TileMap) -> [2]f32 {
+    res: [2]f32 = {f32(p.abs_tile.x), f32(p.abs_tile.y)} * f32(tile_map.tile_side_in_pixels)
+    res += p.rel_tile * tile_map.feet_to_pixels
+    // TODO(amatej): I really don't understand why is this needed
+    res += {2.5, 2.5} * tile_map.feet_to_pixels
+    return res
+}
+
 tile_maps_equal :: proc(t1: ^TileMap, t2: ^TileMap) -> (bool, string) {
     if t1.chunk_shift != t2.chunk_shift {
         return false, "chunk_shift"

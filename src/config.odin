@@ -35,14 +35,6 @@ MenuItem :: struct {
     action: proc(_: ^GameState),
 }
 
-move_left :: proc(state: ^GameState) {
-    state.camera_pos.rel_tile.x -= 10
-}
-
-move_right :: proc(state: ^GameState) {
-    state.camera_pos.rel_tile.x += 10
-}
-
 tool_is :: proc(state: ^GameState, tool: Tool) -> bool {
     if state.active_tool == tool {
         return true
@@ -264,8 +256,6 @@ get_tool_tool_menu_rect :: proc(
 }
 
 config: []Config = {
-    {key_triggers = {{.LEFT, .PRESSED}}, bindings = {{.ICON_ARROW_LEFT, "Move to the left", nil, nil, move_left, {}}}},
-    {{{.RIGHT, .PRESSED}}, {{.ICON_ARROW_RIGHT, "Move to the right", nil, nil, move_right, {}}}},
     {
         key_triggers = {{.UP, .PRESSED}},
         bindings = {
@@ -292,8 +282,6 @@ config: []Config = {
                             redo_action(state, tile_map, a)
                             state.undone -= 1
                         }
-                    } else {
-                        state.camera_pos.rel_tile.y -= 10
                     }
                 }, {}},
         },
@@ -324,8 +312,6 @@ config: []Config = {
                             undo_action(state, tile_map, a)
                             state.undone += 1
                         }
-                    } else {
-                        state.camera_pos.rel_tile.y += 10
                     }
                 }, {}},
         },

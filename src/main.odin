@@ -68,10 +68,10 @@ when ODIN_DEBUG {
 //TODO(amatej): make GameState and TileMap not global
 GameState :: struct {
     tile_map:                   ^TileMap,
-    last_tile_side_in_pixels:   i32,
     screen_width:               i32,
     screen_height:              i32,
-    camera_pos:                 TileMapPosition,
+    camera:                     rl.Camera2D,
+    last_camera_zoom:           f32,
     selected_color:             [4]u8,
     selected_wall_color:        [4]u8,
     selected_alpha:             f32,
@@ -202,22 +202,21 @@ u64_to_cstring :: proc(num: u64) -> cstring {
 }
 
 screen_coord_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
-    res: TileMapPosition = state.camera_pos
+    world_space := rl.GetScreenToWorld2D(pos, state.camera)
+    return world_space_to_tile_map(world_space, state, tile_map)
+}
 
-    delta: rl.Vector2 = pos
-
-    screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
-    delta -= screen_center
-
-    res.rel_tile.x += delta.x * f32(tile_map.pixels_to_feet)
-    res.rel_tile.y += delta.y * f32(tile_map.pixels_to_feet)
-
+world_space_to_tile_map :: proc(pos: rl.Vector2, state: ^GameState, tile_map: ^TileMap) -> TileMapPosition {
+    res: TileMapPosition
+    res.rel_tile = pos * tile_map.pixels_to_feet
+    // TODO(amatej): I really don't understand why is this needed
+    res.rel_tile -= {2.5, 2.5}
     res = recanonicalize_position(tile_map, res)
-
     return res
 }
 
-find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, pos: rl.Vector2) -> ^Token {
+find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, screen_pos: rl.Vector2) -> ^Token {
+    pos := rl.GetScreenToWorld2D(screen_pos, state.camera)
     closest_token: ^Token = nil
     closest_dist := f32(tile_map.tile_side_in_pixels)
     if state.mobile {
@@ -238,34 +237,13 @@ find_token_at_screen :: proc(tile_map: ^TileMap, state: ^GameState, pos: rl.Vect
 }
 
 // Snaps to grid (ignores rel_tile part)
+//TODO(amatej): except it doesn't now
 tile_map_to_screen_coord :: proc(pos: TileMapPosition, state: ^GameState, tile_map: ^TileMap) -> rl.Vector2 {
-    res: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
-
-    delta: [2]i32 = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
-    delta -= {i32(state.camera_pos.abs_tile.x), i32(state.camera_pos.abs_tile.y)}
-
-    res.x += f32(delta.x * tile_map.tile_side_in_pixels)
-    res.y += f32(delta.y * tile_map.tile_side_in_pixels)
-
-    res -= state.camera_pos.rel_tile * tile_map.feet_to_pixels
-
-    return res
+    return rl.GetWorldToScreen2D(tile_map_pos_to_world_space(pos, tile_map), state.camera)
 }
 
 tile_map_to_screen_coord_full :: proc(pos: TileMapPosition, state: ^GameState, tile_map: ^TileMap) -> rl.Vector2 {
-    res: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
-
-    delta: [2]i32 = {i32(pos.abs_tile.x), i32(pos.abs_tile.y)}
-    delta -= {i32(state.camera_pos.abs_tile.x), i32(state.camera_pos.abs_tile.y)}
-
-    res.x += f32(delta.x * tile_map.tile_side_in_pixels)
-    res.y += f32(delta.y * tile_map.tile_side_in_pixels)
-
-    res -= state.camera_pos.rel_tile * tile_map.feet_to_pixels
-
-    res += pos.rel_tile * tile_map.feet_to_pixels
-
-    return res
+    return rl.GetWorldToScreen2D(tile_map_pos_to_world_space(pos, tile_map), state.camera)
 }
 
 state: ^GameState
@@ -430,10 +408,11 @@ game_state_init :: proc(
     save_location: string,
     init_raylib := true, // Used for tests without UI
 ) {
-    state.camera_pos.abs_tile.x = 100
-    state.camera_pos.abs_tile.y = 100
-    state.camera_pos.rel_tile.x = 0.0
-    state.camera_pos.rel_tile.y = 0.0
+    state.camera.zoom = 1.0
+    state.camera.offset.x = f32(width) / 2.0 + f32(state.tile_map.tile_side_in_pixels) / 2.0
+    state.camera.offset.y = f32(height) / 2.0 + f32(state.tile_map.tile_side_in_pixels) / 2.0
+    state.camera.target.x = f32(100 * state.tile_map.tile_side_in_pixels)
+    state.camera.target.y = f32(100 * state.tile_map.tile_side_in_pixels)
     state.screen_height = height
     state.screen_width = width
     state.draw_grid = true
@@ -527,13 +506,13 @@ init :: proc(save_location: string = "./", path: string = "root", mobile := fals
     rl.InitWindow(INIT_SCREEN_WIDTH, INIT_SCREEN_HEIGHT, "Tiler")
 
     state = new(GameState)
-    game_state_init(state, mobile, rl.GetScreenWidth(), rl.GetScreenHeight(), path, save_location)
 
     tile_map = new(TileMap)
     tile_map_init(tile_map, mobile)
-    state.last_tile_side_in_pixels = tile_map.tile_side_in_pixels
     state.tile_map = tile_map
     state.bg_scale = 1 / f32(state.tile_map.tile_side_in_pixels)
+    game_state_init(state, mobile, rl.GetScreenWidth(), rl.GetScreenHeight(), path, save_location)
+    state.last_camera_zoom = state.camera.zoom
 
     // Load all tokens from assets dir
     for file_name in list_files_in_dir("assets/textures") {
@@ -574,6 +553,8 @@ update :: proc() {
                 }
             }
             set_dirty_token_for_all_lights(state)
+            state.camera.offset.x = f32(state.screen_width) / 2.0 + f32(state.tile_map.tile_side_in_pixels) / 2.0
+            state.camera.offset.y = f32(state.screen_height) / 2.0 + f32(state.tile_map.tile_side_in_pixels) / 2.0
             tile_map.dirty = true
         }
 
@@ -588,7 +569,9 @@ update :: proc() {
                 state.last_left_button_press_pos = mouse_pos
             } else if rl.IsMouseButtonDown(.RIGHT) {
                 if rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) != 0 {
-                    state.camera_pos.rel_tile -= rl.GetMouseDelta() / f32(tile_map.tile_side_in_pixels) * 8
+                    state.camera.target -= rl.GetMouseDelta() / state.camera.zoom
+                    //fmt.println(state.camera.target)
+                    //TODO(amatej): state.camera.target isn't screen coord..
                     set_dirty_token_for_all_lights(state)
                     tile_map.dirty = true
                 }
@@ -597,9 +580,11 @@ update :: proc() {
                 if len(state.selected_tokens) == 1 && state.active_tool == .EDIT_TOKEN {
                     clear_selected_tokens(state)
                 } else {
-                    if math.abs(f32(tile_map.tile_side_in_pixels) - f32(state.last_tile_side_in_pixels)) < EPS {
-                        tile_map.tile_side_in_pixels += i32(rl.GetMouseWheelMoveV().y * 1.5)
-                        state.last_tile_side_in_pixels = tile_map.tile_side_in_pixels
+                    if math.abs(state.camera.zoom - state.last_camera_zoom) < EPS {
+                        state.camera.zoom += rl.GetMouseWheelMoveV().y * 0.1
+                        if state.camera.zoom < 0.2 {state.camera.zoom = 0.2}
+                        if state.camera.zoom > 5.0 {state.camera.zoom = 5.0}
+                        state.last_camera_zoom = state.camera.zoom
                         set_dirty_token_for_all_lights(state)
                         tile_map.dirty = true
                     }
@@ -611,24 +596,19 @@ update :: proc() {
         if len(state.selected_tokens) == 1 && state.active_tool == .EDIT_TOKEN {
             token := &state.tokens[state.selected_tokens[0]]
 
-            current_dist := tile_pos_distance(tile_map, token.position, state.camera_pos)
+            current_dist := dist(tile_map_pos_to_world_space(token.position, tile_map), state.camera.target)
             new_dist := exponential_smoothing(0, current_dist)
-            tile_vec := tile_pos_difference(token.position, state.camera_pos)
-            tile_vec_normal := tile_vec_div(tile_vec, current_dist)
-            tile_vec_multed := tile_vec_mul(tile_vec_normal, current_dist - new_dist)
-            state.camera_pos = recanonicalize_position(
-                tile_map,
-                tile_pos_add_tile_vec(state.camera_pos, tile_vec_multed),
-            )
+            tile_vec := tile_map_pos_to_world_space(token.position, tile_map) - state.camera.target
+            tile_vec_normal := tile_vec / current_dist
+            tile_vec_multed := tile_vec_normal * (current_dist - new_dist)
+            state.camera.target += tile_vec_multed
 
-            tile_map.tile_side_in_pixels = i32(exponential_smoothing(200, f32(tile_map.tile_side_in_pixels)))
+            state.camera.zoom = exponential_smoothing(TOKEN_SELECTED_ZOOMED_IN, state.camera.zoom)
 
             set_dirty_token_for_all_lights(state)
             tile_map.dirty = true
-        } else if math.abs(f32(tile_map.tile_side_in_pixels) - f32(state.last_tile_side_in_pixels)) > EPS {
-            tile_map.tile_side_in_pixels = i32(
-                exponential_smoothing(f32(state.last_tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)),
-            )
+        } else if math.abs(state.camera.zoom - state.last_camera_zoom) > EPS {
+            state.camera.zoom = exponential_smoothing(state.last_camera_zoom, state.camera.zoom)
             set_dirty_token_for_all_lights(state)
             tile_map.dirty = true
         }
@@ -900,6 +880,7 @@ update :: proc() {
 
                 button_pos.y += 70 / 2
 
+                //TODO(amatej): add text edit widget?
                 secs := time.time_to_unix(time.now())
                 name_text: string
                 if secs % 2 == 0 {
@@ -1370,7 +1351,7 @@ update :: proc() {
                 {
                     if state.previous_touch_pos != 0 {
                         d := state.previous_touch_pos - mouse_pos
-                        state.camera_pos.rel_tile += d / 5
+                        //state.camera_pos.rel_tile += d / 5
                         tile_map.dirty = true
                         set_dirty_token_for_all_lights(state)
                     }
@@ -1515,15 +1496,6 @@ update :: proc() {
             }
         }
 
-        state.camera_pos = recanonicalize_position(tile_map, state.camera_pos)
-
-        if tile_map.tile_side_in_pixels < MIN_ZOOM {
-            tile_map.tile_side_in_pixels = MIN_ZOOM
-            state.last_tile_side_in_pixels = MIN_ZOOM
-        }
-        tile_map.feet_to_pixels = f32(tile_map.tile_side_in_pixels) / tile_map.tile_side_in_feet
-        tile_map.pixels_to_feet = tile_map.tile_side_in_feet / f32(tile_map.tile_side_in_pixels)
-
         tokens_animate(tile_map, state)
     }
 
@@ -1531,16 +1503,13 @@ update :: proc() {
     render_duration: time.Duration
     {
         time.SCOPED_TICK_DURATION(&render_duration)
-        draw_light_mask(state, tile_map, &state.light, state.light_pos)
-        for _, &token in state.tokens {
-            l, ok := &token.light.?
-            if ok {
-                draw_light_mask(state, tile_map, l, token.position)
-            }
-        }
-        merge_light_masks(state, tile_map)
-
         rl.BeginDrawing()
+
+        if state.draw_grid_mask {
+            draw_grid_mask_to_tex(state, tile_map, &state.grid_mask)
+        }
+
+        rl.BeginMode2D(state.camera)
 
         rl.ClearBackground(EMPTY_COLOR.xyzw)
 
@@ -1561,10 +1530,8 @@ update :: proc() {
             }
 
             if state.draw_grid_mask {
-                draw_grid_mask_to_tex(state, tile_map, &state.grid_mask)
                 rl.BeginShaderMode(state.grid_shader)
                 {
-                    //TODO(amatej): pass resolution?
                     rl.SetShaderValueTexture(state.grid_shader, state.mask_loc, state.grid_mask.texture)
                     //normalized_wall_color := rl.ColorNormalize(state.selected_wall_color.xyzw)
                     //TODO(amatej): For now do only black walls
@@ -1572,17 +1539,20 @@ update :: proc() {
                     rl.SetShaderValue(state.grid_shader, state.wall_color_loc, &normalized_wall_color, .VEC4)
                     res := [2]f32{f32(state.screen_width), f32(state.screen_height)}
                     rl.SetShaderValue(state.grid_shader, state.resolution_loc, &res, .VEC2)
-                    rl.SetShaderValue(state.grid_shader, state.tile_pix_size_loc, &tile_map.tile_side_in_pixels, .INT)
-                    camera_offset: [2]f32
-                    camera_offset.x = f32(state.camera_pos.abs_tile.x) * f32(tile_map.tile_side_in_pixels)
-                    camera_offset.y = f32(state.camera_pos.abs_tile.y) * f32(tile_map.tile_side_in_pixels)
-                    camera_offset.x += state.camera_pos.rel_tile.x * tile_map.feet_to_pixels
-                    camera_offset.y += state.camera_pos.rel_tile.y * tile_map.feet_to_pixels
+                    zoomed_tile_size : f32 = f32(tile_map.tile_side_in_pixels) * state.camera.zoom
+                    rl.SetShaderValue(state.grid_shader, state.tile_pix_size_loc, &zoomed_tile_size, .FLOAT)
+                    camera_offset: [2]f32 = state.camera.target
+                    camera_offset *= state.camera.zoom
                     camera_offset.x /= f32(state.screen_width)
                     camera_offset.x *= f32(-1)
                     camera_offset.y /= f32(state.screen_height)
                     rl.SetShaderValue(state.grid_shader, state.camera_offsret_loc, &camera_offset, .VEC2)
-                    rl.DrawRectangleV({0, 0}, {f32(state.screen_width), f32(state.screen_height)}, {255, 255, 255, 155})
+                    //fmt.println(state.camera.target)
+                    rl.DrawRectangleV(
+                        rl.GetScreenToWorld2D({0, 0}, state.camera),
+                        {f32(state.screen_width) / state.camera.zoom, f32(state.screen_height) / state.camera.zoom},
+                        {255, 255, 255, 155},
+                    )
                 }
                 rl.EndShaderMode()
             }
@@ -1633,7 +1603,7 @@ update :: proc() {
                 } else {
                     rl.DrawCircleV(token_pos, token_radius, token.color.xyzw)
                 }
-                pos: rl.Vector2 = tile_map_to_screen_coord_full(token.position, state, tile_map)
+                pos: rl.Vector2 = tile_map_pos_to_world_space(token.position, tile_map)
 
                 if (len(token.name) != 0) {
                     y_pos := i32(pos.y) + tile_map.tile_side_in_pixels / 2
@@ -1696,8 +1666,7 @@ update :: proc() {
             m.rel_tile.x = m.rel_tile.x >= 0 ? half : -half
             m.rel_tile.y = m.rel_tile.y >= 0 ? half : -half
             size: f32 = f32(tile_map.tile_side_in_pixels)
-            cross_pos := tile_map_to_screen_coord(m, state, tile_map)
-            cross_pos += m.rel_tile * tile_map.feet_to_pixels
+            cross_pos := tile_map_pos_to_world_space(m, tile_map)
             rl.DrawRectangleV(cross_pos - {1, size / 2}, {2, size}, {255, 255, 255, 255})
             rl.DrawRectangleV(cross_pos - {size / 2, 1}, {size, 2}, {255, 255, 255, 255})
         }
@@ -1714,6 +1683,23 @@ update :: proc() {
             rl.DrawCircleV(pos, particle.size, color.xyzw)
         }
 
+        rl.EndMode2D()
+
+        draw_light_mask(state, tile_map, &state.light, state.light_pos)
+        for _, &token in state.tokens {
+            l, ok := &token.light.?
+            if ok {
+                draw_light_mask(state, tile_map, l, token.position)
+            }
+        }
+            //rl.DrawTextureRec(
+            //    state.grid_mask.texture,
+            //    {0, 0, f32(state.screen_width), f32(-state.screen_height)},
+            //    {0, 0},
+            //    rl.WHITE,
+            //)
+
+        merge_light_masks(state, tile_map)
         // Overlay the global shadow mask
         rl.DrawTextureRec(
             state.light_mask.texture,
@@ -1721,6 +1707,9 @@ update :: proc() {
             {0, 0},
             {255, 255, 255, 100},
         )
+
+
+        // DO UI
 
         // draw initiative tracker
         if (state.draw_initiative) {
@@ -1895,8 +1884,6 @@ update :: proc() {
             }
             rl.DrawFPS(state.screen_width - 200, state.screen_height - 100)
         }
-
-        // DO UI
 
         rl.GuiDrawIcon(.ICON_BREAKPOINT_ON, state.screen_width - 20, 6, 1, state.socket_ready ? rl.GREEN : rl.RED)
 

@@ -34,7 +34,7 @@ get_N_points_on_circle :: #force_inline proc($N: int, center: [2]f32, radius: f3
 
 draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo, pos: TileMapPosition) {
     light_screen_pos := tile_map_to_screen_coord_full(pos, state, tile_map)
-    if light.dirty_wall || tile_map.dirty {
+    if light.dirty_wall || tile_map.dirty || true {
         rl.BeginTextureMode(light.light_wall_mask)
         {
             rl.ClearBackground(rl.WHITE)
@@ -46,7 +46,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
             rl.DrawCircleGradient(
                 i32(light_screen_pos.x),
                 i32(light_screen_pos.y),
-                light.radius * f32(tile_map.tile_side_in_pixels),
+                light.radius * f32(tile_map.tile_side_in_pixels) * state.camera.zoom,
                 intensity_color,
                 rl.WHITE,
             )
@@ -57,39 +57,29 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
             rlgl.SetBlendFactors(RLGL_SRC_ALPHA, RLGL_SRC_ALPHA, RLGL_MAX)
             rlgl.SetBlendMode(i32(rl.BlendMode.CUSTOM))
 
-            //TODO(amatej): don't iterate this separetly for each shadow
-            // Draw wall shadows
-            screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
-            tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
-            for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
-                row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
+            //TODO(amatej): we have to also somehow cap this by what the camera can see,
+            //              the global light has enourmous radios
+            //              The global light likely doesn't run because it underflows the u32
+            //TODO(amatej): Don't use so many textures, use channels for separate lights,
+            //              scale down the lights and store multiple in one texture
+            //// Draw wall shadows
+            for row_offset: u32 = pos.abs_tile.y - u32(light.radius);
+                row_offset <= pos.abs_tile.y + u32(light.radius);
                 row_offset += 1 {
-                cen_y: f32 =
-                    screen_center.y -
-                    tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
-                    f32(row_offset * tile_map.tile_side_in_pixels)
-                min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
-
-                for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-                    column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
+                for column_offset: u32 = pos.abs_tile.x - u32(light.radius);
+                    column_offset <= pos.abs_tile.x + u32(light.radius);
                     column_offset += 1 {
-                    current_tile: [2]u32
-                    current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset)
-                    current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
-                    current_tile_value: Tile = get_tile(tile_map, current_tile)
+                    current_tile_pos : TileMapPosition = {{column_offset, row_offset}, {-2.5, -2.5}}
+                    current_tile_value: Tile = get_tile(tile_map, current_tile_pos.abs_tile)
+                    current_tile_screen_pos := tile_map_to_screen_coord_full(current_tile_pos, state, tile_map)
+                    //rl.DrawCircleV(current_tile_screen_pos, 5, rl.WHITE)
+                    min_x := current_tile_screen_pos.x
+                    min_y := current_tile_screen_pos.y
 
-                    // Calculate tile position on screen
-                    cen_x: f32 =
-                        screen_center.x -
-                        tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-                        f32(column_offset * tile_map.tile_side_in_pixels)
-                    min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-
-                    //shadow := [2]f32{0.4, 0.4} * f32(tile_map.tile_side_in_pixels) * 3
                     if Direction.TOP in current_tile_value.walls {
                         if current_tile_value.wall_colors[Direction.TOP].w != 0 {
                             w1: [2]f32 = {min_x, min_y}
-                            w2: [2]f32 = {min_x + f32(tile_map.tile_side_in_pixels), min_y}
+                            w2: [2]f32 = {min_x + f32(tile_map.tile_side_in_pixels)*state.camera.zoom, min_y}
                             ray1 :=
                                 rl.Vector2Normalize(w1 - light_screen_pos) *
                                 light.shadow_len *
@@ -104,7 +94,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
                     if current_tile_value.wall_colors[Direction.LEFT].w != 0 {
                         if Direction.LEFT in current_tile_value.walls {
                             w1: [2]f32 = {min_x, min_y}
-                            w2: [2]f32 = {min_x, min_y + f32(tile_map.tile_side_in_pixels)}
+                            w2: [2]f32 = {min_x, min_y + f32(tile_map.tile_side_in_pixels)*state.camera.zoom}
                             ray1 :=
                                 rl.Vector2Normalize(w1 - light_screen_pos) *
                                 light.shadow_len *
@@ -118,6 +108,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
                     }
                 }
             }
+
             rlgl.DrawRenderBatchActive()
 
             rlgl.SetBlendMode(i32(rl.BlendMode.ALPHA))
@@ -125,7 +116,7 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
         rl.EndTextureMode()
         light.dirty_wall = false
     }
-    if light.dirty_token {
+    if light.dirty_token || true {
         rl.BeginTextureMode(light.light_token_mask)
         {
             rl.ClearBackground(rl.WHITE)
@@ -149,7 +140,10 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
             for _, &token in state.tokens {
                 // Draw shadows only for real tokens, skip temp 0 token
                 if token.alive && token.position != pos {
+                    // token_pos is world space
                     token_pos, token_circle_radius := get_token_circle(tile_map, state, &token)
+                    token_circle_radius *= state.camera.zoom
+                    token_pos = rl.GetWorldToScreen2D(token_pos, state.camera)
                     center_from_source: f32 = dist(token_pos, light_screen_pos)
                     circle_points := get_N_points_on_circle(20, token_pos.xy, token_circle_radius)
                     prev: [2][2]f32
@@ -159,9 +153,10 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
                         if p_from_source >= center_from_source {
                             ray :=
                                 rl.Vector2Normalize(p - light_screen_pos) *
-                                light.shadow_len /
-                                4 *
-                                f32(tile_map.tile_side_in_pixels)
+                                light.shadow_len *
+                                f32(tile_map.tile_side_in_pixels) *
+                                state.camera.zoom /
+                                4
                             v: [2][2]f32 = {p, p + ray}
                             prev = v
                             break
@@ -173,9 +168,10 @@ draw_light_mask :: proc(state: ^GameState, tile_map: ^TileMap, light: ^LightInfo
                         if p_from_source >= center_from_source {
                             ray :=
                                 rl.Vector2Normalize(p - light_screen_pos) *
-                                light.shadow_len /
-                                4 *
-                                f32(tile_map.tile_side_in_pixels)
+                                light.shadow_len *
+                                f32(tile_map.tile_side_in_pixels) *
+                                state.camera.zoom /
+                                4
                             draw_quad_ordered(prev[0], p, p + ray, prev[1], rl.WHITE.xyzw)
                             v: [2][2]f32 = {p, p + ray}
                             prev = v

@@ -7,6 +7,7 @@ import "core:strings"
 import rl "vendor:raylib"
 
 TOKEN_DEFAULT_LIGHT_RADIUS :: 10
+TOKEN_SELECTED_ZOOMED_IN :: 8
 
 Token :: struct {
     id:              u64,
@@ -24,7 +25,7 @@ Token :: struct {
 }
 
 get_token_circle :: proc(tile_map: ^TileMap, state: ^GameState, token: ^Token) -> (center: [2]f32, radius: f32) {
-    center = tile_map_to_screen_coord_full(token.position, state, tile_map)
+    center = tile_map_pos_to_world_space(token.position, tile_map)
 
     size_center_shift := math.abs(math.mod_f32(token.draw_size, 2) - 1)
     center -= {f32(tile_map.tile_side_in_pixels) / 2, f32(tile_map.tile_side_in_pixels) / 2} * size_center_shift
