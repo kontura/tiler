@@ -6,39 +6,29 @@ import "core:math/rand"
 import rl "vendor:raylib"
 
 draw_tiles :: proc(state: ^GameState, tile_map: ^TileMap) {
-    screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
-
     //TODO(amatej): This is bad usually most of the tiles are empty, we don't have to iterate
     //              over all of this.
-    // draw tile map
-    tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
-    for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
-        row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
-        row_offset += 1 {
-        cen_y: f32 =
-            screen_center.y -
-            tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
-            f32(row_offset * tile_map.tile_side_in_pixels)
-        min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
 
-        for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-            column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
-            column_offset += 1 {
-            current_tile: [2]u32
-            current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset)
-            current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
+    // Draw only tiles in camera view
+    top_left := rl.GetScreenToWorld2D({0, 0}, state.camera) / f32(tile_map.tile_side_in_pixels)
+    top_left_offset: [2]u32
+    top_left_offset.x = u32(top_left.x)
+    top_left_offset.y = u32(top_left.y)
 
-            current_tile_value: Tile = get_tile(tile_map, current_tile)
+    needed_tiles_width := i32(f32(state.screen_width) / f32(tile_map.tile_side_in_pixels) / state.camera.zoom) + 1
+    needed_tiles_height := i32(f32(state.screen_height) / f32(tile_map.tile_side_in_pixels) / state.camera.zoom) + 1
+    for row_offset: i32 = 0; row_offset <= needed_tiles_height; row_offset += 1 {
+        for column_offset: i32 = 0; column_offset <= needed_tiles_width; column_offset += 1 {
+            pos: [2]u32
+            pos.x = u32(column_offset)
+            pos.y = u32(row_offset)
+            pos += top_left_offset
 
-            // Calculate tile position on screen
-            cen_x: f32 =
-                screen_center.x -
-                tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-                f32(column_offset * tile_map.tile_side_in_pixels)
-            min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
+            current_tile_value: Tile = get_tile(tile_map, pos)
+
             if current_tile_value.color.w != 0 {
                 rl.DrawRectangleV(
-                    {min_x, min_y},
+                    {f32(pos.x) * f32(tile_map.tile_side_in_pixels), f32(pos.y) * f32(tile_map.tile_side_in_pixels)},
                     {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels)},
                     current_tile_value.color.xyzw,
                 )
@@ -48,7 +38,10 @@ draw_tiles :: proc(state: ^GameState, tile_map: ^TileMap) {
                 if current_tile_value.wall_colors[Direction.TOP].w != 0 {
                     //TODO(amatej): use DrawLineEx if we want to do diagonals
                     rl.DrawRectangleV(
-                        {min_x, min_y},
+                        {
+                            f32(pos.x) * f32(tile_map.tile_side_in_pixels),
+                            f32(pos.y) * f32(tile_map.tile_side_in_pixels),
+                        },
                         {f32(tile_map.tile_side_in_pixels), f32(tile_map.tile_side_in_pixels) * .1},
                         current_tile_value.wall_colors[Direction.TOP].xyzw,
                     )
@@ -57,7 +50,10 @@ draw_tiles :: proc(state: ^GameState, tile_map: ^TileMap) {
             if current_tile_value.wall_colors[Direction.LEFT].w != 0 {
                 if Direction.LEFT in current_tile_value.walls {
                     rl.DrawRectangleV(
-                        {min_x, min_y},
+                        {
+                            f32(pos.x) * f32(tile_map.tile_side_in_pixels),
+                            f32(pos.y) * f32(tile_map.tile_side_in_pixels),
+                        },
                         {f32(tile_map.tile_side_in_pixels) * .1, f32(tile_map.tile_side_in_pixels)},
                         current_tile_value.wall_colors[Direction.LEFT].xyzw,
                     )
@@ -68,39 +64,47 @@ draw_tiles :: proc(state: ^GameState, tile_map: ^TileMap) {
 }
 
 draw_grid :: proc(state: ^GameState, tile_map: ^TileMap) {
-    screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
-    tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
+    top_left := rl.GetScreenToWorld2D({0, 0}, state.camera) / f32(tile_map.tile_side_in_pixels)
+    top_left_offset: [2]i32
+    top_left_offset.x = i32(top_left.x)
+    top_left_offset.y = i32(top_left.y)
     // draw grid
-    for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
-        row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
-        row_offset += 1 {
-        cen_y: f32 =
-            screen_center.y -
-            tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
-            f32(row_offset * tile_map.tile_side_in_pixels)
-        min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
-        rl.DrawLineV({0, min_y}, {f32(state.screen_width), min_y}, {0, 0, 0, 25})
-    }
-    for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-        column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
-        column_offset += 1 {
-        cen_x: f32 =
-            screen_center.x -
-            tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-            f32(column_offset * tile_map.tile_side_in_pixels)
-        min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
-        min_x = math.max(0, min_x)
-        rl.DrawLineV({min_x, 0}, {min_x, f32(state.screen_height)}, {0, 0, 0, 25})
+    needed_tiles_width := i32(f32(state.screen_width) / f32(tile_map.tile_side_in_pixels) / state.camera.zoom) + 1
+    needed_tiles_height := i32(f32(state.screen_height) / f32(tile_map.tile_side_in_pixels) / state.camera.zoom) + 1
+    needed := math.max(needed_tiles_width, needed_tiles_height)
+    ext := f32(tile_map.tile_side_in_pixels) / state.camera.zoom
+    for row_offset: i32 = 0; row_offset <= needed; row_offset += 1 {
+        screen_pos: [2]i32 = {row_offset, row_offset}
+        screen_pos += top_left_offset
+        screen_pos *= tile_map.tile_side_in_pixels
+        rl.DrawLineV(
+            {f32(top_left_offset.x) * f32(tile_map.tile_side_in_pixels), f32(screen_pos.y)},
+            {
+                f32(top_left_offset.x + 1) * f32(tile_map.tile_side_in_pixels) +
+                f32(state.screen_width) / state.camera.zoom,
+                f32(screen_pos.y),
+            },
+            {0, 0, 0, 25},
+        )
+        rl.DrawLineV(
+            {f32(screen_pos.x), f32(top_left_offset.y) * f32(tile_map.tile_side_in_pixels)},
+            {
+                f32(screen_pos.x),
+                f32(top_left_offset.y + 1) * f32(tile_map.tile_side_in_pixels) +
+                f32(state.screen_height) / state.camera.zoom,
+            },
+            {0, 0, 0, 25},
+        )
     }
 }
 
 get_scaled_rand_pair :: proc(state: ^GameState, tile_map: ^TileMap) -> [2]f32 {
     return [2]f32 {
-        f32(tile_map.tile_side_in_pixels) *
+        f32(tile_map.tile_side_in_pixels) * state.camera.zoom *
         (rand.float32(state.frame_deterministic_rng) - 0.5) *
         3 *
         rand.float32(state.frame_deterministic_rng),
-        f32(tile_map.tile_side_in_pixels) *
+        f32(tile_map.tile_side_in_pixels) * state.camera.zoom *
         (rand.float32(state.frame_deterministic_rng) - 0.5) *
         3 *
         rand.float32(state.frame_deterministic_rng),
@@ -108,53 +112,47 @@ get_scaled_rand_pair :: proc(state: ^GameState, tile_map: ^TileMap) -> [2]f32 {
 }
 
 draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.RenderTexture) {
-    if !tile_map.dirty {
-        return
-    }
+    //if !tile_map.dirty {
+    //    return
+    //}
     rl.BeginTextureMode(tex^)
     {
         rl.ClearBackground({0, 0, 0, 0})
         signs := [2]f32{1, -1}
 
-        screen_center: rl.Vector2 = {f32(state.screen_width), f32(state.screen_height)} * 0.5
-        tiles_needed_to_fill_half_of_screen := screen_center / f32(tile_map.tile_side_in_pixels)
-        for row_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.y));
-            row_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.y));
-            row_offset += 1 {
-            cen_y: f32 =
-                screen_center.y -
-                tile_map.feet_to_pixels * state.camera_pos.rel_tile.y +
-                f32(row_offset * tile_map.tile_side_in_pixels)
-            min_y: f32 = cen_y - 0.5 * f32(tile_map.tile_side_in_pixels)
+        top_left := rl.GetScreenToWorld2D({0, 0}, state.camera) / f32(tile_map.tile_side_in_pixels)
+        top_left_offset: [2]u32
+        top_left_offset.x = u32(top_left.x)
+        top_left_offset.y = u32(top_left.y)
 
-            for column_offset: i32 = i32(math.floor(-tiles_needed_to_fill_half_of_screen.x));
-                column_offset <= i32(math.ceil(tiles_needed_to_fill_half_of_screen.x));
-                column_offset += 1 {
-                current_tile: [2]u32
-                current_tile.x = (state.camera_pos.abs_tile.x) + u32(column_offset)
-                current_tile.y = (state.camera_pos.abs_tile.y) + u32(row_offset)
+        needed_tiles_width := i32(f32(state.screen_width) / f32(tile_map.tile_side_in_pixels) / state.camera.zoom) + 1
+        needed_tiles_height :=
+            i32(f32(state.screen_height) / f32(tile_map.tile_side_in_pixels) / state.camera.zoom) + 1
+        for row_offset: i32 = 0; row_offset <= needed_tiles_height; row_offset += 1 {
+            for column_offset: i32 = 0; column_offset <= needed_tiles_width; column_offset += 1 {
+                pos: [2]u32
+                pos.x = u32(column_offset)
+                pos.y = u32(row_offset)
+                pos += top_left_offset
 
-                current_tile_value: Tile = get_tile(tile_map, current_tile)
+                current_tile_value: Tile = get_tile(tile_map, pos)
 
-                // Calculate tile position on screen
-                cen_x: f32 =
-                    screen_center.x -
-                    tile_map.feet_to_pixels * state.camera_pos.rel_tile.x +
-                    f32(column_offset * tile_map.tile_side_in_pixels)
-                min_x: f32 = cen_x - 0.5 * f32(tile_map.tile_side_in_pixels)
+                min_x: f32 = f32(pos.x) * f32(tile_map.tile_side_in_pixels)
+                min_y: f32 = f32(pos.y) * f32(tile_map.tile_side_in_pixels)
+                ss := rl.GetWorldToScreen2D({min_x, min_y}, state.camera)
 
                 if Direction.TOP in current_tile_value.walls || Direction.LEFT in current_tile_value.walls {
-                    rand.reset(u64(current_tile.x + current_tile.y), state.frame_deterministic_rng)
+                    rand.reset(u64(pos.x + pos.y), state.frame_deterministic_rng)
                     if rand.float32(state.frame_deterministic_rng) < 1.1 {
                         dist_x :=
                             (rand.float32_range(0.4, 1.8, state.frame_deterministic_rng) *
                                 rand.choice(signs[:], state.frame_deterministic_rng)) *
-                            f32(tile_map.tile_side_in_pixels)
+                            f32(tile_map.tile_side_in_pixels) * state.camera.zoom
                         dist_y :=
                             (rand.float32_range(0.4, 1.8, state.frame_deterministic_rng) *
                                 rand.choice(signs[:], state.frame_deterministic_rng)) *
-                            f32(tile_map.tile_side_in_pixels)
-                        p := [2]f32{min_x, min_y} + [2]f32{dist_x, dist_y}
+                            f32(tile_map.tile_side_in_pixels) * state.camera.zoom
+                        p := [2]f32{ss.x, ss.y} + [2]f32{dist_x, dist_y}
                         draw_triangle(
                             p + get_scaled_rand_pair(state, tile_map),
                             p + get_scaled_rand_pair(state, tile_map),
@@ -164,10 +162,11 @@ draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Re
                     }
 
                     rl.DrawCircle(
-                        i32(min_x),
-                        i32(min_y),
+                        i32(ss.x),
+                        i32(ss.y),
                         rand.float32_range(.2, .3, state.frame_deterministic_rng) *
                         3 *
+                        state.camera.zoom *
                         f32(tile_map.tile_side_in_pixels),
                         {255, 0, 0, 200},
                     )
@@ -180,10 +179,10 @@ draw_grid_mask_to_tex :: proc(state: ^GameState, tile_map: ^TileMap, tex: ^rl.Re
                 wall_thickness := f32(tile_map.tile_side_in_pixels) * .1
                 if current_tile_value.color.w != 0 {
                     rl.DrawRectangleV(
-                        {min_x, min_y},
+                        {ss.x, ss.y},
                         {
-                            f32(tile_map.tile_side_in_pixels) + wall_thickness,
-                            f32(tile_map.tile_side_in_pixels) + wall_thickness,
+                            (f32(tile_map.tile_side_in_pixels) + wall_thickness) * state.camera.zoom,
+                            (f32(tile_map.tile_side_in_pixels) + wall_thickness) * state.camera.zoom,
                         },
                         {0, 255, 0, 200},
                     )
